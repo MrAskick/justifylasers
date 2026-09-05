@@ -4,3 +4,6 @@
 build/
 run/
 backups/
+logs/
+publish/
+ref/
