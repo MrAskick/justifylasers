@@ -1,0 +1,65 @@
+import java.awt.image.BufferedImage
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+import javax.imageio.ImageIO
+
+// Generate LabPBR maps and lit variants without modifying the source textures.
+def laserMaterialOutput = layout.buildDirectory.dir('generated/laserMaterials')
+
+tasks.register('generateLaserMaterials') {
+    inputs.files(fileTree('src/main/resources/assets/justifylasers/textures/block') {
+        include 'laser_emitter_front_*.png'
+    })
+    outputs.dir(laserMaterialOutput)
+
+    doLast {
+        def output = laserMaterialOutput.get().asFile
+        def blockOutput = new File(output, 'assets/justifylasers/textures/block')
+        def beamOutput = new File(output, 'assets/justifylasers/textures/effect')
+        blockOutput.mkdirs()
+        beamOutput.mkdirs()
+
+        def solidImage = { int size, int argb ->
+            def image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB)
+            for (int y = 0; y < size; y++) {
+                for (int x = 0; x < size; x++) {
+                    image.setRGB(x, y, argb)
+                }
+            }
+            image
+        }
+        ImageIO.write(solidImage(8, (int) 0xFFFFFFFFL), 'png', new File(beamOutput, 'beam.png'))
+        // Flat normal, full AO, height 1: POM must never displace an optical emitter.
+        ImageIO.write(solidImage(8, (int) 0xFF7F7FFFL), 'png', new File(beamOutput, 'beam_n.png'))
+        // LabPBR alpha 254 is fully emissive; 255 means no emission.
+        ImageIO.write(solidImage(8, (int) 0xFE000000L), 'png', new File(beamOutput, 'beam_s.png'))
+
+        def textureDir = file('src/main/resources/assets/justifylasers/textures/block')
+        def reference = ImageIO.read(new File(textureDir, 'laser_emitter_front_red.png'))
+        def emission = new BufferedImage(reference.width, reference.height, BufferedImage.TYPE_INT_ARGB)
+        for (int y = 0; y < reference.height; y++) {
+            for (int x = 0; x < reference.width; x++) {
+                int pixel = reference.getRGB(x, y)
+                int red = (pixel >>> 16) & 255
+                int neutral = Math.max((pixel >>> 8) & 255, pixel & 255)
+                // Derive a common mask from the red artwork, including for the white variant.
+                float coloredLight = Math.max(0f, Math.min(1f, (red - neutral - 24) / 160f))
+                int alpha = Math.round(coloredLight * 220f)
+                emission.setRGB(x, y, (alpha << 24) | 0x200000)
+            }
+        }
+        ['red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'violet', 'magenta', 'white'].each { color ->
+            def source = new File(textureDir, "laser_emitter_front_${color}.png")
+            def texture = ImageIO.read(source)
+            if (texture.width != reference.width || texture.height != reference.height) {
+                throw new GradleException("Laser texture dimensions differ: ${source.name}")
+            }
+            def name = "laser_emitter_front_${color}_lit"
+            Files.copy(source.toPath(), new File(blockOutput, "${name}.png").toPath(),
+                    StandardCopyOption.REPLACE_EXISTING)
+            ImageIO.write(emission, 'png', new File(blockOutput, "${name}_s.png"))
+        }
+    }
+}
+
+sourceSets.main.resources.srcDir(tasks.named('generateLaserMaterials'))

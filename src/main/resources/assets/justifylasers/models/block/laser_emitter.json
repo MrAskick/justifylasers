@@ -1,0 +1,182 @@
+{
+  "parent": "minecraft:block/block",
+  "ambientocclusion": true,
+  "textures": {
+    "panel": "justifylasers:block/laser_emitter_front_red",
+    "dark": "minecraft:block/polished_deepslate",
+    "light": "minecraft:block/iron_block",
+    "aperture": "minecraft:block/black_concrete",
+    "particle": "minecraft:block/polished_deepslate"
+  },
+  "elements": [
+    {
+      "name": "back_plate",
+      "from": [1, 1, 12],
+      "to": [15, 15, 16],
+      "faces": {
+        "down": {"uv": [1, 12, 15, 16], "texture": "#dark"},
+        "up": {"uv": [1, 0, 15, 4], "texture": "#dark"},
+        "north": {"uv": [0, 0, 16, 16], "texture": "#panel"},
+        "south": {"uv": [1, 1, 15, 15], "texture": "#dark", "cullface": "south"},
+        "west": {"uv": [12, 1, 16, 15], "texture": "#dark"},
+        "east": {"uv": [0, 1, 4, 15], "texture": "#dark"}
+      }
+    },
+    {
+      "name": "raised_center_chassis",
+      "from": [2.6, 2.6, 10],
+      "to": [13.4, 13.4, 12],
+      "faces": {
+        "down": {"uv": [2.6, 14, 13.4, 16], "texture": "#dark"},
+        "up": {"uv": [2.6, 0, 13.4, 2], "texture": "#dark"},
+        "north": {"uv": [1.8, 1.8, 14.2, 14.2], "texture": "#panel"},
+        "south": {"uv": [2.6, 2.6, 13.4, 13.4], "texture": "#dark"},
+        "west": {"uv": [10, 2.6, 12, 13.4], "texture": "#dark"},
+        "east": {"uv": [4, 2.6, 6, 13.4], "texture": "#dark"}
+      }
+    },
+    {
+      "name": "upper_light_rail",
+      "from": [4, 13.2, 10.5],
+      "to": [12, 14.2, 12],
+      "faces": {
+        "down": {"texture": "#dark"},
+        "up": {"texture": "#dark"},
+        "north": {"uv": [4, 0.4, 12, 2], "texture": "#panel"},
+        "south": {"texture": "#dark"},
+        "west": {"texture": "#dark"},
+        "east": {"texture": "#dark"}
+      }
+    },
+    {
+      "name": "lower_light_rail",
+      "from": [4, 1.8, 10.5],
+      "to": [12, 2.8, 12],
+      "faces": {
+        "down": {"texture": "#dark"},
+        "up": {"texture": "#dark"},
+        "north": {"uv": [4, 14, 12, 15.6], "texture": "#panel"},
+        "south": {"texture": "#dark"},
+        "west": {"texture": "#dark"},
+        "east": {"texture": "#dark"}
+      }
+    },
+    {
+      "name": "left_light_rail",
+      "from": [1.8, 4, 10.5],
+      "to": [2.8, 12, 12],
+      "faces": {
+        "down": {"texture": "#dark"},
+        "up": {"texture": "#dark"},
+        "north": {"uv": [0.4, 4, 2, 12], "texture": "#panel"},
+        "south": {"texture": "#dark"},
+        "west": {"texture": "#dark"},
+        "east": {"texture": "#dark"}
+      }
+    },
+    {
+      "name": "right_light_rail",
+      "from": [13.2, 4, 10.5],
+      "to": [14.2, 12, 12],
+      "faces": {
+        "down": {"texture": "#dark"},
+        "up": {"texture": "#dark"},
+        "north": {"uv": [14, 4, 15.6, 12], "texture": "#panel"},
+        "south": {"texture": "#dark"},
+        "west": {"texture": "#dark"},
+        "east": {"texture": "#dark"}
+      }
+    },
+    {
+      "name": "top_left_mount",
+      "from": [1, 12, 9],
+      "to": [4, 15, 12],
+      "faces": {
+        "down": {"texture": "#light"},
+        "up": {"texture": "#light"},
+        "north": {"uv": [0, 0, 4, 4], "texture": "#panel"},
+        "south": {"texture": "#light"},
+        "west": {"texture": "#light"},
+        "east": {"texture": "#light"}
+      }
+    },
+    {
+      "name": "top_right_mount",
+      "from": [12, 12, 9],
+      "to": [15, 15, 12],
+      "faces": {
+        "down": {"texture": "#light"},
+        "up": {"texture": "#light"},
+        "north": {"uv": [12, 0, 16, 4], "texture": "#panel"},
+        "south": {"texture": "#light"},
+        "west": {"texture": "#light"},
+        "east": {"texture": "#light"}
+      }
+    },
+    {
+      "name": "bottom_left_mount",
+      "from": [1, 1, 9],
+      "to": [4, 4, 12],
+      "faces": {
+        "down": {"texture": "#light"},
+        "up": {"texture": "#light"},
+        "north": {"uv": [0, 12, 4, 16], "texture": "#panel"},
+        "south": {"texture": "#light"},
+        "west": {"texture": "#light"},
+        "east": {"texture": "#light"}
+      }
+    },
+    {
+      "name": "bottom_right_mount",
+      "from": [12, 1, 9],
+      "to": [15, 4, 12],
+      "faces": {
+        "down": {"texture": "#light"},
+        "up": {"texture": "#light"},
+        "north": {"uv": [12, 12, 16, 16], "texture": "#panel"},
+        "south": {"texture": "#light"},
+        "west": {"texture": "#light"},
+        "east": {"texture": "#light"}
+      }
+    },
+    {
+      "name": "angular_emitter_housing",
+      "from": [4.4, 4.4, 8],
+      "to": [11.6, 11.6, 10],
+      "faces": {
+        "down": {"texture": "#dark"},
+        "up": {"texture": "#dark"},
+        "north": {"uv": [3.9, 3.9, 12.1, 12.1], "texture": "#panel"},
+        "south": {"texture": "#dark"},
+        "west": {"texture": "#dark"},
+        "east": {"texture": "#dark"}
+      }
+    },
+    {
+      "name": "silver_nozzle",
+      "from": [5.2, 5.2, 6.2],
+      "to": [10.8, 10.8, 8],
+      "faces": {
+        "down": {"texture": "#light"},
+        "up": {"texture": "#light"},
+        "north": {"uv": [4.8, 4.8, 11.2, 11.2], "texture": "#panel"},
+        "south": {"texture": "#light"},
+        "west": {"texture": "#light"},
+        "east": {"texture": "#light"}
+      }
+    },
+    {
+      "name": "square_aperture",
+      "from": [6.55, 6.55, 5.7],
+      "to": [9.45, 9.45, 6.2],
+      "faces": {
+        "down": {"texture": "#aperture"},
+        "up": {"texture": "#aperture"},
+        "north": {"uv": [0, 0, 16, 16], "texture": "#aperture"},
+        "south": {"texture": "#aperture"},
+        "west": {"texture": "#aperture"},
+        "east": {"texture": "#aperture"}
+      }
+    }
+  ]
+}

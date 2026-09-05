@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "justifylasers",
+  "version": "${version}",
+  "name": "JustifyLasers",
+  "description": "Configurable high-energy laser emitters with vivid volumetric beams.",
+  "authors": [
+    "Mr.Askick"
+  ],
+  "license": "MIT",
+  "icon": "assets/justifylasers/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "client": [
+      "net.askcraft.justifylasers.client.JustifyLasersClient"
+    ],
+    "main": [
+      "net.askcraft.justifylasers.JustifyLasers"
+    ]
+  },
+  "mixins": [
+    {
+      "config": "justifylasers.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft_version}",
+    "java": ">=17"
+  }
+}

@@ -1,0 +1,111 @@
+plugins {
+    id 'fabric-loom' version '1.17-SNAPSHOT'
+    id 'maven-publish'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+loom {
+    splitEnvironmentSourceSets()
+
+    mods {
+        'justifylasers' {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+
+    runs {
+        client {
+            if (project.hasProperty('compatibilityModsDir')) {
+                // Sodium 0.5.13 expects LWJGL 3.3.1; Loom's 1.20.1 runtime uses 3.3.2.
+                vmArg '-Dsodium.checks.issue2561=false'
+            }
+        }
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
+
+    // Opt-in local Iris/Sodium/Indium stack: -PcompatibilityModsDir=<path-to-mods>.
+    if (project.hasProperty('compatibilityModsDir')) {
+        modLocalRuntime fileTree(
+                dir: project.property('compatibilityModsDir'),
+                include: ['iris-*.jar', 'sodium-fabric-*.jar', 'indium-*.jar']
+        )
+        runtimeOnly fileTree(
+                dir: 'run/compat-libs',
+                include: ['**/antlr4-runtime-*.jar', '**/glsl-transformer-*.jar', '**/jcpp-*.jar']
+        )
+    }
+}
+
+apply from: 'gradle/laser-materials.gradle'
+
+processResources {
+    inputs.property 'version', project.version
+    inputs.property 'minecraft_version', project.minecraft_version
+    inputs.property 'loader_version', project.loader_version
+    filteringCharset 'UTF-8'
+
+    filesMatching('fabric.mod.json') {
+        expand 'version': project.version,
+                'minecraft_version': project.minecraft_version,
+                'loader_version': project.loader_version
+    }
+}
+
+def targetJavaVersion = 17
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release.set(targetJavaVersion)
+}
+
+java {
+    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
+    if (JavaVersion.current() < javaVersion) {
+        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    }
+    withSourcesJar()
+}
+
+sourceSets.test {
+    compileClasspath += sourceSets.client.output + sourceSets.client.compileClasspath
+    runtimeClasspath += sourceSets.client.output + sourceSets.client.runtimeClasspath
+}
+
+test {
+    useJUnitPlatform()
+}
+
+jar {
+    from('LICENSE.txt') {
+        rename { "${it}_${project.archives_base_name}" }
+    }
+}
+
+tasks.named('sourcesJar') {
+    from('LICENSE.txt')
+}
+
+publishing {
+    publications {
+        create('mavenJava', MavenPublication) {
+            artifactId = project.archives_base_name
+            from components.java
+        }
+    }
+}

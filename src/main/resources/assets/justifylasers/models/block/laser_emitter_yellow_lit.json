@@ -1,0 +1,6 @@
+{
+  "parent": "justifylasers:block/laser_emitter_yellow",
+  "textures": {
+    "panel": "justifylasers:block/laser_emitter_front_yellow_lit"
+  }
+}
