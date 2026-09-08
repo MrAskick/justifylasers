@@ -3,7 +3,7 @@
   "id": "justifylasers",
   "version": "${version}",
   "name": "JustifyLasers",
-  "description": "Configurable high-energy laser emitters with vivid volumetric beams.",
+  "description": "High-energy laser emitters, redstone receivers, and portable refocusing cubes with vivid volumetric beams.",
   "authors": [
     "Mr.Askick"
   ],

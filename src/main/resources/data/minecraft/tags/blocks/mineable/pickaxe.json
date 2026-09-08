@@ -1,6 +1,7 @@
 {
   "replace": false,
   "values": [
-    "justifylasers:laser_emitter"
+    "justifylasers:laser_emitter",
+    "justifylasers:laser_receiver"
   ]
 }

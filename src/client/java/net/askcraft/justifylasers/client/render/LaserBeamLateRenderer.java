@@ -22,10 +22,16 @@ import java.util.Map;
  * rendered earlier supplies lighting and reflections.
  */
 public final class LaserBeamLateRenderer {
-    private static final Map<Long, QueuedBeam> QUEUED_BEAMS = new LinkedHashMap<>();
+    private static final Map<BeamKey, QueuedBeam> QUEUED_BEAMS = new LinkedHashMap<>();
+    private static final Map<Integer, QueuedCore> QUEUED_CORES = new LinkedHashMap<>();
+
+    public static void queueCore(int entityId, Vec3d center, int rgb, float time) {
+        QUEUED_CORES.put(entityId, new QueuedCore(center, rgb, time));
+    }
 
     public static void queue(
-            long emitterKey,
+            Object sourceKey,
+            int segment,
             Vec3d start,
             Vec3d end,
             Vec3d axis,
@@ -33,7 +39,7 @@ public final class LaserBeamLateRenderer {
             float intensity,
             double widthScale
     ) {
-        QUEUED_BEAMS.put(emitterKey, new QueuedBeam(
+        QUEUED_BEAMS.put(new BeamKey(sourceKey, segment), new QueuedBeam(
                 start,
                 end,
                 axis,
@@ -48,13 +54,13 @@ public final class LaserBeamLateRenderer {
             MatrixStack worldMatrices,
             Matrix4f worldProjection
     ) {
-        if (QUEUED_BEAMS.isEmpty()) {
+        if (QUEUED_BEAMS.isEmpty() && QUEUED_CORES.isEmpty() && !LaserScorchRenderer.hasVisibleMarks()) {
             return;
         }
 
         try {
             // Without a valid depth mask the halo would show through blocks and held items.
-            if (!IrisCompatibility.prepareFinalDepthMask()) {
+            if (IrisCompatibility.isShaderPackInUse() && !IrisCompatibility.prepareFinalDepthMask()) {
                 return;
             }
 
@@ -75,10 +81,14 @@ public final class LaserBeamLateRenderer {
                     builder.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
                     Vec3d cameraPos = camera.getPos();
 
+                    LaserScorchRenderer.renderLate(builder, cameraPos);
                     for (QueuedBeam beam : QUEUED_BEAMS.values()) {
                         Vec3d side = screenSide(beam, cameraPos);
                         renderGradientRibbon(builder, beam, side, cameraPos, false);
                         renderGradientRibbon(builder, beam, side, cameraPos, true);
+                    }
+                    for (QueuedCore core : QUEUED_CORES.values()) {
+                        CubeCoreRenderer.renderLate(builder, core.center(), cameraPos, core.rgb(), core.time());
                     }
 
                     BufferRenderer.drawWithGlobalProgram(builder.end());
@@ -92,6 +102,8 @@ public final class LaserBeamLateRenderer {
             }
         } finally {
             QUEUED_BEAMS.clear();
+            QUEUED_CORES.clear();
+            LaserScorchRenderer.endFrame();
         }
     }
 
@@ -183,6 +195,12 @@ public final class LaserBeamLateRenderer {
             float intensity,
             double widthScale
     ) {
+    }
+
+    private record BeamKey(Object source, int segment) {
+    }
+
+    private record QueuedCore(Vec3d center, int rgb, float time) {
     }
 
     private LaserBeamLateRenderer() {

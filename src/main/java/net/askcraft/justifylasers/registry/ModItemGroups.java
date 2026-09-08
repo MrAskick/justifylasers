@@ -14,7 +14,11 @@ public final class ModItemGroups {
             FabricItemGroup.builder()
                     .displayName(Text.translatable("itemGroup.justifylasers"))
                     .icon(ModBlocks.LASER_EMITTER_ITEM::getDefaultStack)
-                    .entries((displayContext, entries) -> entries.add(ModBlocks.LASER_EMITTER_ITEM))
+                    .entries((displayContext, entries) -> {
+                        entries.add(ModBlocks.LASER_EMITTER_ITEM);
+                        entries.add(ModBlocks.LASER_RECEIVER_ITEM);
+                        entries.add(ModEntities.REFOCUSING_CUBE_ITEM);
+                    })
                     .build()
     );
 

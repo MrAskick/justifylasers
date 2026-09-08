@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "pattern": ["IGI", "GAG", "IRI"],
+  "key": {
+    "I": {"item": "minecraft:iron_ingot"},
+    "G": {"item": "minecraft:glass"},
+    "A": {"item": "minecraft:amethyst_shard"},
+    "R": {"item": "minecraft:redstone"}
+  },
+  "result": {"item": "justifylasers:refocusing_cube"},
+  "show_notification": true
+}

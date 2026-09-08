@@ -1,7 +1,9 @@
 package net.askcraft.justifylasers;
 
+import net.askcraft.justifylasers.laser.LaserBeamNetwork;
 import net.askcraft.justifylasers.registry.ModBlockEntities;
 import net.askcraft.justifylasers.registry.ModBlocks;
+import net.askcraft.justifylasers.registry.ModEntities;
 import net.askcraft.justifylasers.registry.ModItemGroups;
 import net.askcraft.justifylasers.registry.ModScreenHandlers;
 import net.fabricmc.api.ModInitializer;
@@ -20,9 +22,11 @@ public class JustifyLasers implements ModInitializer {
     @Override
     public void onInitialize() {
         ModBlocks.initialize();
+        ModEntities.initialize();
         ModItemGroups.initialize();
         ModBlockEntities.initialize();
         ModScreenHandlers.initialize();
+        LaserBeamNetwork.initialize();
 
         LOGGER.info("JustifyLasers initialized");
     }

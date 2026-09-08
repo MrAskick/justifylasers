@@ -1,60 +1,40 @@
 package net.askcraft.justifylasers.client.render;
 
-import net.askcraft.justifylasers.block.entity.LaserEmitterBlockEntity;
 import net.askcraft.justifylasers.client.compat.IrisCompatibility;
 import net.askcraft.justifylasers.laser.LaserBeamTrace;
-import net.askcraft.justifylasers.laser.LaserColor;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.block.entity.BlockEntityRenderer;
-import net.minecraft.client.render.block.entity.BlockEntityRendererFactory;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 
-public class LaserEmitterBlockEntityRenderer implements BlockEntityRenderer<LaserEmitterBlockEntity> {
+public final class LaserBeamRenderer {
     private static final double[] CORE_BRIGHTNESS = {1.0D, 1.0D, 1.0D, 1.0D, 1.0D};
     private static final int FLARE_SEGMENTS = 24;
 
-    public LaserEmitterBlockEntityRenderer(BlockEntityRendererFactory.Context context) {
-    }
-
-    @Override
-    public void render(
-            LaserEmitterBlockEntity emitter,
-            float tickDelta,
-            MatrixStack matrices,
-            VertexConsumerProvider vertexConsumers,
-            int light,
-            int overlay
+    public static void render(
+            LaserBeamTrace trace, Vec3d renderOrigin, Object sourceKey, int segment,
+            float time, int colorRgb, double widthScale, boolean emission,
+            MatrixStack matrices, VertexConsumerProvider vertexConsumers
     ) {
-        if (emitter.getWorld() == null || IrisCompatibility.isRenderingShadowPass()) {
+        if (IrisCompatibility.isRenderingShadowPass()) {
             return;
         }
-
         boolean shaderPack = IrisCompatibility.isShaderPackInUse();
-        LaserColor laserColor = emitter.getColor();
-        int colorRgb = laserColor.rgb();
         Matrix4f matrix = matrices.peek().getPositionMatrix();
-
-        if (!emitter.isBeamActive()) {
-            return;
-        }
-
-        LaserBeamTrace trace = emitter.getBeamTrace();
         if (trace.length() <= 0.002D) {
             return;
         }
 
-        Vec3d blockOrigin = Vec3d.of(emitter.getPos());
+        Vec3d blockOrigin = renderOrigin;
         Vec3d localStart = trace.start().subtract(blockOrigin);
-        Vec3d axis = Vec3d.of(trace.direction().getVector()).normalize();
+        Vec3d axis = trace.axis();
         Vec3d localEnd = trace.end().subtract(blockOrigin).subtract(axis.multiply(0.008D));
         Vec3d midpoint = trace.start().add(trace.end()).multiply(0.5D);
 
@@ -70,13 +50,11 @@ public class LaserEmitterBlockEntityRenderer implements BlockEntityRenderer<Lase
         screenSide = screenSide.normalize();
         Vec3d depthSide = axis.crossProduct(screenSide).normalize();
 
-        float time = emitter.getTicks() + tickDelta;
         float flicker = 0.985F
                 + MathHelper.sin(time * 0.41F) * 0.010F
                 + MathHelper.sin(time * 1.17F + 1.8F) * 0.005F;
-        double widthScale = emitter.getBeamWidthScale();
 
-        if (emitter.isLightEmissionEnabled() && shaderPack) {
+        if (emission && shaderPack) {
             VertexConsumer emissionBuffer = vertexConsumers.getBuffer(LaserRenderLayers.SHADER_EMISSION);
             // Opaque, properly mapped geometry gives deferred lighting and SSR a real position.
             renderEmissionTube(
@@ -86,22 +64,10 @@ public class LaserEmitterBlockEntityRenderer implements BlockEntityRenderer<Lase
             );
         }
 
-        // Vanilla draws the halo in the world pass; shader packs need it after composition.
-        if (!shaderPack) {
-            VertexConsumer haloBuffer = vertexConsumers.getBuffer(LaserRenderLayers.BEAM_GLOW);
-            renderGradientRibbon(
-                    haloBuffer, matrix, localStart, localEnd, screenSide,
-                    LaserBeamProfile.COLOR_RADII,
-                    LaserBeamProfile.COLOR_ALPHA,
-                    LaserBeamProfile.COLOR_BRIGHTNESS,
-                    colorRgb, flicker, widthScale
-            );
-        }
-
         if (shaderPack) {
             // Keep the halo out of the G-buffer to avoid sky occlusion and invalid material data.
             LaserBeamLateRenderer.queue(
-                    emitter.getPos().asLong(),
+                    sourceKey, segment,
                     trace.start(),
                     trace.end().subtract(axis.multiply(0.008D)),
                     axis,
@@ -112,22 +78,8 @@ public class LaserEmitterBlockEntityRenderer implements BlockEntityRenderer<Lase
             return;
         }
 
-        VertexConsumer coreBuffer = vertexConsumers.getBuffer(LaserRenderLayers.BEAM_GLOW);
-
-        renderGradientRibbon(
-                coreBuffer, matrix, localStart, localEnd, screenSide,
-                LaserBeamProfile.CORE_RADII, LaserBeamProfile.CORE_ALPHA, CORE_BRIGHTNESS,
-                0xFFFFFF, flicker, widthScale
-        );
-        renderCorePrism(
-                coreBuffer,
-                matrix,
-                localStart,
-                localEnd,
-                screenSide,
-                depthSide,
-                0.0105D * widthScale
-        );
+        renderVanillaBody(vertexConsumers.getBuffer(LaserRenderLayers.BEAM_GLOW), matrix,
+                localStart, localEnd, screenSide, depthSide, colorRgb, flicker, widthScale);
 
         VertexConsumer flareBuffer = vertexConsumers.getBuffer(LaserRenderLayers.FLARE_GLOW);
         Vec3d normalizedView = viewVector.lengthSquared() < 1.0E-8D
@@ -145,6 +97,25 @@ public class LaserEmitterBlockEntityRenderer implements BlockEntityRenderer<Lase
                     0.205D * widthScale, colorRgb, 118);
             renderFlare(flareBuffer, matrix, localEnd, screenSide, flareUp,
                     0.068D * widthScale, 0xFFFFFF, 235);
+        }
+    }
+
+    static void renderVanillaBody(VertexConsumer buffer, Matrix4f matrix, Vec3d start, Vec3d end,
+                                  Vec3d side, Vec3d depthSide, int rgb, float intensity, double widthScale) {
+        double length = start.distanceTo(end);
+        // Vanilla interpolates fog between vertices. On a long quad, two distant endpoints
+        // would hide even the portion next to the camera. Keep the original short-beam mesh.
+        int sections = length > 64.0D ? (int) Math.ceil(length / 16.0D) : 1;
+        for (int section = 0; section < sections; section++) {
+            Vec3d a = sections == 1 ? start : start.lerp(end, section / (double) sections);
+            Vec3d b = sections == 1 ? end : start.lerp(end, (section + 1) / (double) sections);
+            renderGradientRibbon(buffer, matrix, a, b, side,
+                    LaserBeamProfile.COLOR_RADII, LaserBeamProfile.COLOR_ALPHA, LaserBeamProfile.COLOR_BRIGHTNESS,
+                    rgb, intensity, widthScale);
+            renderGradientRibbon(buffer, matrix, a, b, side,
+                    LaserBeamProfile.CORE_RADII, LaserBeamProfile.CORE_ALPHA, CORE_BRIGHTNESS,
+                    0xFFFFFF, intensity, widthScale);
+            renderCorePrism(buffer, matrix, a, b, side, depthSide, 0.0105D * widthScale);
         }
     }
 
@@ -232,7 +203,8 @@ public class LaserEmitterBlockEntityRenderer implements BlockEntityRenderer<Lase
     ) {
         // World-locked cross-section: rotating the camera must not move reflective geometry.
         Vec3d side = Math.abs(axis.y) > 0.9D ? new Vec3d(1, 0, 0) : new Vec3d(0, 1, 0);
-        Vec3d depth = axis.crossProduct(side);
+        side = side.subtract(axis.multiply(side.dotProduct(axis))).normalize();
+        Vec3d depth = axis.crossProduct(side).normalize();
         int segments = 12;
         for (int i = 0; i < segments; i++) {
             double a = Math.PI * 2.0D * i / segments;
@@ -296,13 +268,6 @@ public class LaserEmitterBlockEntityRenderer implements BlockEntityRenderer<Lase
                 .next();
     }
 
-    @Override
-    public boolean rendersOutsideBoundingBox(LaserEmitterBlockEntity blockEntity) {
-        return true;
-    }
-
-    @Override
-    public int getRenderDistance() {
-        return 96;
+    private LaserBeamRenderer() {
     }
 }

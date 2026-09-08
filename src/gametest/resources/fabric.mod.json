@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "justifylasers_test",
+  "version": "1.0.0",
+  "name": "Justify Lasers Game Tests",
+  "environment": "*",
+  "license": "MIT",
+  "entrypoints": {
+    "fabric-gametest": [
+      "net.askcraft.justifylasers.laser.LaserDamageGameTests",
+      "net.askcraft.justifylasers.laser.LaserDamageSettingsGameTests",
+      "net.askcraft.justifylasers.laser.LaserIgnitionGameTests",
+      "net.askcraft.justifylasers.laser.LaserReceiverGameTests",
+      "net.askcraft.justifylasers.laser.LaserRangeGameTests",
+      "net.askcraft.justifylasers.laser.LaserScorchGameTests",
+      "net.askcraft.justifylasers.laser.RefocusingCubeGameTests"
+    ]
+  },
+  "depends": {
+    "justifylasers": "*",
+    "fabric-gametest-api-v1": "*"
+  }
+}

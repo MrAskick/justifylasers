@@ -2,6 +2,7 @@ package net.askcraft.justifylasers.registry;
 
 import net.askcraft.justifylasers.JustifyLasers;
 import net.askcraft.justifylasers.block.entity.LaserEmitterBlockEntity;
+import net.askcraft.justifylasers.block.entity.LaserReceiverBlockEntity;
 import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder;
 import net.minecraft.block.entity.BlockEntityType;
 import net.minecraft.registry.Registries;
@@ -12,6 +13,11 @@ public final class ModBlockEntities {
             Registries.BLOCK_ENTITY_TYPE,
             JustifyLasers.id("laser_emitter"),
             FabricBlockEntityTypeBuilder.create(LaserEmitterBlockEntity::new, ModBlocks.LASER_EMITTER).build()
+    );
+
+    public static final BlockEntityType<LaserReceiverBlockEntity> LASER_RECEIVER = Registry.register(
+            Registries.BLOCK_ENTITY_TYPE, JustifyLasers.id("laser_receiver"),
+            FabricBlockEntityTypeBuilder.create(LaserReceiverBlockEntity::new, ModBlocks.LASER_RECEIVER).build()
     );
 
     private ModBlockEntities() {

@@ -91,6 +91,18 @@ test {
     useJUnitPlatform()
 }
 
+fabricApi {
+    configureTests {
+        createSourceSet = true
+        modId = 'justifylasers_test'
+        enableClientGameTests = false
+    }
+}
+
+loom.runConfigs.named('gameTest') {
+    systemProperties.put('fabric-api.gametest.report-file', file('build/gametest-results.xml').absolutePath)
+}
+
 jar {
     from('LICENSE.txt') {
         rename { "${it}_${project.archives_base_name}" }

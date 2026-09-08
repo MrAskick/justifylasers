@@ -69,9 +69,9 @@ class LaserSettingsTest {
     }
 
     @Test
-    void screenProtocolAndRangeRemainStable() {
-        assertEquals(9, LaserEmitterBlockEntity.PROPERTY_COUNT);
-        assertEquals(64.0D, LaserEmitterBlockEntity.MAX_RANGE);
+    void screenProtocolPreservesExistingSettings() {
+        assertEquals(14, LaserEmitterBlockEntity.PROPERTY_COUNT);
+        assertEquals(64, LaserEmitterBlockEntity.DEFAULT_RANGE);
         assertEquals(0.11D, LaserEmitterBlockEntity.BEAM_HIT_RADIUS);
         assertArrayEquals(new int[]{0, 1, 2, 3, 4, 5, 6}, new int[]{
                 LaserEmitterScreenHandler.BUTTON_ENABLED,
@@ -84,5 +84,22 @@ class LaserSettingsTest {
         });
         assertEquals(1000, LaserEmitterScreenHandler.BEAM_WIDTH_BUTTON_BASE);
         assertEquals(1200, LaserEmitterScreenHandler.BEAM_WIDTH_BUTTON_MAX);
+        assertEquals(7, LaserEmitterScreenHandler.BUTTON_IGNITE_ENTITIES);
+        assertTrue(LaserEmitterScreenHandler.DAMAGE_BUTTON_MIN > LaserEmitterScreenHandler.BEAM_WIDTH_BUTTON_MAX);
+        assertTrue(LaserEmitterScreenHandler.KNOCKBACK_BUTTON_BASE > LaserEmitterScreenHandler.DAMAGE_BUTTON_MAX);
+        assertTrue(LaserEmitterScreenHandler.HIT_RATE_BUTTON_MIN > LaserEmitterScreenHandler.KNOCKBACK_BUTTON_MAX);
+        assertTrue(LaserEmitterScreenHandler.HIT_RATE_BUTTON_MAX <= Short.MAX_VALUE);
+        assertTrue(LaserEmitterScreenHandler.RANGE_BUTTON_MIN > LaserEmitterScreenHandler.HIT_RATE_BUTTON_MAX);
+        assertEquals(5001, LaserEmitterScreenHandler.RANGE_BUTTON_MIN);
+        assertEquals(5512, LaserEmitterScreenHandler.RANGE_BUTTON_MAX);
+    }
+
+    @Test
+    void rangeIsClampedToWholeBlocks() {
+        assertEquals(1, LaserEmitterBlockEntity.clampBeamRange(Integer.MIN_VALUE));
+        assertEquals(512, LaserEmitterBlockEntity.clampBeamRange(Integer.MAX_VALUE));
+        for (int range = 1; range <= 512; range++) {
+            assertEquals(range, LaserEmitterBlockEntity.clampBeamRange(range));
+        }
     }
 }

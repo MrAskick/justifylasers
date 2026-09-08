@@ -2,6 +2,7 @@ package net.askcraft.justifylasers.screen;
 
 import net.askcraft.justifylasers.block.entity.LaserEmitterBlockEntity;
 import net.askcraft.justifylasers.laser.LaserColor;
+import net.askcraft.justifylasers.laser.LaserDamage;
 import net.askcraft.justifylasers.laser.LaserRedstoneMode;
 import net.askcraft.justifylasers.registry.ModBlocks;
 import net.askcraft.justifylasers.registry.ModScreenHandlers;
@@ -24,9 +25,22 @@ public class LaserEmitterScreenHandler extends ScreenHandler {
     public static final int BUTTON_DAMAGE_ENTITIES = 4;
     public static final int BUTTON_LIGHT_EMISSION = 5;
     public static final int BUTTON_MINECRAFT_LIGHTING = 6;
+    public static final int BUTTON_IGNITE_ENTITIES = 7;
+    public static final int BUTTON_RESET_DAMAGE_SETTINGS = 8;
     public static final int BEAM_WIDTH_BUTTON_BASE = 1_000;
     public static final int BEAM_WIDTH_BUTTON_MAX = BEAM_WIDTH_BUTTON_BASE
             + LaserEmitterBlockEntity.BEAM_WIDTH_STEPS;
+    public static final int DAMAGE_BUTTON_BASE = 2_000;
+    public static final int DAMAGE_BUTTON_MIN = DAMAGE_BUTTON_BASE + LaserDamage.MIN_DAMAGE_STEP;
+    public static final int DAMAGE_BUTTON_MAX = DAMAGE_BUTTON_BASE + LaserDamage.MAX_DAMAGE_STEP;
+    public static final int KNOCKBACK_BUTTON_BASE = 3_000;
+    public static final int KNOCKBACK_BUTTON_MAX = KNOCKBACK_BUTTON_BASE + LaserDamage.MAX_KNOCKBACK_STEP;
+    public static final int HIT_RATE_BUTTON_BASE = 4_000;
+    public static final int HIT_RATE_BUTTON_MIN = HIT_RATE_BUTTON_BASE + 1;
+    public static final int HIT_RATE_BUTTON_MAX = HIT_RATE_BUTTON_BASE + LaserDamage.MAX_HITS_PER_SECOND;
+    public static final int RANGE_BUTTON_BASE = 5_000;
+    public static final int RANGE_BUTTON_MIN = RANGE_BUTTON_BASE + LaserEmitterBlockEntity.MIN_RANGE;
+    public static final int RANGE_BUTTON_MAX = RANGE_BUTTON_BASE + LaserEmitterBlockEntity.MAX_RANGE;
 
     private final PropertyDelegate properties;
     private final ScreenHandlerContext context;
@@ -79,9 +93,13 @@ public class LaserEmitterScreenHandler extends ScreenHandler {
         if (blockEntity == null || !canUse(player)) {
             return false;
         }
-        boolean regularButton = id >= BUTTON_ENABLED && id <= BUTTON_MINECRAFT_LIGHTING;
+        boolean regularButton = id >= BUTTON_ENABLED && id <= BUTTON_RESET_DAMAGE_SETTINGS;
         boolean beamWidthButton = id >= BEAM_WIDTH_BUTTON_BASE && id <= BEAM_WIDTH_BUTTON_MAX;
-        if (!regularButton && !beamWidthButton) {
+        boolean damageButton = id >= DAMAGE_BUTTON_MIN && id <= DAMAGE_BUTTON_MAX;
+        boolean knockbackButton = id >= KNOCKBACK_BUTTON_BASE && id <= KNOCKBACK_BUTTON_MAX;
+        boolean hitRateButton = id >= HIT_RATE_BUTTON_MIN && id <= HIT_RATE_BUTTON_MAX;
+        boolean rangeButton = id >= RANGE_BUTTON_MIN && id <= RANGE_BUTTON_MAX;
+        if (!regularButton && !beamWidthButton && !damageButton && !knockbackButton && !hitRateButton && !rangeButton) {
             return false;
         }
         blockEntity.handleButton(id);
@@ -141,5 +159,25 @@ public class LaserEmitterScreenHandler extends ScreenHandler {
 
     public boolean isMinecraftLightingEnabled() {
         return properties.get(8) != 0;
+    }
+
+    public int getDamageStep() {
+        return LaserDamage.clampDamageStep(properties.get(9));
+    }
+
+    public int getKnockbackStep() {
+        return LaserDamage.clampKnockbackStep(properties.get(10));
+    }
+
+    public int getHitsPerSecond() {
+        return LaserDamage.clampHitsPerSecond(properties.get(11));
+    }
+
+    public boolean ignitesEntities() {
+        return properties.get(12) != 0;
+    }
+
+    public int getBeamRange() {
+        return LaserEmitterBlockEntity.clampBeamRange(properties.get(13));
     }
 }

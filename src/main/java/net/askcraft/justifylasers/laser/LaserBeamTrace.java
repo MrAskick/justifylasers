@@ -6,6 +6,7 @@ import net.minecraft.block.ShapeContext;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.shape.VoxelShape;
@@ -17,8 +18,18 @@ public record LaserBeamTrace(
         Vec3d start,
         Vec3d end,
         Direction direction,
-        @Nullable BlockPos hitBlock
+        @Nullable BlockPos hitBlock,
+        @Nullable Direction hitSide
 ) {
+    public LaserBeamTrace(Vec3d start, Vec3d end, Direction direction, @Nullable BlockPos hitBlock) {
+        this(start, end, direction, hitBlock, hitBlock == null ? null : direction.getOpposite());
+    }
+
+    public Vec3d axis() {
+        Vec3d delta = end.subtract(start);
+        return delta.lengthSquared() > 1.0E-12D ? delta.normalize() : Vec3d.of(direction.getVector());
+    }
+
     public double length() {
         return start.distanceTo(end);
     }
@@ -32,6 +43,16 @@ public record LaserBeamTrace(
         Vec3d axis = Vec3d.of(direction.getVector());
         Vec3d center = Vec3d.ofCenter(emitterPos);
         Vec3d start = center.add(axis.multiply(LaserEmitterBlock.BEAM_ORIGIN_OFFSET));
+        return traceFrom(world, start, direction, maxRange);
+    }
+
+    public static LaserBeamTrace traceFrom(World world, Vec3d start, Direction direction, double maxRange) {
+        return traceFrom(world, start, Vec3d.of(direction.getVector()), maxRange);
+    }
+
+    public static LaserBeamTrace traceFrom(World world, Vec3d start, Vec3d directionVector, double maxRange) {
+        Vec3d axis = directionVector.normalize();
+        Direction direction = Direction.getFacing(axis.x, axis.y, axis.z);
         Vec3d maxEnd = start.add(axis.multiply(maxRange));
 
         BlockHitResult hit = BlockView.raycast(
@@ -41,7 +62,8 @@ public record LaserBeamTrace(
                 (view, currentPos) -> {
                     // A beam must never force distant chunks to load just to inspect them.
                     if (!view.isChunkLoaded(currentPos)) {
-                        return null;
+                        Vec3d boundary = new Box(currentPos).raycast(start, maxEnd).orElse(start);
+                        return BlockHitResult.createMissed(boundary, direction, currentPos.toImmutable());
                     }
                     BlockState state = view.getBlockState(currentPos);
                     if (state.isAir()) {
@@ -57,8 +79,8 @@ public record LaserBeamTrace(
         );
 
         if (hit.getType() == HitResult.Type.BLOCK) {
-            return new LaserBeamTrace(start, hit.getPos(), direction, hit.getBlockPos().toImmutable());
+            return new LaserBeamTrace(start, hit.getPos(), direction, hit.getBlockPos().toImmutable(), hit.getSide());
         }
-        return new LaserBeamTrace(start, maxEnd, direction, null);
+        return new LaserBeamTrace(start, hit.getPos(), direction, null);
     }
 }

@@ -90,6 +90,15 @@ public final class LaserRenderLayers extends RenderLayer {
             SHADER_EMISSION_PHASES
     );
 
+    public static final RenderLayer CUBE_LENS = RenderLayer.of(
+            "justifylasers_cube_lens", VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL,
+            VertexFormat.DrawMode.QUADS, 2048, false, true,
+            MultiPhaseParameters.builder().program(ENTITY_TRANSLUCENT_PROGRAM).texture(WHITE_TEXTURE_PHASE)
+                    .transparency(TRANSLUCENT_TRANSPARENCY).depthTest(LEQUAL_DEPTH_TEST)
+                    .cull(ENABLE_CULLING).lightmap(ENABLE_LIGHTMAP).overlay(ENABLE_OVERLAY_COLOR)
+                    .writeMaskState(COLOR_MASK).build(false)
+    );
+
     public static void initialize() {
         // Forces custom layers to be constructed during client initialization.
     }

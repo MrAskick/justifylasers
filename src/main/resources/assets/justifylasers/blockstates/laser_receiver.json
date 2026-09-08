@@ -1,0 +1,418 @@
+{
+  "variants": {
+    "color=red,facing=north,lit=false": {
+      "model": "justifylasers:block/laser_receiver_red"
+    },
+    "color=red,facing=south,lit=false": {
+      "model": "justifylasers:block/laser_receiver_red",
+      "y": 180
+    },
+    "color=red,facing=west,lit=false": {
+      "model": "justifylasers:block/laser_receiver_red",
+      "y": 270
+    },
+    "color=red,facing=east,lit=false": {
+      "model": "justifylasers:block/laser_receiver_red",
+      "y": 90
+    },
+    "color=red,facing=up,lit=false": {
+      "model": "justifylasers:block/laser_receiver_red",
+      "x": 270
+    },
+    "color=red,facing=down,lit=false": {
+      "model": "justifylasers:block/laser_receiver_red",
+      "x": 90
+    },
+    "color=red,facing=north,lit=true": {
+      "model": "justifylasers:block/laser_receiver_red_lit"
+    },
+    "color=red,facing=south,lit=true": {
+      "model": "justifylasers:block/laser_receiver_red_lit",
+      "y": 180
+    },
+    "color=red,facing=west,lit=true": {
+      "model": "justifylasers:block/laser_receiver_red_lit",
+      "y": 270
+    },
+    "color=red,facing=east,lit=true": {
+      "model": "justifylasers:block/laser_receiver_red_lit",
+      "y": 90
+    },
+    "color=red,facing=up,lit=true": {
+      "model": "justifylasers:block/laser_receiver_red_lit",
+      "x": 270
+    },
+    "color=red,facing=down,lit=true": {
+      "model": "justifylasers:block/laser_receiver_red_lit",
+      "x": 90
+    },
+    "color=orange,facing=north,lit=false": {
+      "model": "justifylasers:block/laser_receiver_orange"
+    },
+    "color=orange,facing=south,lit=false": {
+      "model": "justifylasers:block/laser_receiver_orange",
+      "y": 180
+    },
+    "color=orange,facing=west,lit=false": {
+      "model": "justifylasers:block/laser_receiver_orange",
+      "y": 270
+    },
+    "color=orange,facing=east,lit=false": {
+      "model": "justifylasers:block/laser_receiver_orange",
+      "y": 90
+    },
+    "color=orange,facing=up,lit=false": {
+      "model": "justifylasers:block/laser_receiver_orange",
+      "x": 270
+    },
+    "color=orange,facing=down,lit=false": {
+      "model": "justifylasers:block/laser_receiver_orange",
+      "x": 90
+    },
+    "color=orange,facing=north,lit=true": {
+      "model": "justifylasers:block/laser_receiver_orange_lit"
+    },
+    "color=orange,facing=south,lit=true": {
+      "model": "justifylasers:block/laser_receiver_orange_lit",
+      "y": 180
+    },
+    "color=orange,facing=west,lit=true": {
+      "model": "justifylasers:block/laser_receiver_orange_lit",
+      "y": 270
+    },
+    "color=orange,facing=east,lit=true": {
+      "model": "justifylasers:block/laser_receiver_orange_lit",
+      "y": 90
+    },
+    "color=orange,facing=up,lit=true": {
+      "model": "justifylasers:block/laser_receiver_orange_lit",
+      "x": 270
+    },
+    "color=orange,facing=down,lit=true": {
+      "model": "justifylasers:block/laser_receiver_orange_lit",
+      "x": 90
+    },
+    "color=yellow,facing=north,lit=false": {
+      "model": "justifylasers:block/laser_receiver_yellow"
+    },
+    "color=yellow,facing=south,lit=false": {
+      "model": "justifylasers:block/laser_receiver_yellow",
+      "y": 180
+    },
+    "color=yellow,facing=west,lit=false": {
+      "model": "justifylasers:block/laser_receiver_yellow",
+      "y": 270
+    },
+    "color=yellow,facing=east,lit=false": {
+      "model": "justifylasers:block/laser_receiver_yellow",
+      "y": 90
+    },
+    "color=yellow,facing=up,lit=false": {
+      "model": "justifylasers:block/laser_receiver_yellow",
+      "x": 270
+    },
+    "color=yellow,facing=down,lit=false": {
+      "model": "justifylasers:block/laser_receiver_yellow",
+      "x": 90
+    },
+    "color=yellow,facing=north,lit=true": {
+      "model": "justifylasers:block/laser_receiver_yellow_lit"
+    },
+    "color=yellow,facing=south,lit=true": {
+      "model": "justifylasers:block/laser_receiver_yellow_lit",
+      "y": 180
+    },
+    "color=yellow,facing=west,lit=true": {
+      "model": "justifylasers:block/laser_receiver_yellow_lit",
+      "y": 270
+    },
+    "color=yellow,facing=east,lit=true": {
+      "model": "justifylasers:block/laser_receiver_yellow_lit",
+      "y": 90
+    },
+    "color=yellow,facing=up,lit=true": {
+      "model": "justifylasers:block/laser_receiver_yellow_lit",
+      "x": 270
+    },
+    "color=yellow,facing=down,lit=true": {
+      "model": "justifylasers:block/laser_receiver_yellow_lit",
+      "x": 90
+    },
+    "color=green,facing=north,lit=false": {
+      "model": "justifylasers:block/laser_receiver_green"
+    },
+    "color=green,facing=south,lit=false": {
+      "model": "justifylasers:block/laser_receiver_green",
+      "y": 180
+    },
+    "color=green,facing=west,lit=false": {
+      "model": "justifylasers:block/laser_receiver_green",
+      "y": 270
+    },
+    "color=green,facing=east,lit=false": {
+      "model": "justifylasers:block/laser_receiver_green",
+      "y": 90
+    },
+    "color=green,facing=up,lit=false": {
+      "model": "justifylasers:block/laser_receiver_green",
+      "x": 270
+    },
+    "color=green,facing=down,lit=false": {
+      "model": "justifylasers:block/laser_receiver_green",
+      "x": 90
+    },
+    "color=green,facing=north,lit=true": {
+      "model": "justifylasers:block/laser_receiver_green_lit"
+    },
+    "color=green,facing=south,lit=true": {
+      "model": "justifylasers:block/laser_receiver_green_lit",
+      "y": 180
+    },
+    "color=green,facing=west,lit=true": {
+      "model": "justifylasers:block/laser_receiver_green_lit",
+      "y": 270
+    },
+    "color=green,facing=east,lit=true": {
+      "model": "justifylasers:block/laser_receiver_green_lit",
+      "y": 90
+    },
+    "color=green,facing=up,lit=true": {
+      "model": "justifylasers:block/laser_receiver_green_lit",
+      "x": 270
+    },
+    "color=green,facing=down,lit=true": {
+      "model": "justifylasers:block/laser_receiver_green_lit",
+      "x": 90
+    },
+    "color=cyan,facing=north,lit=false": {
+      "model": "justifylasers:block/laser_receiver_cyan"
+    },
+    "color=cyan,facing=south,lit=false": {
+      "model": "justifylasers:block/laser_receiver_cyan",
+      "y": 180
+    },
+    "color=cyan,facing=west,lit=false": {
+      "model": "justifylasers:block/laser_receiver_cyan",
+      "y": 270
+    },
+    "color=cyan,facing=east,lit=false": {
+      "model": "justifylasers:block/laser_receiver_cyan",
+      "y": 90
+    },
+    "color=cyan,facing=up,lit=false": {
+      "model": "justifylasers:block/laser_receiver_cyan",
+      "x": 270
+    },
+    "color=cyan,facing=down,lit=false": {
+      "model": "justifylasers:block/laser_receiver_cyan",
+      "x": 90
+    },
+    "color=cyan,facing=north,lit=true": {
+      "model": "justifylasers:block/laser_receiver_cyan_lit"
+    },
+    "color=cyan,facing=south,lit=true": {
+      "model": "justifylasers:block/laser_receiver_cyan_lit",
+      "y": 180
+    },
+    "color=cyan,facing=west,lit=true": {
+      "model": "justifylasers:block/laser_receiver_cyan_lit",
+      "y": 270
+    },
+    "color=cyan,facing=east,lit=true": {
+      "model": "justifylasers:block/laser_receiver_cyan_lit",
+      "y": 90
+    },
+    "color=cyan,facing=up,lit=true": {
+      "model": "justifylasers:block/laser_receiver_cyan_lit",
+      "x": 270
+    },
+    "color=cyan,facing=down,lit=true": {
+      "model": "justifylasers:block/laser_receiver_cyan_lit",
+      "x": 90
+    },
+    "color=blue,facing=north,lit=false": {
+      "model": "justifylasers:block/laser_receiver_blue"
+    },
+    "color=blue,facing=south,lit=false": {
+      "model": "justifylasers:block/laser_receiver_blue",
+      "y": 180
+    },
+    "color=blue,facing=west,lit=false": {
+      "model": "justifylasers:block/laser_receiver_blue",
+      "y": 270
+    },
+    "color=blue,facing=east,lit=false": {
+      "model": "justifylasers:block/laser_receiver_blue",
+      "y": 90
+    },
+    "color=blue,facing=up,lit=false": {
+      "model": "justifylasers:block/laser_receiver_blue",
+      "x": 270
+    },
+    "color=blue,facing=down,lit=false": {
+      "model": "justifylasers:block/laser_receiver_blue",
+      "x": 90
+    },
+    "color=blue,facing=north,lit=true": {
+      "model": "justifylasers:block/laser_receiver_blue_lit"
+    },
+    "color=blue,facing=south,lit=true": {
+      "model": "justifylasers:block/laser_receiver_blue_lit",
+      "y": 180
+    },
+    "color=blue,facing=west,lit=true": {
+      "model": "justifylasers:block/laser_receiver_blue_lit",
+      "y": 270
+    },
+    "color=blue,facing=east,lit=true": {
+      "model": "justifylasers:block/laser_receiver_blue_lit",
+      "y": 90
+    },
+    "color=blue,facing=up,lit=true": {
+      "model": "justifylasers:block/laser_receiver_blue_lit",
+      "x": 270
+    },
+    "color=blue,facing=down,lit=true": {
+      "model": "justifylasers:block/laser_receiver_blue_lit",
+      "x": 90
+    },
+    "color=violet,facing=north,lit=false": {
+      "model": "justifylasers:block/laser_receiver_violet"
+    },
+    "color=violet,facing=south,lit=false": {
+      "model": "justifylasers:block/laser_receiver_violet",
+      "y": 180
+    },
+    "color=violet,facing=west,lit=false": {
+      "model": "justifylasers:block/laser_receiver_violet",
+      "y": 270
+    },
+    "color=violet,facing=east,lit=false": {
+      "model": "justifylasers:block/laser_receiver_violet",
+      "y": 90
+    },
+    "color=violet,facing=up,lit=false": {
+      "model": "justifylasers:block/laser_receiver_violet",
+      "x": 270
+    },
+    "color=violet,facing=down,lit=false": {
+      "model": "justifylasers:block/laser_receiver_violet",
+      "x": 90
+    },
+    "color=violet,facing=north,lit=true": {
+      "model": "justifylasers:block/laser_receiver_violet_lit"
+    },
+    "color=violet,facing=south,lit=true": {
+      "model": "justifylasers:block/laser_receiver_violet_lit",
+      "y": 180
+    },
+    "color=violet,facing=west,lit=true": {
+      "model": "justifylasers:block/laser_receiver_violet_lit",
+      "y": 270
+    },
+    "color=violet,facing=east,lit=true": {
+      "model": "justifylasers:block/laser_receiver_violet_lit",
+      "y": 90
+    },
+    "color=violet,facing=up,lit=true": {
+      "model": "justifylasers:block/laser_receiver_violet_lit",
+      "x": 270
+    },
+    "color=violet,facing=down,lit=true": {
+      "model": "justifylasers:block/laser_receiver_violet_lit",
+      "x": 90
+    },
+    "color=magenta,facing=north,lit=false": {
+      "model": "justifylasers:block/laser_receiver_magenta"
+    },
+    "color=magenta,facing=south,lit=false": {
+      "model": "justifylasers:block/laser_receiver_magenta",
+      "y": 180
+    },
+    "color=magenta,facing=west,lit=false": {
+      "model": "justifylasers:block/laser_receiver_magenta",
+      "y": 270
+    },
+    "color=magenta,facing=east,lit=false": {
+      "model": "justifylasers:block/laser_receiver_magenta",
+      "y": 90
+    },
+    "color=magenta,facing=up,lit=false": {
+      "model": "justifylasers:block/laser_receiver_magenta",
+      "x": 270
+    },
+    "color=magenta,facing=down,lit=false": {
+      "model": "justifylasers:block/laser_receiver_magenta",
+      "x": 90
+    },
+    "color=magenta,facing=north,lit=true": {
+      "model": "justifylasers:block/laser_receiver_magenta_lit"
+    },
+    "color=magenta,facing=south,lit=true": {
+      "model": "justifylasers:block/laser_receiver_magenta_lit",
+      "y": 180
+    },
+    "color=magenta,facing=west,lit=true": {
+      "model": "justifylasers:block/laser_receiver_magenta_lit",
+      "y": 270
+    },
+    "color=magenta,facing=east,lit=true": {
+      "model": "justifylasers:block/laser_receiver_magenta_lit",
+      "y": 90
+    },
+    "color=magenta,facing=up,lit=true": {
+      "model": "justifylasers:block/laser_receiver_magenta_lit",
+      "x": 270
+    },
+    "color=magenta,facing=down,lit=true": {
+      "model": "justifylasers:block/laser_receiver_magenta_lit",
+      "x": 90
+    },
+    "color=white,facing=north,lit=false": {
+      "model": "justifylasers:block/laser_receiver_white"
+    },
+    "color=white,facing=south,lit=false": {
+      "model": "justifylasers:block/laser_receiver_white",
+      "y": 180
+    },
+    "color=white,facing=west,lit=false": {
+      "model": "justifylasers:block/laser_receiver_white",
+      "y": 270
+    },
+    "color=white,facing=east,lit=false": {
+      "model": "justifylasers:block/laser_receiver_white",
+      "y": 90
+    },
+    "color=white,facing=up,lit=false": {
+      "model": "justifylasers:block/laser_receiver_white",
+      "x": 270
+    },
+    "color=white,facing=down,lit=false": {
+      "model": "justifylasers:block/laser_receiver_white",
+      "x": 90
+    },
+    "color=white,facing=north,lit=true": {
+      "model": "justifylasers:block/laser_receiver_white_lit"
+    },
+    "color=white,facing=south,lit=true": {
+      "model": "justifylasers:block/laser_receiver_white_lit",
+      "y": 180
+    },
+    "color=white,facing=west,lit=true": {
+      "model": "justifylasers:block/laser_receiver_white_lit",
+      "y": 270
+    },
+    "color=white,facing=east,lit=true": {
+      "model": "justifylasers:block/laser_receiver_white_lit",
+      "y": 90
+    },
+    "color=white,facing=up,lit=true": {
+      "model": "justifylasers:block/laser_receiver_white_lit",
+      "x": 270
+    },
+    "color=white,facing=down,lit=true": {
+      "model": "justifylasers:block/laser_receiver_white_lit",
+      "x": 90
+    }
+  }
+}
