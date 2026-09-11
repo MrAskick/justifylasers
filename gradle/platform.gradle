@@ -1,0 +1,124 @@
+apply plugin: 'dev.architectury.loom'
+
+def fabric = project.property('loom.platform') == 'fabric'
+def modern = minecraft_version == '1.21.1'
+def loader = project.property('loom.platform')
+base.archivesName = "JustifyLasers-${loader}-${minecraft_version}"
+
+repositories {
+    maven { url = 'https://maven.fabricmc.net/' }
+    maven { url = 'https://maven.architectury.dev/' }
+    maven { url = 'https://maven.neoforged.net/releases/' }
+    mavenCentral()
+}
+
+loom {
+    if (fabric) splitEnvironmentSourceSets()
+    mods {
+        justifylasers {
+            sourceSet sourceSets.main
+            if (fabric) sourceSet sourceSets.client
+        }
+    }
+    if (loader == 'forge') {
+        forge {
+            mixinConfig 'justifylasers.mixins.json'
+            mixinConfig 'justifylasers.client.mixins.json'
+        }
+    }
+    runs {
+        client {
+            if (project.hasProperty('compatibilityModsDir') && !modern) vmArg '-Dsodium.checks.issue2561=false'
+        }
+    }
+}
+
+sourceSets.main {
+    java.srcDirs = [rootProject.file('src/main/java'), rootProject.file("versions/${minecraft_version}/src/main/java"),
+                    file('src/main/java')]
+    resources.srcDirs = [rootProject.file('src/main/resources'), file('src/main/resources')]
+    if (!fabric) resources.exclude 'fabric.mod.json'
+}
+def clientSources = [rootProject.file('src/client/java'), rootProject.file("versions/${minecraft_version}/src/client/java"),
+                     file('src/client/java')]
+if (fabric) {
+    sourceSets.client.java.srcDirs = clientSources
+    sourceSets.client.resources.srcDirs = [rootProject.file('src/client/resources'), file('src/client/resources')]
+} else {
+    sourceSets.main.java.srcDirs += clientSources
+    sourceSets.main.resources.srcDirs += [rootProject.file('src/client/resources')]
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraft_version}"
+    if (loader == 'neoforge') {
+        mappings loom.layered {
+            it.mappings("net.fabricmc:yarn:${yarn_mappings}:v2")
+            it.mappings('dev.architectury:yarn-mappings-patch-neoforge:1.21+build.4')
+        }
+        neoForge "net.neoforged:neoforge:${neoforge_version}"
+    } else {
+        mappings "net.fabricmc:yarn:${yarn_mappings}:v2"
+        if (fabric) {
+            modImplementation "net.fabricmc:fabric-loader:${loader_version}"
+            modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
+            include modImplementation("teamreborn:energy:${modern ? '4.1.0' : '3.0.0'}")
+        } else {
+            forge "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+        }
+    }
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
+    if (project.hasProperty('compatibilityModsDir') && fabric && !modern) {
+        modLocalRuntime fileTree(dir: project.property('compatibilityModsDir'),
+                include: ['iris-*-mc1.20.1.jar', 'sodium-fabric-0.5.*+mc1.20.1.jar', 'indium-*.jar'])
+        runtimeOnly rootProject.fileTree(dir: 'run/compat-libs',
+                include: ['**/antlr4-runtime-*.jar', '**/glsl-transformer-*.jar', '**/jcpp-*.jar'])
+    }
+}
+
+apply from: rootProject.file('gradle/laser-materials.gradle')
+apply from: rootProject.file('gradle/laser-parts.gradle')
+apply from: rootProject.file('gradle/crystal-materials.gradle')
+
+processResources {
+    def metadata = [version: project.version, minecraft_version: minecraft_version, loader_version: loader_version,
+                    java_version: modern ? 21 : 17, pack_format: modern ? 34 : 15]
+    inputs.properties metadata
+    filteringCharset = 'UTF-8'
+    filesMatching(['fabric.mod.json', 'META-INF/mods.toml', 'META-INF/neoforge.mods.toml', 'pack.mcmeta']) { expand metadata }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = modern ? 21 : 17
+}
+java { withSourcesJar() }
+tasks.withType(Jar).configureEach { preserveFileTimestamps = false; reproducibleFileOrder = true }
+jar { from(rootProject.file('LICENSE.txt')) { rename { 'LICENSE_JustifyLasers.txt' } } }
+sourcesJar { from(rootProject.file('LICENSE.txt')) }
+
+test { useJUnitPlatform() }
+if (fabric && !modern && !project.hasProperty('integrationTests')) {
+    sourceSets.test {
+        java.srcDir rootProject.file('src/test/java')
+        compileClasspath += sourceSets.client.output + sourceSets.client.compileClasspath
+        runtimeClasspath += sourceSets.client.output + sourceSets.client.runtimeClasspath
+    }
+    fabricApi {
+        configureTests {
+            createSourceSet = true
+            modId = 'justifylasers_test'
+            enableClientGameTests = false
+        }
+    }
+    sourceSets.gametest.java.srcDirs = [rootProject.file('src/gametest/java')]
+    sourceSets.gametest.resources.srcDirs = [rootProject.file('src/gametest/resources')]
+    loom.runConfigs.named('gameTest') {
+        vmArg "-Dfabric-api.gametest.report-file=${file('build/gametest-results.xml').absolutePath}"
+    }
+    tasks.named('check') { dependsOn 'runGameTest' }
+}
+
+apply from: rootProject.file('gradle/integration-tests.gradle')
+apply from: rootProject.file('gradle/client-smoke.gradle')

@@ -13,6 +13,10 @@
       "net.askcraft.justifylasers.laser.LaserReceiverGameTests",
       "net.askcraft.justifylasers.laser.LaserRangeGameTests",
       "net.askcraft.justifylasers.laser.LaserScorchGameTests",
+      "net.askcraft.justifylasers.laser.LaserMiningGameTests",
+      "net.askcraft.justifylasers.laser.LaserEnergyGameTests",
+      "net.askcraft.justifylasers.laser.PoweredEmitterGameTests",
+      "net.askcraft.justifylasers.laser.LaserPartGameTests",
       "net.askcraft.justifylasers.laser.RefocusingCubeGameTests"
     ]
   },

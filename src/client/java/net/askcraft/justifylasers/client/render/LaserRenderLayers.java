@@ -1,5 +1,6 @@
 package net.askcraft.justifylasers.client.render;
 
+import net.askcraft.justifylasers.platform.GameVersion;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.RenderPhase;
@@ -8,8 +9,8 @@ import net.minecraft.client.render.VertexFormats;
 import net.minecraft.util.Identifier;
 
 public final class LaserRenderLayers extends RenderLayer {
-    private static final Identifier WHITE_TEXTURE = new Identifier("minecraft", "textures/misc/white.png");
-    private static final Identifier EMISSION_TEXTURE = new Identifier("justifylasers", "textures/effect/beam.png");
+    private static final Identifier WHITE_TEXTURE = GameVersion.id("minecraft", "textures/misc/white.png");
+    private static final Identifier EMISSION_TEXTURE = GameVersion.id("justifylasers", "textures/effect/beam.png");
     private static final RenderPhase.Texture WHITE_TEXTURE_PHASE = new RenderPhase.Texture(
             WHITE_TEXTURE,
             false,

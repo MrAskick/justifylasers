@@ -3,7 +3,7 @@ package net.askcraft.justifylasers.client.render;
 import net.askcraft.justifylasers.client.compat.IrisCompatibility;
 import net.askcraft.justifylasers.laser.LaserScorchMarks;
 import net.askcraft.justifylasers.laser.ScorchGeometry;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+import net.askcraft.justifylasers.platform.RenderVersion;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
@@ -24,7 +24,7 @@ public final class LaserScorchRenderer {
         MARKS.tick(client.world);
     }
 
-    public static void prepare(WorldRenderContext context) {
+    public static void prepare(LaserRenderFrame context) {
         if (IrisCompatibility.isRenderingShadowPass()) {
             return;
         }
@@ -56,11 +56,11 @@ public final class LaserScorchRenderer {
                 Vec3d relative = origin.subtract(camera);
                 for (ScorchGeometry.Vertex vertex : patch.emission()) {
                     Vec3d point = vertex.position();
-                    buffer.vertex(matrices.peek().getPositionMatrix(), (float) (point.x + relative.x),
+                    RenderVersion.endVertex(RenderVersion.normal(buffer.vertex(matrices.peek().getPositionMatrix(), (float) (point.x + relative.x),
                                     (float) (point.y + relative.y), (float) (point.z + relative.z))
                             .color(rgb >> 16 & 255, rgb >> 8 & 255, rgb & 255, 255).texture(0.5F, 0.5F)
-                            .overlay(OverlayTexture.DEFAULT_UV).light(LightmapTextureManager.MAX_LIGHT_COORDINATE)
-                            .normal(matrices.peek().getNormalMatrix(), (float) normal.x, (float) normal.y, (float) normal.z).next();
+                            .overlay(OverlayTexture.DEFAULT_UV).light(LightmapTextureManager.MAX_LIGHT_COORDINATE),
+                matrices.peek().getNormalMatrix(), (float) normal.x, (float) normal.y, (float) normal.z));
                 }
             }
         }
@@ -102,8 +102,8 @@ public final class LaserScorchRenderer {
 
     private static void vertex(VertexConsumer buffer, Vec3d origin, ScorchGeometry.Vertex vertex, int rgb, float opacity) {
         Vec3d point = vertex.position();
-        buffer.vertex(point.x + origin.x, point.y + origin.y, point.z + origin.z).color(rgb >> 16 & 255, rgb >> 8 & 255, rgb & 255,
-                MathHelper.clamp(Math.round(vertex.alpha() * opacity), 0, 255)).next();
+        RenderVersion.endVertex(buffer.vertex((float) (point.x + origin.x), (float) (point.y + origin.y), (float) (point.z + origin.z)).color(rgb >> 16 & 255, rgb >> 8 & 255, rgb & 255,
+                MathHelper.clamp(Math.round(vertex.alpha() * opacity), 0, 255)));
     }
 
     private record VisibleMark(ScorchGeometry.Patch patch, float opacity, float heat) {

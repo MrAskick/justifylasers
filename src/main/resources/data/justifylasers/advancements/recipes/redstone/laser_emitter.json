@@ -1,4 +1,5 @@
 {
+  "justifylasers:technical": false,
   "parent": "minecraft:recipes/root",
   "criteria": {
     "has_diamond": {

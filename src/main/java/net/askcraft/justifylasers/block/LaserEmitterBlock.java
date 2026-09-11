@@ -2,18 +2,22 @@ package net.askcraft.justifylasers.block;
 
 import net.askcraft.justifylasers.block.entity.LaserEmitterBlockEntity;
 import net.askcraft.justifylasers.laser.LaserColor;
+import net.askcraft.justifylasers.platform.LaserBlock;
+import net.askcraft.justifylasers.platform.Platform;
 import net.askcraft.justifylasers.registry.ModBlockEntities;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockRenderType;
 import net.minecraft.block.BlockState;
-import net.minecraft.block.BlockWithEntity;
 import net.minecraft.block.ShapeContext;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.BlockEntityTicker;
 import net.minecraft.block.entity.BlockEntityType;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.item.ItemStack;
 import net.minecraft.item.ItemPlacementContext;
 import net.minecraft.screen.NamedScreenHandlerFactory;
+import net.minecraft.text.Text;
 import net.minecraft.state.StateManager;
 import net.minecraft.state.property.BooleanProperty;
 import net.minecraft.state.property.DirectionProperty;
@@ -22,7 +26,7 @@ import net.minecraft.state.property.Properties;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.BlockMirror;
 import net.minecraft.util.BlockRotation;
-import net.minecraft.util.Hand;
+import net.minecraft.util.ItemScatterer;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
@@ -32,7 +36,7 @@ import net.minecraft.world.BlockView;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
-public class LaserEmitterBlock extends BlockWithEntity {
+public class LaserEmitterBlock extends LaserBlock {
     public static final DirectionProperty FACING = Properties.FACING;
     public static final BooleanProperty LIT = Properties.LIT;
     public static final BooleanProperty EMITTING_LIGHT = BooleanProperty.of("emitting_light");
@@ -74,7 +78,7 @@ public class LaserEmitterBlock extends BlockWithEntity {
     );
 
     public LaserEmitterBlock(Settings settings) {
-        super(settings);
+        super(settings, LaserEmitterBlock::new);
         setDefaultState(getStateManager().getDefaultState()
                 .with(FACING, Direction.NORTH)
                 .with(LIT, false)
@@ -147,31 +151,52 @@ public class LaserEmitterBlock extends BlockWithEntity {
             BlockEntityType<T> type
     ) {
         return world.isClient
-                ? checkType(type, ModBlockEntities.LASER_EMITTER, LaserEmitterBlockEntity::clientTick)
-                : checkType(type, ModBlockEntities.LASER_EMITTER, LaserEmitterBlockEntity::serverTick);
+                ? laserTicker(type, ModBlockEntities.LASER_EMITTER, LaserEmitterBlockEntity::clientTick)
+                : laserTicker(type, ModBlockEntities.LASER_EMITTER, LaserEmitterBlockEntity::serverTick);
     }
 
     @Override
-    public ActionResult onUse(
+    protected ActionResult useLaser(
             BlockState state,
             World world,
             BlockPos pos,
             PlayerEntity player,
-            Hand hand,
             BlockHitResult hit
     ) {
         if (!world.isClient) {
+            if (world.getBlockEntity(pos) instanceof LaserEmitterBlockEntity emitter) {
+                if (!emitter.canAccess(player)) {
+                    player.sendMessage(Text.translatable("gui.justifylasers.security.denied"), true);
+                    return ActionResult.SUCCESS;
+                }
+                emitter.initializeOwner(player);
+            }
             NamedScreenHandlerFactory factory = state.createScreenHandlerFactory(world, pos);
             if (factory != null) {
-                player.openHandledScreen(factory);
+                Platform.openScreen(player, factory);
             }
         }
         return ActionResult.SUCCESS;
     }
 
     @Override
+    public void onPlaced(World world, BlockPos pos, BlockState state, @Nullable LivingEntity placer, ItemStack stack) {
+        super.onPlaced(world, pos, state, placer, stack);
+        if (!world.isClient && placer instanceof PlayerEntity player
+                && world.getBlockEntity(pos) instanceof LaserEmitterBlockEntity emitter) emitter.initializeOwner(player);
+    }
+
+    @Override
     public boolean hasComparatorOutput(BlockState state) {
         return true;
+    }
+
+    @Override
+    public void onStateReplaced(BlockState state, World world, BlockPos pos, BlockState newState, boolean moved) {
+        if (!state.isOf(newState.getBlock()) && world.getBlockEntity(pos) instanceof LaserEmitterBlockEntity emitter) {
+            ItemScatterer.spawn(world, pos, emitter);
+        }
+        super.onStateReplaced(state, world, pos, newState, moved);
     }
 
     @Override

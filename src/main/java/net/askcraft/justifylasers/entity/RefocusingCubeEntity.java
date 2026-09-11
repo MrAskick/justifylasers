@@ -29,7 +29,7 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
-public class RefocusingCubeEntity extends Entity {
+public class RefocusingCubeEntity extends net.askcraft.justifylasers.platform.CubeEntity {
     private static final TrackedData<Integer> COLOR = DataTracker.registerData(RefocusingCubeEntity.class, TrackedDataHandlerRegistry.INTEGER);
     private static final TrackedData<Boolean> LIT = DataTracker.registerData(RefocusingCubeEntity.class, TrackedDataHandlerRegistry.BOOLEAN);
     private static final TrackedData<Boolean> EMISSION = DataTracker.registerData(RefocusingCubeEntity.class, TrackedDataHandlerRegistry.BOOLEAN);
@@ -45,11 +45,11 @@ public class RefocusingCubeEntity extends Entity {
     }
 
     @Override
-    protected void initDataTracker() {
-        dataTracker.startTracking(COLOR, LaserColor.RED.ordinal());
-        dataTracker.startTracking(LIT, false);
-        dataTracker.startTracking(EMISSION, true);
-        dataTracker.startTracking(HOLDER, -1);
+    protected void defineTrackedData(TrackedValues values) {
+        values.add(COLOR, LaserColor.RED.ordinal());
+        values.add(LIT, false);
+        values.add(EMISSION, true);
+        values.add(HOLDER, -1);
     }
 
     public CubeOptics.Frame opticalFrame(float tickDelta) {
@@ -298,16 +298,11 @@ public class RefocusingCubeEntity extends Entity {
     }
 
     @Override
-    public void updateTrackedPositionAndAngles(double x, double y, double z, float yaw, float pitch, int steps, boolean interpolate) {
+    protected void interpolate(double x, double y, double z, float yaw, float pitch, int steps) {
         interpolationTarget = new Vec3d(x, y, z);
         targetYaw = yaw;
         targetPitch = pitch;
         interpolationSteps = Math.max(1, Math.min(steps, 3));
-    }
-
-    @Override
-    public Packet<ClientPlayPacketListener> createSpawnPacket() {
-        return new EntitySpawnS2CPacket(this);
     }
 
     public void setBeamInput(@Nullable LaserBeamNetwork.CubeInput input) {
@@ -332,9 +327,9 @@ public class RefocusingCubeEntity extends Entity {
 
     public ItemStack asItemStack() {
         ItemStack item = new ItemStack(ModEntities.REFOCUSING_CUBE_ITEM);
-        item.getOrCreateNbt().putInt("Color", getColor().ordinal());
+        net.askcraft.justifylasers.platform.GameVersion.setCubeColor(item, getColor().ordinal());
         if (hasCustomName()) {
-            item.setCustomName(getCustomName());
+            net.askcraft.justifylasers.platform.GameVersion.setCustomName(item, getCustomName());
         }
         return item;
     }

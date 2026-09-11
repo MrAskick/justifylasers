@@ -5,10 +5,12 @@ import net.askcraft.justifylasers.laser.LaserBeamNetwork;
 import net.askcraft.justifylasers.laser.LaserColor;
 import net.askcraft.justifylasers.registry.ModBlockEntities;
 import net.askcraft.justifylasers.screen.LaserReceiverScreenHandler;
-import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory;
+import net.askcraft.justifylasers.platform.LaserScreenFactory;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
+import net.askcraft.justifylasers.platform.LaserBlockEntity;
+import net.askcraft.justifylasers.platform.InventoryNbt;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.nbt.NbtCompound;
@@ -24,7 +26,7 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
-public class LaserReceiverBlockEntity extends BlockEntity implements ExtendedScreenHandlerFactory {
+public class LaserReceiverBlockEntity extends LaserBlockEntity implements LaserScreenFactory {
     public static final int PROPERTY_COUNT = 8;
 
     private boolean enabled = true;
@@ -132,8 +134,7 @@ public class LaserReceiverBlockEntity extends BlockEntity implements ExtendedScr
     }
 
     @Override
-    protected void writeNbt(NbtCompound nbt) {
-        super.writeNbt(nbt);
+    protected void writeLaserNbt(NbtCompound nbt, InventoryNbt inventory) {
         nbt.putBoolean("Enabled", enabled);
         nbt.putInt("SignalStrength", signalStrength);
         nbt.putBoolean("Inverted", inverted);
@@ -143,8 +144,7 @@ public class LaserReceiverBlockEntity extends BlockEntity implements ExtendedScr
     }
 
     @Override
-    public void readNbt(NbtCompound nbt) {
-        super.readNbt(nbt);
+    protected void readLaserNbt(NbtCompound nbt, InventoryNbt inventory) {
         enabled = !nbt.contains("Enabled") || nbt.getBoolean("Enabled");
         signalStrength = nbt.contains("SignalStrength") ? MathHelper.clamp(nbt.getInt("SignalStrength"), 0, 15) : 15;
         inverted = nbt.getBoolean("Inverted");
@@ -157,11 +157,6 @@ public class LaserReceiverBlockEntity extends BlockEntity implements ExtendedScr
     @Override
     public BlockEntityUpdateS2CPacket toUpdatePacket() {
         return BlockEntityUpdateS2CPacket.create(this);
-    }
-
-    @Override
-    public NbtCompound toInitialChunkDataNbt() {
-        return createNbt();
     }
 
     @Override

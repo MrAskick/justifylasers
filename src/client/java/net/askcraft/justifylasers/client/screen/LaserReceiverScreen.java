@@ -1,6 +1,7 @@
 package net.askcraft.justifylasers.client.screen;
 
 import net.askcraft.justifylasers.laser.LaserColor;
+import net.askcraft.justifylasers.platform.RenderVersion;
 import net.askcraft.justifylasers.screen.LaserReceiverScreenHandler;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
@@ -84,7 +85,7 @@ public class LaserReceiverScreen extends HandledScreen<LaserReceiverScreenHandle
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        renderBackground(context);
+        RenderVersion.screenBackground(this, context, mouseX, mouseY, delta);
         super.render(context, mouseX, mouseY, delta);
         drawMouseoverTooltip(context, mouseX, mouseY);
     }

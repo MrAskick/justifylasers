@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "id": "justifylasers_client_smoke",
+  "version": "1",
+  "environment": "client",
+  "entrypoints": {"client": ["net.askcraft.justifylasers.smoke.SmokeEntrypoint"]}
+}

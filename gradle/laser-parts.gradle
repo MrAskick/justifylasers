@@ -1,0 +1,128 @@
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+
+def outputDirectory = layout.buildDirectory.dir('generated/laserParts')
+def colors = ['red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'violet', 'magenta', 'white']
+def modules = [silk_touch: 'minecraft:cobweb', block_drops: 'minecraft:hopper',
+               scorch_marks: 'minecraft:flint_and_steel', ignition: 'minecraft:blaze_powder',
+               block_destruction: 'minecraft:diamond_pickaxe', entity_damage: 'minecraft:diamond_sword',
+               range: 'minecraft:ender_pearl', thickness: 'minecraft:amethyst_block']
+
+tasks.register('generateLaserParts') {
+    inputs.file(rootProject.file('src/main/resources/assets/justifylasers/blockstates/laser_emitter.json'))
+    outputs.dir(outputDirectory)
+    doLast {
+        def output = outputDirectory.get().asFile
+        def json = { String path, Object value ->
+            def file = new File(output, path)
+            file.parentFile.mkdirs()
+            file.setText(JsonOutput.prettyPrint(JsonOutput.toJson(value)) + '\n', 'UTF-8')
+            if (path.startsWith('data/justifylasers/recipes/')) {
+                def recipe = 'justifylasers:' + file.name.substring(0, file.name.length() - 5)
+                def advancement = new File(output, path.replace('/recipes/', '/advancements/recipes/misc/'))
+                advancement.parentFile.mkdirs()
+                advancement.setText(JsonOutput.prettyPrint(JsonOutput.toJson([
+                        'justifylasers:technical': true,
+                        parent: 'minecraft:recipes/root',
+                        criteria: [
+                                has_component: [trigger: 'minecraft:inventory_changed', conditions: [items: [[items: ['minecraft:quartz', 'minecraft:redstone']]]]],
+                                has_recipe: [trigger: 'minecraft:recipe_unlocked', conditions: [recipe: recipe]]
+                        ],
+                        requirements: [['has_component', 'has_recipe']],
+                        rewards: [recipes: [recipe]]
+                ])) + '\n', 'UTF-8')
+            }
+        }
+        json('assets/justifylasers/blockstates/powered_laser_emitter.json',
+                new JsonSlurper().parse(rootProject.file('src/main/resources/assets/justifylasers/blockstates/laser_emitter.json')))
+        json('assets/justifylasers/models/item/powered_laser_emitter.json', [parent: 'justifylasers:item/laser_emitter'])
+        json('data/justifylasers/loot_tables/blocks/powered_laser_emitter.json',
+                [type: 'minecraft:block', pools: [[rolls: 1, entries: [[type: 'minecraft:item', name: 'justifylasers:powered_laser_emitter']],
+                                                   conditions: [[condition: 'minecraft:survives_explosion']]]]])
+        json('data/justifylasers/recipes/powered_laser_emitter.json',
+                ['justifylasers:technical': true, type: 'minecraft:crafting_shaped', category: 'redstone',
+                 pattern: ['IGI', 'DHD', 'IRI'], key: [I: [item: 'minecraft:iron_ingot'], G: [item: 'minecraft:tinted_glass'],
+                                                    D: [item: 'minecraft:diamond'], H: [item: 'minecraft:hopper'], R: [item: 'minecraft:redstone_block']],
+                 result: [item: 'justifylasers:powered_laser_emitter']])
+        colors.each { color ->
+            def dye = color == 'violet' ? 'purple' : color == 'cyan' ? 'cyan' : color
+            json("assets/justifylasers/models/item/${color}_crystal.json",
+                    [parent: 'justifylasers:item/crystal', textures: [particle: "justifylasers:item/crystal/${color}"]])
+            json("data/justifylasers/recipes/${color}_crystal.json",
+                    ['justifylasers:technical': true, type: 'minecraft:crafting_shaped', category: 'misc',
+                     pattern: [' Q ', 'QDQ', ' A '], key: [Q: [item: 'minecraft:quartz'], D: [item: "minecraft:${dye}_dye"],
+                                                        A: [item: 'minecraft:amethyst_shard']],
+                     result: [item: "justifylasers:${color}_crystal"]])
+        }
+        modules.each { module, component ->
+            json("assets/justifylasers/models/item/${module}_module.json",
+                    [parent: 'justifylasers:item/module', textures: [particle: 'justifylasers:item/crystal/frame']])
+            json("data/justifylasers/recipes/${module}_module.json",
+                    ['justifylasers:technical': true, type: 'minecraft:crafting_shaped', category: 'misc',
+                     pattern: ['IRI', 'DCD', 'IRI'], key: [I: [item: 'minecraft:iron_ingot'], R: [item: 'minecraft:redstone'],
+                                                        D: [item: 'minecraft:diamond'], C: [item: component]],
+                     result: [item: "justifylasers:${module}_module"]])
+        }
+        json('assets/justifylasers/models/item/control_circuit.json',
+                [parent: 'justifylasers:item/module', textures: [particle: 'justifylasers:item/crystal/frame'],
+                 display: [gui: [rotation: [40, 35, 0], translation: [0, 3.5, 0], scale: [0.9, 0.9, 0.9]],
+                           ground: [translation: [0, 3, 0], scale: [0.5, 0.5, 0.5]]]])
+        json('data/justifylasers/recipes/control_circuit.json',
+                ['justifylasers:technical': true, type: 'minecraft:crafting_shaped', category: 'misc',
+                 pattern: ['RGR', 'GQG', 'RGR'], key: [R: [item: 'minecraft:redstone'], G: [item: 'minecraft:gold_nugget'], Q: [item: 'minecraft:quartz']],
+                 result: [item: 'justifylasers:control_circuit']])
+        json('assets/justifylasers/models/item/advanced_range_module.json',
+                [parent: 'justifylasers:item/module', textures: [particle: 'justifylasers:item/crystal/frame']])
+        json('data/justifylasers/recipes/advanced_range_module.json',
+                ['justifylasers:technical': true, type: 'minecraft:crafting_shaped', category: 'misc',
+                 pattern: ['RRR', 'RCR', 'RRR'], key: [R: [item: 'justifylasers:range_module'], C: [item: 'justifylasers:control_circuit']],
+                 result: [item: 'justifylasers:advanced_range_module']])
+        def decorations = colors.collect { it + '_crystal' } + modules.keySet().collect { it + '_module' } +
+                ['advanced_range_module', 'control_circuit']
+        decorations.each { part ->
+            def particle = part.endsWith('_crystal') ? part.replace('_crystal', '') : 'frame'
+            json("assets/justifylasers/models/block/${part}.json",
+                    [textures: [particle: "justifylasers:item/crystal/${particle}"], elements: []])
+            json("assets/justifylasers/blockstates/${part}.json",
+                    [variants: ['': [model: "justifylasers:block/${part}"]]])
+            json("data/justifylasers/loot_tables/blocks/${part}.json",
+                    [type: 'minecraft:block', pools: [[rolls: 1, entries: [[type: 'minecraft:item', name: "justifylasers:${part}"]],
+                                                       conditions: [[condition: 'minecraft:survives_explosion']]]]])
+        }
+    }
+}
+
+sourceSets.main.resources.srcDir(tasks.named('generateLaserParts'))
+
+processResources {
+    if (minecraft_version == '1.21.1') {
+        eachFile { entry ->
+            if (entry.path.startsWith('data/')) {
+                entry.path = entry.path.replace('/recipes/', '/recipe/').replace('/loot_tables/', '/loot_table/')
+                        .replace('/advancements/', '/advancement/').replace('/tags/blocks/', '/tags/block/')
+                        .replace('/tags/items/', '/tags/item/')
+            }
+        }
+    }
+    doLast {
+        def loader = project.property('loom.platform')
+        fileTree(destinationDir).matching { include 'data/**/*.json' }.each { file ->
+            def object = new JsonSlurper().parse(file)
+            if (!(object instanceof Map)) return
+            boolean changed = false
+            if (minecraft_version == '1.21.1' && object.type in ['minecraft:crafting_shaped', 'minecraft:crafting_shapeless']
+                    && object.result instanceof Map && object.result.containsKey('item')) {
+                object.result.id = object.result.remove('item')
+                changed = true
+            }
+            if (object.containsKey('justifylasers:technical')) {
+                boolean enabled = object.remove('justifylasers:technical')
+                if (loader == 'fabric') object['fabric:load_conditions'] = [[condition: 'justifylasers:energy_mode', enabled: enabled]]
+                else if (loader == 'forge') object.conditions = [[type: 'justifylasers:energy_mode', enabled: enabled]]
+                else object['neoforge:conditions'] = [[type: 'justifylasers:energy_mode', enabled: enabled]]
+                changed = true
+            }
+            if (changed) file.setText(JsonOutput.prettyPrint(JsonOutput.toJson(object)) + '\n', 'UTF-8')
+        }
+    }
+}

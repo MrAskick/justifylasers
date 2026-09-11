@@ -1,0 +1,58 @@
+if (!project.hasProperty('clientSmoke')) return
+
+def fabric = project.property('loom.platform') == 'fabric'
+def smoke = sourceSets.create('clientSmoke') {
+    java.srcDirs = [rootProject.file('src/clientSmoke/java'), file('src/clientSmoke/java')]
+    resources.srcDirs = [file('src/clientSmoke/resources')]
+    compileClasspath += sourceSets.main.output + (fabric ? sourceSets.client.output : files()) +
+            (fabric ? sourceSets.client.compileClasspath : sourceSets.main.compileClasspath)
+    runtimeClasspath += sourceSets.main.output + (fabric ? sourceSets.client.output : files()) +
+            (fabric ? sourceSets.client.runtimeClasspath : sourceSets.main.runtimeClasspath)
+}
+loom.mods.create('justifylasers_client_smoke') { sourceSet smoke }
+tasks.named(smoke.processResourcesTaskName, ProcessResources) {
+    from(rootProject.file('src/main/resources/pack.mcmeta'))
+    filesMatching('pack.mcmeta') { expand pack_format: minecraft_version == '1.21.1' ? 34 : 15 }
+}
+loom.runs.create('clientSmoke') {
+    client()
+    source(smoke)
+    runDir('build/run/clientSmoke')
+    vmArg '-Dsodium.checks.issue2561=false'
+    vmArg '-Xmx4G'
+    if (project.hasProperty('smokeWorld')) vmArg '-Djustifylasers.smokeWorld=true'
+    if (project.hasProperty('smokeCrystals')) vmArg '-Djustifylasers.smokeCrystals=true'
+    if (project.hasProperty('smokeModules')) vmArg '-Djustifylasers.smokeModules=true'
+    if (project.hasProperty('smokeDecorations')) vmArg '-Djustifylasers.smokeDecorations=true'
+}
+if (project.hasProperty('shaderModsDir')) {
+    def names = project.property('loom.platform') == 'forge'
+            ? ['oculus-mc1.20.1-1.8.0.jar', 'embeddium-0.3.31+mc1.20.1.jar']
+            : ["iris-${project.property('loom.platform')}-1.8.8+mc1.21.1.jar",
+               "sodium-${project.property('loom.platform')}-0.6.13+mc1.21.1.jar"]
+    def shaderJars = names.collect { new File(project.property('shaderModsDir').toString(), it) }
+    def nestedDir = layout.buildDirectory.dir('shader-test-libraries').get().asFile
+    def nestedLibraries = []
+    def nestedMods = []
+    def modules = new HashSet<String>()
+    // Local-runtime mods need their nested dependencies on the development classpath.
+    shaderJars.findAll { it.exists() }.each { shaderJar ->
+        zipTree(shaderJar).matching { include 'META-INF/jars/*.jar', 'META-INF/jarjar/*.jar' }.each { nested ->
+            if (nested.name.toLowerCase(Locale.ROOT).startsWith('mixinextras')) return
+            if (nested.name.startsWith('fabric-')) {
+                if (fabric || !modules.add(nested.name.replaceFirst(/-\d.*/, ''))) return
+                copy { from nested; into new File(nestedDir, 'mods') }
+                nestedMods.add(new File(nestedDir, "mods/${nested.name}"))
+            } else {
+                copy { from nested; into new File(nestedDir, 'libraries') }
+                nestedLibraries.add(new File(nestedDir, "libraries/${nested.name}"))
+            }
+        }
+    }
+    dependencies {
+        modLocalRuntime files(shaderJars.findAll { it.exists() })
+        modLocalRuntime files(nestedMods)
+        runtimeOnly files(nestedLibraries)
+        if (!fabric) forgeRuntimeLibrary files(nestedLibraries)
+    }
+}

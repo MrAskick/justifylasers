@@ -7,7 +7,7 @@ import net.askcraft.justifylasers.registry.ModScreenHandlers;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
-import net.minecraft.network.PacketByteBuf;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.screen.ArrayPropertyDelegate;
 import net.minecraft.screen.PropertyDelegate;
 import net.minecraft.screen.ScreenHandler;
@@ -28,9 +28,8 @@ public class LaserReceiverScreenHandler extends ScreenHandler {
     @Nullable
     private final LaserReceiverBlockEntity blockEntity;
 
-    public LaserReceiverScreenHandler(int syncId, PlayerInventory inventory, PacketByteBuf buf) {
+    public LaserReceiverScreenHandler(int syncId, PlayerInventory inventory, BlockPos pos) {
         this(syncId, new ArrayPropertyDelegate(LaserReceiverBlockEntity.PROPERTY_COUNT), ScreenHandlerContext.EMPTY, null);
-        buf.readBlockPos();
     }
 
     public LaserReceiverScreenHandler(int syncId, PlayerInventory inventory, LaserReceiverBlockEntity blockEntity) {

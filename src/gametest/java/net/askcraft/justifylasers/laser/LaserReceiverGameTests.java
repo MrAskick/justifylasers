@@ -197,7 +197,7 @@ public class LaserReceiverGameTests implements FabricGameTest {
         LaserReceiverScreenHandler clientMenu;
         try {
             data.writeBlockPos(fixture.receiver.getPos());
-            clientMenu = new LaserReceiverScreenHandler(22, player.getInventory(), data);
+            clientMenu = new LaserReceiverScreenHandler(22, player.getInventory(), data.readBlockPos());
         } finally {
             data.release();
         }

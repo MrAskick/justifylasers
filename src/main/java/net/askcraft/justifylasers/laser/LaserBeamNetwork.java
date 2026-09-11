@@ -2,7 +2,7 @@ package net.askcraft.justifylasers.laser;
 
 import net.askcraft.justifylasers.block.entity.LaserEmitterBlockEntity;
 import net.askcraft.justifylasers.entity.RefocusingCubeEntity;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.askcraft.justifylasers.platform.Platform;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.world.World;
@@ -23,7 +23,7 @@ public final class LaserBeamNetwork {
     private static final Map<World, State> WORLDS = new WeakHashMap<>();
 
     public static void initialize() {
-        ServerTickEvents.END_WORLD_TICK.register(world -> {
+        Platform.onEndWorldTick(world -> {
             State state = state(world);
             Snapshot snapshot = snapshot(world, 1.0F);
             state.cubes.removeIf(id -> !(world.getEntityById(id) instanceof RefocusingCubeEntity));

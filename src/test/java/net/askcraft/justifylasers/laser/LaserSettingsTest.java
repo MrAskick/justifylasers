@@ -70,7 +70,7 @@ class LaserSettingsTest {
 
     @Test
     void screenProtocolPreservesExistingSettings() {
-        assertEquals(14, LaserEmitterBlockEntity.PROPERTY_COUNT);
+        assertEquals(46, LaserEmitterBlockEntity.PROPERTY_COUNT);
         assertEquals(64, LaserEmitterBlockEntity.DEFAULT_RANGE);
         assertEquals(0.11D, LaserEmitterBlockEntity.BEAM_HIT_RADIUS);
         assertArrayEquals(new int[]{0, 1, 2, 3, 4, 5, 6}, new int[]{

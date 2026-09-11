@@ -1,0 +1,50 @@
+if (!project.hasProperty('integrationTests')) return
+
+def fabric = project.property('loom.platform') == 'fabric'
+def modern = minecraft_version == '1.21.1'
+def checks = sourceSets.create('integrationTest') {
+    java.srcDirs = [rootProject.file('src/integrationTest/java'), file('src/integrationTest/java')]
+    resources.srcDirs = [file('src/integrationTest/resources')]
+    compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+    runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+}
+configurations.integrationTestImplementation.extendsFrom configurations.implementation
+configurations.integrationTestRuntimeOnly.extendsFrom configurations.runtimeOnly
+
+def structures = tasks.register('generateIntegrationStructure') {
+    def output = layout.buildDirectory.dir('generated/integrationStructures')
+    outputs.dir(output)
+    doLast {
+        output.get().file('pack.mcmeta').asFile.with {
+            parentFile.mkdirs()
+            setText(groovy.json.JsonOutput.toJson([pack: [pack_format: modern ? 34 : 15, description: 'Integration test resources']]), 'UTF-8')
+        }
+        def target = output.get().file("data/justifylasers_integration/${modern ? 'structure' : 'structures'}/empty.nbt").asFile
+        target.parentFile.mkdirs()
+        target.withOutputStream { stream ->
+            def data = new DataOutputStream(new java.util.zip.GZIPOutputStream(stream))
+            data.writeByte(10); data.writeUTF('')
+            data.writeByte(3); data.writeUTF('DataVersion'); data.writeInt(modern ? 3955 : 3465)
+            data.writeByte(9); data.writeUTF('size'); data.writeByte(3); data.writeInt(3)
+            [10, 10, 10].each { data.writeInt(it) }
+            ['blocks', 'entities', 'palette'].each {
+                data.writeByte(9); data.writeUTF(it); data.writeByte(10); data.writeInt(0)
+            }
+            data.writeByte(0)
+            data.close()
+        }
+    }
+}
+checks.resources.srcDir(structures)
+loom.mods.create('justifylasers_integration') { sourceSet checks }
+loom.runs.create('integrationTest') {
+    server()
+    if (!fabric) environment('gametestserver')
+    source(checks)
+    runDir('build/run/integrationTest')
+    vmArg fabric ? '-Dfabric-api.gametest' : "-D${modern ? 'neoforge' : 'forge'}.enabledGameTestNamespaces=justifylasers_integration"
+    if (fabric) vmArg "-Dfabric-api.gametest.report-file=${file('build/integration-results.xml').absolutePath}"
+}
+if (project.hasProperty('integrationModsDir')) {
+    dependencies { modLocalRuntime fileTree(dir: project.property('integrationModsDir'), include: ['Mekanism-*.jar']) }
+}

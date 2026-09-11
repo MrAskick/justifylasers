@@ -1,6 +1,8 @@
 package net.askcraft.justifylasers.client.render;
 
 import net.askcraft.justifylasers.client.compat.IrisCompatibility;
+import net.askcraft.justifylasers.platform.GameVersion;
+import net.askcraft.justifylasers.platform.RenderVersion;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.RenderLayer;
@@ -12,9 +14,9 @@ import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 
 public final class RefocusingCubeModel {
-    public static final Identifier METAL = new Identifier("minecraft", "textures/block/iron_block.png");
-    private static final Identifier DARK = new Identifier("minecraft", "textures/block/polished_deepslate.png");
-    private static final Identifier WHITE = new Identifier("minecraft", "textures/misc/white.png");
+    public static final Identifier METAL = GameVersion.id("minecraft", "textures/block/iron_block.png");
+    private static final Identifier DARK = GameVersion.id("minecraft", "textures/block/polished_deepslate.png");
+    private static final Identifier WHITE = GameVersion.id("minecraft", "textures/misc/white.png");
     private static final int SIDES = 32;
 
     public static void render(MatrixStack matrices, VertexConsumerProvider consumers, int light,
@@ -127,10 +129,10 @@ public final class RefocusingCubeModel {
 
     private static void vertex(VertexConsumer buffer, MatrixStack matrices, Vec3d position, Vec3d normal,
                                int color, int alpha, int light, float u, float v) {
-        buffer.vertex(matrices.peek().getPositionMatrix(), (float) position.x, (float) position.y, (float) position.z)
+        RenderVersion.endVertex(RenderVersion.normal(buffer.vertex(matrices.peek().getPositionMatrix(), (float) position.x, (float) position.y, (float) position.z)
                 .color(color >> 16 & 255, color >> 8 & 255, color & 255, alpha).texture(u, v)
-                .overlay(OverlayTexture.DEFAULT_UV).light(light)
-                .normal(matrices.peek().getNormalMatrix(), (float) normal.x, (float) normal.y, (float) normal.z).next();
+                .overlay(OverlayTexture.DEFAULT_UV).light(light),
+                matrices.peek().getNormalMatrix(), (float) normal.x, (float) normal.y, (float) normal.z));
     }
 
     private RefocusingCubeModel() {

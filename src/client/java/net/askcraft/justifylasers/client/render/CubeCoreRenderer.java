@@ -1,6 +1,8 @@
 package net.askcraft.justifylasers.client.render;
 
 import net.askcraft.justifylasers.client.compat.IrisCompatibility;
+import net.askcraft.justifylasers.platform.GameVersion;
+import net.askcraft.justifylasers.platform.RenderVersion;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
@@ -12,7 +14,7 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Vec3d;
 
 public final class CubeCoreRenderer {
-    private static final Identifier WHITE = new Identifier("minecraft", "textures/misc/white.png");
+    private static final Identifier WHITE = GameVersion.id("minecraft", "textures/misc/white.png");
     private static final double CORE_RADIUS = 0.11D;
     private static final double[] HALO_RADII = {0, 0.065D, 0.09D, 0.115D, 0.145D, 0.18D, 0.22D, 0.26D, 0.31D};
     private static final int[] HALO_ALPHA = {255, 255, 248, 220, 165, 94, 40, 10, 0};
@@ -48,18 +50,18 @@ public final class CubeCoreRenderer {
         Vec3d relativeCenter = center.subtract(camera);
         optics((position, normal, color, alpha) -> {
             Vec3d point = position.add(relativeCenter);
-            buffer.vertex(point.x, point.y, point.z)
-                    .color(color >> 16 & 255, color >> 8 & 255, color & 255, alpha).next();
+            RenderVersion.endVertex(buffer.vertex((float) point.x, (float) point.y, (float) point.z)
+                    .color(color >> 16 & 255, color >> 8 & 255, color & 255, alpha));
         }, camera.subtract(center), rgb, time);
     }
 
     private static CoreVertex worldVertex(VertexConsumer buffer, MatrixStack matrices, Vec3d center) {
         return (position, normal, color, alpha) -> {
             Vec3d point = position.add(center);
-            buffer.vertex(matrices.peek().getPositionMatrix(), (float) point.x, (float) point.y, (float) point.z)
+            RenderVersion.endVertex(RenderVersion.normal(buffer.vertex(matrices.peek().getPositionMatrix(), (float) point.x, (float) point.y, (float) point.z)
                     .color(color >> 16 & 255, color >> 8 & 255, color & 255, alpha).texture(0.5F, 0.5F)
-                    .overlay(OverlayTexture.DEFAULT_UV).light(LightmapTextureManager.MAX_LIGHT_COORDINATE)
-                    .normal(matrices.peek().getNormalMatrix(), (float) normal.x, (float) normal.y, (float) normal.z).next();
+                    .overlay(OverlayTexture.DEFAULT_UV).light(LightmapTextureManager.MAX_LIGHT_COORDINATE),
+                matrices.peek().getNormalMatrix(), (float) normal.x, (float) normal.y, (float) normal.z));
         };
     }
 

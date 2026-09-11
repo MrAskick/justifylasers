@@ -1,0 +1,67 @@
+import java.awt.image.BufferedImage
+import javax.imageio.ImageIO
+
+def crystalOutput = layout.buildDirectory.dir('generated/crystalMaterials')
+
+tasks.register('generateCrystalMaterials') {
+    outputs.dir(crystalOutput)
+    doLast {
+        def directory = new File(crystalOutput.get().asFile, 'assets/justifylasers/textures/item/crystal')
+        directory.mkdirs()
+        def rgb = { r, g, b ->
+            (255 << 24) | (Math.max(0, Math.min(255, Math.round(r))) << 16) |
+                    (Math.max(0, Math.min(255, Math.round(g))) << 8) | Math.max(0, Math.min(255, Math.round(b)))
+        }
+        def image = { String name, int width, int height, Closure pixel ->
+            def texture = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
+            for (int y = 0; y < height; y++) for (int x = 0; x < width; x++) texture.setRGB(x, y, (int) pixel(x, y))
+            ImageIO.write(texture, 'png', new File(directory, name + '.png'))
+        }
+        ['steel', 'frame'].each { material ->
+            boolean steel = material == 'steel'
+            image(material, 32, 32) { x, y ->
+                int grain = Math.floorMod(x * 13 + y * 7 + (int) (y / 4) * 11, 7) - 3
+                double line = y % 8 == 0 ? 5 : 0
+                double value = (steel ? 165 : 42) + grain + line + (31 - y) * (steel ? 0.6 : 0.18)
+                rgb(value, value + 3, value + (steel ? 9 : 6))
+            }
+            image(material + '_s', 32, 32) { x, y -> steel ? 0xFFBEEC00L : 0xFF682800L }
+            image(material + '_n', 32, 32) { x, y -> 0xFF7F7FFFL }
+        }
+        image('gold', 32, 32) { x, y ->
+            int grain = Math.floorMod(x * 13 + y * 7, 9) - 4
+            rgb(236 + grain, 171 + grain + (31 - y) * 0.7, 39 + grain)
+        }
+        image('gold_s', 32, 32) { x, y -> 0xFFC0E800L }
+        image('gold_n', 32, 32) { x, y -> 0xFF7F7FFFL }
+        def colors = [red: 0xFF0808, orange: 0xFF7800, yellow: 0xFFE600, green: 0x12F82B,
+                      cyan: 0x00E8FF, blue: 0x1250FF, violet: 0x921AFF, magenta: 0xFF08CE, white: 0xDCEAFF]
+        colors.each { name, color ->
+            int r = color >> 16 & 255, g = color >> 8 & 255, b = color & 255
+            image(name, 64, 128) { x, y ->
+                double u = x / 63.0, v = y / 127.0
+                int tileX = (int) (x / 8), tileY = (int) (y / 8)
+                int facet = Math.floorMod(tileX * 17 + tileY * 11, 9)
+                double triangle = x % 8 + y % 8 < 8 ? 0.035 : -0.025
+                double shade = 0.63 + facet * 0.035 + triangle + 0.12 * (1 - v)
+                double edge = Math.pow(Math.max(0, 1 - Math.abs(u - 0.04) / 0.055), 1.5) * 0.6
+                double streak = Math.pow(Math.max(0, 1 - Math.abs(u - (0.24 + v * 0.045)) / 0.10), 1.5) * 0.67
+                double shine = Math.max(edge, streak)
+                rgb(r * shade * (1 - shine) + 255 * shine, g * shade * (1 - shine) + 255 * shine,
+                        b * shade * (1 - shine) + 255 * shine)
+            }
+            // Restrained body emission keeps facets legible; indicator inserts have a brighter core.
+            image(name + '_s', 64, 128) { x, y -> 0x58CD3000L }
+            image(name + '_n', 64, 128) { x, y -> 0xFF7F7FFFL }
+            image(name + '_light', 16, 16) { x, y ->
+                double edge = Math.min(Math.min(x, 15 - x), Math.min(y, 15 - y)) / 7.0
+                double white = Math.min(0.95, Math.max(0, edge * 2.1))
+                rgb(r * (1 - white) + 255 * white, g * (1 - white) + 255 * white, b * (1 - white) + 255 * white)
+            }
+            image(name + '_light_s', 16, 16) { x, y -> 0xD0A02000L }
+            image(name + '_light_n', 16, 16) { x, y -> 0xFF7F7FFFL }
+        }
+    }
+}
+
+sourceSets.main.resources.srcDir(tasks.named('generateCrystalMaterials'))

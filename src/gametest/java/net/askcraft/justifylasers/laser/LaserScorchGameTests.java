@@ -244,6 +244,33 @@ public class LaserScorchGameTests implements FabricGameTest {
         context.complete();
     }
 
+    @GameTest(templateName = EMPTY_STRUCTURE)
+    public void scorchToggleClearsOnlyItsOwnMarksAndDoesNotEnableMining(TestContext context) {
+        BlockPos first = context.getAbsolutePos(new BlockPos(4, 4, 4));
+        BlockPos second = context.getAbsolutePos(new BlockPos(4, 5, 4));
+        context.setBlockState(new BlockPos(4, 4, 4), Blocks.STONE);
+        context.setBlockState(new BlockPos(4, 5, 4), Blocks.STONE);
+        LaserEmitterBlockEntity source = emitter(context);
+        context.setBlockState(new BlockPos(1, 5, 4), ModBlocks.LASER_EMITTER.getDefaultState().with(LaserEmitterBlock.FACING, Direction.EAST));
+        LaserEmitterBlockEntity other = (LaserEmitterBlockEntity) context.getBlockEntity(new BlockPos(1, 5, 4));
+        LaserEmitterBlockEntity.serverTick(context.getWorld(), other.getPos(), other.getCachedState(), other);
+        LaserScorchMarks marks = new LaserScorchMarks();
+        marks.update(context.getWorld(), 0);
+        context.assertFalse(marksAt(marks, first).isEmpty(), "First emitter leaves marks with destruction off");
+        context.assertFalse(marksAt(marks, second).isEmpty(), "Second emitter also leaves marks");
+        source.handleButton(11);
+        marks.update(context.getWorld(), 1);
+        context.assertTrue(marksAt(marks, first).isEmpty(), "Switching off removes existing marks and stops new ones");
+        context.assertFalse(marksAt(marks, second).isEmpty(), "Other emitters' marks remain");
+        source.handleButton(11);
+        marks.update(context.getWorld(), 2);
+        context.assertFalse(marksAt(marks, first).isEmpty(), "Switching on permits fresh marks");
+        context.assertTrue(source.getPropertyDelegate().get(3) == 0, "Scorch visibility does not enable mining");
+        context.removeBlock(new BlockPos(1, 4, 4));
+        context.removeBlock(new BlockPos(1, 5, 4));
+        context.complete();
+    }
+
     private static LaserEmitterBlockEntity emitter(TestContext context) {
         BlockPos position = new BlockPos(1, 4, 4);
         context.setBlockState(position, ModBlocks.LASER_EMITTER.getDefaultState().with(LaserEmitterBlock.FACING, Direction.EAST));

@@ -3,11 +3,10 @@ package net.askcraft.justifylasers.client.render;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.systems.VertexSorter;
 import net.askcraft.justifylasers.client.compat.IrisCompatibility;
+import net.askcraft.justifylasers.platform.RenderVersion;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.Camera;
-import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.Vec3d;
@@ -66,19 +65,14 @@ public final class LaserBeamLateRenderer {
 
             Matrix4f savedProjection = new Matrix4f(RenderSystem.getProjectionMatrix());
             VertexSorter savedVertexSorting = RenderSystem.getVertexSorting();
-            MatrixStack modelView = RenderSystem.getModelViewStack();
 
             RenderSystem.setProjectionMatrix(new Matrix4f(worldProjection), VertexSorter.BY_DISTANCE);
-            modelView.push();
-            modelView.loadIdentity();
-            modelView.multiplyPositionMatrix(worldMatrices.peek().getPositionMatrix());
-            RenderSystem.applyModelViewMatrix();
+            RenderVersion.pushModelView(worldMatrices.peek().getPositionMatrix());
 
             try {
                 LaserRenderLayers.SHADER_BEAM_HALO.startDrawing();
                 try {
-                    BufferBuilder builder = Tessellator.getInstance().getBuffer();
-                    builder.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
+                    BufferBuilder builder = RenderVersion.beginQuads(VertexFormats.POSITION_COLOR);
                     Vec3d cameraPos = camera.getPos();
 
                     LaserScorchRenderer.renderLate(builder, cameraPos);
@@ -96,8 +90,7 @@ public final class LaserBeamLateRenderer {
                     LaserRenderLayers.SHADER_BEAM_HALO.endDrawing();
                 }
             } finally {
-                modelView.pop();
-                RenderSystem.applyModelViewMatrix();
+                RenderVersion.popModelView();
                 RenderSystem.setProjectionMatrix(savedProjection, savedVertexSorting);
             }
         } finally {
@@ -182,9 +175,8 @@ public final class LaserBeamLateRenderer {
             int alpha
     ) {
         Vec3d position = worldPosition.subtract(cameraPos);
-        buffer.vertex(position.x, position.y, position.z)
-                .color((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF, alpha)
-                .next();
+        RenderVersion.endVertex(buffer.vertex((float) position.x, (float) position.y, (float) position.z)
+                .color((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF, alpha));
     }
 
     private record QueuedBeam(

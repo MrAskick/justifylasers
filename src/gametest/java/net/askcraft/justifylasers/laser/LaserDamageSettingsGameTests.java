@@ -131,14 +131,14 @@ public class LaserDamageSettingsGameTests implements FabricGameTest {
 
     @GameTest(templateName = EMPTY_STRUCTURE)
     public void packetsPreserveFullSliderValues(TestContext context) {
-        context.assertTrue(ServerPlayNetworking.getGlobalReceivers().contains(LaserSettingsPacket.TYPE.getId()),
+        context.assertTrue(ServerPlayNetworking.getGlobalReceivers().contains(LaserSettingsPacket.ID),
                 "The settings packet receiver must be registered");
         for (int id : new int[]{1000, 1100, 1200, 2001, 2005, 2200, 3000, 3010, 3100, 4001, 4007, 4020, 5001, 5064, 5256, 5512}) {
             LaserSettingsPacket packet = new LaserSettingsPacket(42, id);
             PacketByteBuf buffer = new PacketByteBuf(Unpooled.buffer());
             try {
                 packet.write(buffer);
-                LaserSettingsPacket decoded = LaserSettingsPacket.TYPE.read(buffer);
+                LaserSettingsPacket decoded = new LaserSettingsPacket(buffer);
                 context.assertTrue(packet.equals(decoded), "Packet must preserve slider ID " + id);
                 context.assertFalse(buffer.isReadable(), "Packet decoder must consume the payload");
             } finally {
@@ -159,7 +159,7 @@ public class LaserDamageSettingsGameTests implements FabricGameTest {
         LaserEmitterScreenHandler clientMenu;
         try {
             openingData.writeBlockPos(emitter.getPos());
-            clientMenu = new LaserEmitterScreenHandler(42, player.getInventory(), openingData);
+            clientMenu = new LaserEmitterScreenHandler(42, player.getInventory(), openingData.readBlockPos());
         } finally {
             openingData.release();
         }
@@ -184,7 +184,7 @@ public class LaserDamageSettingsGameTests implements FabricGameTest {
         context.assertTrue(clientMenu.damagesEntities(), "Editing values must not change the damage toggle");
 
         NbtCompound beforeInvalidPackets = emitter.createNbt();
-        for (int id : new int[]{-1, 9, 999, 1201, 2000, 2201, 2999, 3101, 4000, 4021, 5000, 5513, Integer.MAX_VALUE}) {
+        for (int id : new int[]{-1, 13, 999, 1201, 2000, 2201, 2999, 3101, 4000, 4021, 5000, 5513, 5999, 6101, Integer.MAX_VALUE}) {
             context.assertFalse(new LaserSettingsPacket(42, id).apply(player), "Reject invalid setting " + id);
         }
         context.assertFalse(new LaserSettingsPacket(41, 2005).apply(player), "Reject stale menu ID");

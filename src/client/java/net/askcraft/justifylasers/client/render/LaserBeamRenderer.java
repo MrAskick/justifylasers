@@ -2,6 +2,7 @@ package net.askcraft.justifylasers.client.render;
 
 import net.askcraft.justifylasers.client.compat.IrisCompatibility;
 import net.askcraft.justifylasers.laser.LaserBeamTrace;
+import net.askcraft.justifylasers.platform.RenderVersion;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.LightmapTextureManager;
@@ -246,26 +247,24 @@ public final class LaserBeamRenderer {
     }
 
     private static void glowVertex(VertexConsumer buffer, Matrix4f matrix, Vec3d position, int rgb, int alpha) {
-        buffer.vertex(matrix, (float) position.x, (float) position.y, (float) position.z)
+        RenderVersion.endVertex(buffer.vertex(matrix, (float) position.x, (float) position.y, (float) position.z)
                 .color((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF, alpha)
                 .texture(0.0F, 0.0F)
                 .overlay(OverlayTexture.DEFAULT_UV)
                 .light(LightmapTextureManager.MAX_LIGHT_COORDINATE)
-                .normal(0.0F, 1.0F, 0.0F)
-                .next();
+                .normal(0.0F, 1.0F, 0.0F));
     }
 
     private static void emissionVertex(
             VertexConsumer buffer, Matrix4f matrix, Matrix3f normalMatrix,
             Vec3d position, Vec3d normal, int rgb, float u, float v
     ) {
-        buffer.vertex(matrix, (float) position.x, (float) position.y, (float) position.z)
+        RenderVersion.endVertex(RenderVersion.normal(buffer.vertex(matrix, (float) position.x, (float) position.y, (float) position.z)
                 .color((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF, 255)
                 .texture(u, v)
                 .overlay(OverlayTexture.DEFAULT_UV)
-                .light(LightmapTextureManager.MAX_LIGHT_COORDINATE)
-                .normal(normalMatrix, (float) normal.x, (float) normal.y, (float) normal.z)
-                .next();
+                .light(LightmapTextureManager.MAX_LIGHT_COORDINATE),
+                normalMatrix, (float) normal.x, (float) normal.y, (float) normal.z));
     }
 
     private LaserBeamRenderer() {

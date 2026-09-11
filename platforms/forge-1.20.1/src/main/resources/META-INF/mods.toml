@@ -1,0 +1,25 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+
+[[mods]]
+modId="justifylasers"
+version="${version}"
+displayName="JustifyLasers"
+authors="Mr.Askick"
+logoFile="assets/justifylasers/icon.png"
+description='''High-energy laser emitters, redstone receivers, and portable refocusing cubes with vivid volumetric beams.'''
+
+[[dependencies.justifylasers]]
+modId="forge"
+mandatory=true
+versionRange="[47.4,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.justifylasers]]
+modId="minecraft"
+mandatory=true
+versionRange="[1.20.1,1.20.2)"
+ordering="NONE"
+side="BOTH"

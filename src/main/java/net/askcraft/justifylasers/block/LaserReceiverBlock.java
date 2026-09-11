@@ -2,11 +2,12 @@ package net.askcraft.justifylasers.block;
 
 import net.askcraft.justifylasers.block.entity.LaserReceiverBlockEntity;
 import net.askcraft.justifylasers.laser.LaserColor;
+import net.askcraft.justifylasers.platform.LaserBlock;
+import net.askcraft.justifylasers.platform.Platform;
 import net.askcraft.justifylasers.registry.ModBlockEntities;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockRenderType;
 import net.minecraft.block.BlockState;
-import net.minecraft.block.BlockWithEntity;
 import net.minecraft.block.ShapeContext;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.BlockEntityTicker;
@@ -23,7 +24,6 @@ import net.minecraft.state.property.Properties;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.BlockMirror;
 import net.minecraft.util.BlockRotation;
-import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
@@ -38,7 +38,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.EnumMap;
 import java.util.Map;
 
-public class LaserReceiverBlock extends BlockWithEntity {
+public class LaserReceiverBlock extends LaserBlock {
     public static final DirectionProperty FACING = Properties.FACING;
     public static final IntProperty POWER = Properties.POWER;
     public static final BooleanProperty LIT = Properties.LIT;
@@ -47,7 +47,7 @@ public class LaserReceiverBlock extends BlockWithEntity {
     private static final Map<Direction, VoxelShape> SHAPES = createShapes();
 
     public LaserReceiverBlock(Settings settings) {
-        super(settings);
+        super(settings, LaserReceiverBlock::new);
         setDefaultState(getStateManager().getDefaultState().with(FACING, Direction.NORTH)
                 .with(POWER, 0).with(LIT, false).with(COLOR, LaserColor.RED));
     }
@@ -127,15 +127,15 @@ public class LaserReceiverBlock extends BlockWithEntity {
     @Nullable
     @Override
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(World world, BlockState state, BlockEntityType<T> type) {
-        return world.isClient ? null : checkType(type, ModBlockEntities.LASER_RECEIVER, LaserReceiverBlockEntity::serverTick);
+        return world.isClient ? null : laserTicker(type, ModBlockEntities.LASER_RECEIVER, LaserReceiverBlockEntity::serverTick);
     }
 
     @Override
-    public ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, Hand hand, BlockHitResult hit) {
+    protected ActionResult useLaser(BlockState state, World world, BlockPos pos, PlayerEntity player, BlockHitResult hit) {
         if (!world.isClient) {
             NamedScreenHandlerFactory factory = state.createScreenHandlerFactory(world, pos);
             if (factory != null) {
-                player.openHandledScreen(factory);
+                Platform.openScreen(player, factory);
             }
         }
         return ActionResult.SUCCESS;

@@ -5,7 +5,6 @@ import net.askcraft.justifylasers.client.compat.IrisCompatibility;
 import net.askcraft.justifylasers.laser.LaserBeamNetwork;
 import net.askcraft.justifylasers.laser.LaserBeamPath;
 import net.askcraft.justifylasers.laser.LaserBeamTrace;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.BlockPos;
@@ -15,7 +14,7 @@ import net.minecraft.util.math.Vec3d;
 import java.util.Map;
 
 public final class LaserWorldRenderer {
-    public static void render(WorldRenderContext context) {
+    public static void render(LaserRenderFrame context) {
         VertexConsumerProvider consumers = context.consumers();
         if (consumers == null || IrisCompatibility.isRenderingShadowPass()) {
             return;

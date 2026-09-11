@@ -56,7 +56,9 @@ public final class LaserScorchMarks {
             Mark mark = iterator.next();
             ScorchGeometry.Patch patch = mark.patch;
             if (now - mark.touched >= LIFETIME_TICKS || !world.isChunkLoaded(patch.position())
-                    || world.getBlockState(patch.position()) != patch.state()) {
+                    || world.getBlockState(patch.position()) != patch.state()
+                    || world.isChunkLoaded(mark.source) && world.getBlockEntity(mark.source) instanceof LaserEmitterBlockEntity emitter
+                    && !emitter.showsScorchMarks()) {
                 vertexCount -= mark.vertexCount;
                 iterator.remove();
             }
@@ -65,7 +67,7 @@ public final class LaserScorchMarks {
         for (Map.Entry<BlockPos, LaserBeamPath> entry : LaserBeamNetwork.paths(world, 1).entrySet()) {
             LaserBeamTrace trace = entry.getValue().last();
             if (!trace.hasBlockHit() || trace.hitSide() == null
-                    || !(world.getBlockEntity(entry.getKey()) instanceof LaserEmitterBlockEntity emitter)) {
+                    || !(world.getBlockEntity(entry.getKey()) instanceof LaserEmitterBlockEntity emitter) || !emitter.showsScorchMarks()) {
                 continue;
             }
             BlockState target = world.getBlockState(trace.hitBlock());
@@ -111,7 +113,7 @@ public final class LaserScorchMarks {
         }
         List<Long> added = new ArrayList<>();
         for (ScorchGeometry.Patch patch : ScorchGeometry.create(world, from, point, face, radius)) {
-            Mark mark = new Mark(patch, now, emission);
+            Mark mark = new Mark(source, patch, now, emission);
             long id = nextId++;
             marks.put(id, mark);
             added.add(id);
@@ -147,12 +149,14 @@ public final class LaserScorchMarks {
     }
 
     public static final class Mark {
+        private final BlockPos source;
         private final ScorchGeometry.Patch patch;
         private final int vertexCount;
         private long touched;
         private boolean emission;
 
-        private Mark(ScorchGeometry.Patch patch, long touched, boolean emission) {
+        private Mark(BlockPos source, ScorchGeometry.Patch patch, long touched, boolean emission) {
+            this.source = source.toImmutable();
             this.patch = patch;
             this.touched = touched;
             this.emission = emission;

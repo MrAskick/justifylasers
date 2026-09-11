@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "id": "justifylasers_integration",
+  "version": "1",
+  "name": "Justify Lasers Integration Tests",
+  "entrypoints": {"fabric-gametest": ["net.askcraft.justifylasers.integration.LoaderGameTests"]},
+  "depends": {"justifylasers": "*", "fabric-api": "*"}
+}

@@ -1,11 +1,15 @@
 package net.askcraft.justifylasers.client.screen;
 
 import net.askcraft.justifylasers.block.entity.LaserEmitterBlockEntity;
+import net.askcraft.justifylasers.energy.LaserModule;
 import net.askcraft.justifylasers.laser.LaserColor;
 import net.askcraft.justifylasers.laser.LaserDamage;
+import net.askcraft.justifylasers.laser.LaserMining;
 import net.askcraft.justifylasers.network.LaserSettingsPacket;
+import net.askcraft.justifylasers.platform.ClientPlatform;
+import net.askcraft.justifylasers.platform.Platform;
+import net.askcraft.justifylasers.platform.RenderVersion;
 import net.askcraft.justifylasers.screen.LaserEmitterScreenHandler;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.gui.tooltip.Tooltip;
@@ -33,15 +37,27 @@ public class LaserEmitterScreen extends HandledScreen<LaserEmitterScreenHandler>
     private SettingSlider damageSlider;
     private SettingSlider knockbackSlider;
     private SettingSlider hitRateSlider;
+    private SettingSlider miningSpeedSlider;
     private ButtonWidget lightEmissionButton;
     private ButtonWidget minecraftLightingButton;
     private ButtonWidget breakBlocksButton;
     private ButtonWidget damageEntitiesButton;
     private ButtonWidget igniteEntitiesButton;
+    private ButtonWidget silkTouchButton;
+    private ButtonWidget dropBlocksButton;
+    private ButtonWidget scorchMarksButton;
+    private ButtonWidget energySettingsButton;
     private List<ClickableWidget> mainControls = List.of();
     private List<ClickableWidget> damageControls = List.of();
+    private List<ClickableWidget> miningControls = List.of();
+    private List<ClickableWidget> energyControls = List.of();
     private List<SettingSlider> sliders = List.of();
-    private boolean damageSettingsOpen;
+    private Page page = Page.MAIN;
+    private boolean poweredLayout;
+
+    private enum Page {
+        MAIN, DAMAGE, MINING, ENERGY
+    }
 
     public LaserEmitterScreen(LaserEmitterScreenHandler handler, PlayerInventory inventory, Text title) {
         super(handler, inventory, title);
@@ -59,12 +75,14 @@ public class LaserEmitterScreen extends HandledScreen<LaserEmitterScreenHandler>
         int damageStep = damageSlider == null ? handler.getDamageStep() : damageSlider.getStep();
         int knockbackStep = knockbackSlider == null ? handler.getKnockbackStep() : knockbackSlider.getStep();
         int hitRate = hitRateSlider == null ? handler.getHitsPerSecond() : hitRateSlider.getStep();
+        int miningSpeed = miningSpeedSlider == null ? handler.getMiningSpeedStep() : miningSpeedSlider.getStep();
         backgroundHeight = Math.min(308, height - 12);
         super.init();
 
         int buttonX = x + 22;
         int buttonWidth = backgroundWidth - 44;
-        int rowStep = Math.min(22, (backgroundHeight - 84) / 9);
+        poweredLayout = handler.isPoweredEmitter();
+        int rowStep = Math.min(22, (backgroundHeight - (poweredLayout ? 100 : 84)) / 9);
         int buttonHeight = rowStep - 2;
         enabledButton = addDrawableChild(makeButton(buttonX, y + 48, buttonWidth, buttonHeight,
                 LaserEmitterScreenHandler.BUTTON_ENABLED));
@@ -92,12 +110,17 @@ public class LaserEmitterScreen extends HandledScreen<LaserEmitterScreenHandler>
         minecraftLightingButton = addDrawableChild(makeButton(buttonX, y + 48 + rowStep * 6, buttonWidth, buttonHeight,
                 LaserEmitterScreenHandler.BUTTON_MINECRAFT_LIGHTING));
         minecraftLightingButton.setTooltip(Tooltip.of(Text.translatable("gui.justifylasers.minecraft_lighting.tooltip")));
-        breakBlocksButton = addDrawableChild(makeButton(buttonX, y + 48 + rowStep * 7, buttonWidth, buttonHeight,
+        breakBlocksButton = addDrawableChild(makeButton(buttonX, y + 48 + rowStep * 7, buttonWidth - 24, buttonHeight,
                 LaserEmitterScreenHandler.BUTTON_BREAK_BLOCKS));
+        ButtonWidget miningSettingsButton = addDrawableChild(ButtonWidget.builder(
+                        Text.literal("..."), button -> setPage(Page.MINING))
+                .dimensions(buttonX + buttonWidth - 20, y + 48 + rowStep * 7, 20, buttonHeight)
+                .tooltip(Tooltip.of(Text.translatable("gui.justifylasers.mining_settings")))
+                .build());
         damageEntitiesButton = addDrawableChild(makeButton(buttonX, y + 48 + rowStep * 8, buttonWidth - 24, buttonHeight,
                 LaserEmitterScreenHandler.BUTTON_DAMAGE_ENTITIES));
         ButtonWidget damageSettingsButton = addDrawableChild(ButtonWidget.builder(
-                        Text.literal("..."), button -> setDamageSettingsOpen(true))
+                        Text.literal("..."), button -> setPage(Page.DAMAGE))
                 .dimensions(buttonX + buttonWidth - 20, y + 48 + rowStep * 8, 20, buttonHeight)
                 .tooltip(Tooltip.of(Text.translatable("gui.justifylasers.damage_settings")))
                 .build());
@@ -107,6 +130,12 @@ public class LaserEmitterScreen extends HandledScreen<LaserEmitterScreenHandler>
                         button -> close())
                 .dimensions(x + backgroundWidth - 72, y + backgroundHeight - 26, 54, 18)
                 .build());
+        energySettingsButton = addDrawableChild(ButtonWidget.builder(Text.translatable("gui.justifylasers.energy_settings"),
+                        button -> setPage(Page.ENERGY))
+                .dimensions(buttonX, y + backgroundHeight - 48, buttonWidth, 18).build());
+        ButtonWidget energyBackButton = addDrawableChild(ButtonWidget.builder(Text.translatable("gui.justifylasers.back"),
+                        button -> setPage(Page.MAIN))
+                .dimensions(x + backgroundWidth - 72, y + backgroundHeight - 26, 54, 18).build());
 
         int damageRowStep = backgroundHeight < 270 ? 30 : 36;
         damageSlider = addDrawableChild(new SettingSlider(
@@ -145,42 +174,80 @@ public class LaserEmitterScreen extends HandledScreen<LaserEmitterScreenHandler>
                 .dimensions(buttonX, y + backgroundHeight - 26, 116, 18)
                 .build());
         ButtonWidget backButton = addDrawableChild(ButtonWidget.builder(
-                        Text.translatable("gui.justifylasers.back"), button -> setDamageSettingsOpen(false))
+                        Text.translatable("gui.justifylasers.back"), button -> setPage(Page.MAIN))
+                .dimensions(x + backgroundWidth - 72, y + backgroundHeight - 26, 54, 18)
+                .build());
+
+        miningSpeedSlider = addDrawableChild(new SettingSlider(
+                buttonX, y + 48, buttonWidth, 20,
+                0, LaserMining.MAX_SPEED_STEP, miningSpeed,
+                handler::getMiningSpeedStep, LaserEmitterScreenHandler.MINING_SPEED_BUTTON_BASE,
+                step -> Text.translatable("gui.justifylasers.mining_speed", (step == 0
+                        ? Text.translatable("gui.justifylasers.mining_speed.min")
+                        : step == LaserMining.MAX_SPEED_STEP ? Text.translatable("gui.justifylasers.mining_speed.max")
+                        : Text.literal(step + "%")).formatted(Formatting.AQUA))
+        ));
+        miningSpeedSlider.setTooltip(Tooltip.of(Text.translatable("gui.justifylasers.mining_speed.tooltip")));
+        silkTouchButton = addDrawableChild(makeButton(buttonX, y + 48 + damageRowStep, buttonWidth, 20,
+                LaserEmitterScreenHandler.BUTTON_SILK_TOUCH));
+        silkTouchButton.setTooltip(Tooltip.of(Text.translatable("gui.justifylasers.silk_touch.tooltip")));
+        dropBlocksButton = addDrawableChild(makeButton(buttonX, y + 48 + damageRowStep * 2, buttonWidth, 20,
+                LaserEmitterScreenHandler.BUTTON_DROP_BLOCKS));
+        dropBlocksButton.setTooltip(Tooltip.of(Text.translatable("gui.justifylasers.drop_blocks.tooltip")));
+        scorchMarksButton = addDrawableChild(makeButton(buttonX, y + 48 + damageRowStep * 3, buttonWidth, 20,
+                LaserEmitterScreenHandler.BUTTON_SCORCH_MARKS));
+        scorchMarksButton.setTooltip(Tooltip.of(Text.translatable("gui.justifylasers.scorch_marks.tooltip")));
+        ButtonWidget miningResetButton = addDrawableChild(ButtonWidget.builder(
+                        Text.translatable("gui.justifylasers.mining_defaults"), button -> {
+                            miningSpeedSlider.setStepAndSubmit(LaserMining.DEFAULT_SPEED_STEP);
+                            sendButton(LaserEmitterScreenHandler.BUTTON_RESET_MINING_SETTINGS);
+                        })
+                .dimensions(buttonX, y + backgroundHeight - 26, 116, 18)
+                .build());
+        ButtonWidget miningBackButton = addDrawableChild(ButtonWidget.builder(
+                        Text.translatable("gui.justifylasers.back"), button -> setPage(Page.MAIN))
                 .dimensions(x + backgroundWidth - 72, y + backgroundHeight - 26, 54, 18)
                 .build());
 
         mainControls = List.of(enabledButton, redstoneButton, colorButton, thicknessSlider, rangeSlider,
-                lightEmissionButton, minecraftLightingButton, breakBlocksButton,
-                damageEntitiesButton, damageSettingsButton, closeButton);
+                lightEmissionButton, minecraftLightingButton, breakBlocksButton, miningSettingsButton,
+                damageEntitiesButton, damageSettingsButton, closeButton, energySettingsButton);
         damageControls = List.of(damageSlider, knockbackSlider, hitRateSlider, igniteEntitiesButton, resetButton, backButton);
-        sliders = List.of(thicknessSlider, rangeSlider, damageSlider, knockbackSlider, hitRateSlider);
-        setDamageSettingsOpen(damageSettingsOpen);
+        miningControls = List.of(miningSpeedSlider, silkTouchButton, dropBlocksButton, scorchMarksButton, miningResetButton, miningBackButton);
+        energyControls = List.of(energyBackButton);
+        sliders = List.of(thicknessSlider, rangeSlider, damageSlider, knockbackSlider, hitRateSlider, miningSpeedSlider);
+        setPage(page);
 
         updateButtonMessages();
     }
 
-    private void setDamageSettingsOpen(boolean open) {
-        damageSettingsOpen = open;
+    private void setPage(Page page) {
+        this.page = page;
         for (SettingSlider slider : sliders) {
             slider.dragging = false;
             slider.submitValue();
         }
         setDragging(false);
         setFocused(null);
-        for (ClickableWidget widget : mainControls) {
-            widget.visible = !open;
-            widget.active = !open;
-        }
-        for (ClickableWidget widget : damageControls) {
-            widget.visible = open;
-            widget.active = open;
+        setControlsVisible(mainControls, page == Page.MAIN);
+        setControlsVisible(damageControls, page == Page.DAMAGE);
+        setControlsVisible(miningControls, page == Page.MINING);
+        setControlsVisible(energyControls, page == Page.ENERGY);
+        handler.setInventoryVisible(page == Page.ENERGY);
+        updateButtonMessages();
+    }
+
+    private static void setControlsVisible(List<ClickableWidget> controls, boolean visible) {
+        for (ClickableWidget widget : controls) {
+            widget.visible = visible;
+            widget.active = visible;
         }
     }
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == GLFW.GLFW_KEY_ESCAPE && damageSettingsOpen) {
-            setDamageSettingsOpen(false);
+        if (keyCode == GLFW.GLFW_KEY_ESCAPE && page != Page.MAIN) {
+            setPage(Page.MAIN);
             return true;
         }
         return super.keyPressed(keyCode, scanCode, modifiers);
@@ -220,6 +287,9 @@ public class LaserEmitterScreen extends HandledScreen<LaserEmitterScreenHandler>
     @Override
     protected void handledScreenTick() {
         super.handledScreenTick();
+        if (poweredLayout != handler.isPoweredEmitter()) {
+            clearAndInit();
+        }
         sliders.forEach(SettingSlider::tick);
         updateButtonMessages();
     }
@@ -250,6 +320,30 @@ public class LaserEmitterScreen extends HandledScreen<LaserEmitterScreenHandler>
         breakBlocksButton.setMessage(toggleLabel("gui.justifylasers.break_blocks", handler.breaksBlocks()));
         damageEntitiesButton.setMessage(toggleLabel("gui.justifylasers.damage_entities", handler.damagesEntities()));
         igniteEntitiesButton.setMessage(toggleLabel("gui.justifylasers.ignite_entities", handler.ignitesEntities()));
+        silkTouchButton.setMessage(toggleLabel("gui.justifylasers.silk_touch", handler.hasSilkTouch()));
+        dropBlocksButton.setMessage(toggleLabel("gui.justifylasers.drop_blocks", handler.dropsBlocks()));
+        scorchMarksButton.setMessage(toggleLabel("gui.justifylasers.scorch_marks", handler.showsScorchMarks()));
+        energySettingsButton.visible = page == Page.MAIN && handler.isPoweredEmitter();
+        energySettingsButton.active = energySettingsButton.visible;
+        colorButton.active = page == Page.MAIN && !handler.isPoweredEmitter();
+        redstoneButton.active = page == Page.MAIN && !handler.isPoweredEmitter();
+        if (handler.isPoweredEmitter()) {
+            colorButton.setMessage(Text.translatable("gui.justifylasers.crystal_color", colorName));
+            redstoneButton.setMessage(Text.translatable("gui.justifylasers.power_source"));
+        }
+        updateModuleButton(silkTouchButton, Page.MINING, LaserModule.SILK_TOUCH, "silk_touch");
+        updateModuleButton(dropBlocksButton, Page.MINING, LaserModule.BLOCK_DROPS, "drop_blocks");
+        updateModuleButton(scorchMarksButton, Page.MINING, LaserModule.SCORCH_MARKS, "scorch_marks");
+        updateModuleButton(igniteEntitiesButton, Page.DAMAGE, LaserModule.IGNITION, "ignite_entities");
+    }
+
+    private void updateModuleButton(ButtonWidget button, Page targetPage, LaserModule module, String setting) {
+        boolean available = handler.hasModule(module);
+        button.active = page == targetPage && available;
+        button.setTooltip(Tooltip.of(available
+                ? Text.translatable("gui.justifylasers." + setting + ".tooltip")
+                : Text.translatable("gui.justifylasers.module_required",
+                        Text.translatable("item.justifylasers." + module.id()))));
     }
 
     private Text toggleLabel(String key, boolean value) {
@@ -264,7 +358,7 @@ public class LaserEmitterScreen extends HandledScreen<LaserEmitterScreenHandler>
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        renderBackground(context);
+        RenderVersion.screenBackground(this, context, mouseX, mouseY, delta);
         super.render(context, mouseX, mouseY, delta);
         drawMouseoverTooltip(context, mouseX, mouseY);
     }
@@ -284,8 +378,20 @@ public class LaserEmitterScreen extends HandledScreen<LaserEmitterScreenHandler>
         context.fill(left + 2, bottom - 4, right - 2, bottom - 2, 0xFF05070A);
         context.fill(left + 10, top + 38, right - 10, top + 39, 0xFF47515F);
 
+        if (page == Page.ENERGY) {
+            context.fill(left + 22, top + 44, right - 22, top + 51, 0xFF04070B);
+            int capacity = handler.getEnergyCapacity();
+            int barWidth = capacity <= 0 ? 0 : (int) ((backgroundWidth - 44L) * handler.getEnergy() / capacity);
+            context.fill(left + 22, top + 44, left + 22 + barWidth, top + 51, withAlpha(rgb, 255));
+            for (var slot : handler.slots) {
+                context.fill(left + slot.x - 1, top + slot.y - 1, left + slot.x + 17, top + slot.y + 17, 0xFF536171);
+                context.fill(left + slot.x, top + slot.y, left + slot.x + 16, top + slot.y + 16, 0xFF080D15);
+            }
+            return;
+        }
+
         // Keep all controls reachable on small windows / high GUI scales.
-        if (damageSettingsOpen || backgroundHeight < 304) {
+        if (page != Page.MAIN || backgroundHeight < 304 || handler.isPoweredEmitter()) {
             return;
         }
 
@@ -321,7 +427,40 @@ public class LaserEmitterScreen extends HandledScreen<LaserEmitterScreenHandler>
 
     @Override
     protected void drawForeground(DrawContext context, int mouseX, int mouseY) {
-        if (damageSettingsOpen) {
+        if (page == Page.ENERGY) {
+            context.drawTextWithShadow(textRenderer, Text.translatable("gui.justifylasers.energy_settings"), titleX, titleY, 0xFFF3F7FF);
+            String status = !handler.isTechnicalMode() ? "disabled" : !handler.hasCrystal() ? "no_crystal"
+                    : handler.getEnergy() < handler.getEnergyCost() && !handler.isActive() ? "no_power" : handler.isEnabled() ? "ready" : "off";
+            context.drawTextWithShadow(textRenderer, Text.translatable("gui.justifylasers.energy_status." + status), 18, 28, 0xFFF3F7FF);
+            context.drawTextWithShadow(textRenderer, Text.translatable("gui.justifylasers.energy_amount",
+                    handler.getEnergy(), handler.getEnergyCapacity(), Platform.ENERGY_UNIT), 22, 55, 0xFFF3F7FF);
+            String[] labels = {"crystal", "silk", "drops", "scorch", "ignite"};
+            for (int slot = 0; slot < labels.length; slot++) {
+                Text label = Text.translatable("gui.justifylasers.slot." + labels[slot]);
+                context.drawText(textRenderer, label, 44 + slot * 42 - textRenderer.getWidth(label) / 2, 71, 0xFFB6C5D9, false);
+            }
+            if (backgroundHeight >= 270) {
+                context.drawText(textRenderer, Text.translatable("gui.justifylasers.module_hint"), 22, 207, 0xFF98A4B5, false);
+            }
+            context.drawTextWithShadow(textRenderer, Text.translatable("gui.justifylasers.energy_cost", handler.getEnergyCost(),
+                            Platform.ENERGY_UNIT),
+                    22, backgroundHeight - 20, 0xFFF3F7FF);
+            return;
+        }
+        if (page == Page.MINING) {
+            context.drawTextWithShadow(textRenderer, Text.translatable("gui.justifylasers.mining_settings"),
+                    titleX, titleY, 0xFFF3F7FF);
+            context.drawTextWithShadow(textRenderer,
+                    toggleLabel("gui.justifylasers.break_blocks", handler.breaksBlocks()), 18, 28, 0xFFFFFFFF);
+            int summaryY = Math.min(200, backgroundHeight - 62);
+            context.drawTextWithShadow(textRenderer, valueLabel("gui.justifylasers.mining_example",
+                    String.format(Locale.ROOT, "%.2f", LaserMining.ticksToBreak(1.5F, miningSpeedSlider.getStep()) / 20.0D)),
+                    22, summaryY, 0xFFF3F7FF);
+            context.drawText(textRenderer, Text.translatable("gui.justifylasers.mining_hardness_hint"),
+                    22, summaryY + 12, 0xFF98A4B5, false);
+            return;
+        }
+        if (page == Page.DAMAGE) {
             context.drawTextWithShadow(textRenderer, Text.translatable("gui.justifylasers.damage_settings"),
                     titleX, titleY, 0xFFF3F7FF);
             context.drawTextWithShadow(textRenderer,
@@ -456,7 +595,7 @@ public class LaserEmitterScreen extends HandledScreen<LaserEmitterScreenHandler>
             lastSubmittedStep = step;
             pendingServerStep = step;
             acknowledgementTicks = 40;
-            ClientPlayNetworking.send(new LaserSettingsPacket(handler.syncId, buttonBase + step));
+            ClientPlatform.sendSettings(new LaserSettingsPacket(handler.syncId, buttonBase + step));
         }
 
         private void tick() {

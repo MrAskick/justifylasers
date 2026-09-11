@@ -12,13 +12,14 @@
   "environment": "*",
   "entrypoints": {
     "client": [
-      "net.askcraft.justifylasers.client.JustifyLasersClient"
+      "net.askcraft.justifylasers.fabric.JustifyLasersFabricClient"
     ],
     "main": [
-      "net.askcraft.justifylasers.JustifyLasers"
+      "net.askcraft.justifylasers.fabric.JustifyLasersFabric"
     ]
   },
   "mixins": [
+    "justifylasers.mixins.json",
     {
       "config": "justifylasers.client.mixins.json",
       "environment": "client"
@@ -28,6 +29,6 @@
     "fabricloader": ">=${loader_version}",
     "fabric-api": "*",
     "minecraft": "${minecraft_version}",
-    "java": ">=17"
+    "java": ">=${java_version}"
   }
 }

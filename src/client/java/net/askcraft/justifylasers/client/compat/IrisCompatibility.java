@@ -4,7 +4,7 @@ import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.askcraft.justifylasers.JustifyLasers;
 import net.askcraft.justifylasers.client.render.LaserDepthMerger;
-import net.fabricmc.loader.api.FabricLoader;
+import net.askcraft.justifylasers.platform.Platform;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.Framebuffer;
 import org.lwjgl.opengl.GL11;
@@ -65,7 +65,7 @@ public final class IrisCompatibility {
         Method getOptionValues = null;
         Method getStringValueOrDefault = null;
 
-        if (FabricLoader.getInstance().isModLoaded("iris")) {
+        if (Platform.isModLoaded("iris") || Platform.isModLoaded("oculus")) {
             try {
                 Class<?> apiClass = Class.forName("net.irisshaders.iris.api.v0.IrisApi");
                 api = apiClass.getMethod("getInstance").invoke(null);

@@ -1,4 +1,5 @@
 {
+  "justifylasers:technical": false,
   "type": "minecraft:crafting_shaped",
   "category": "redstone",
   "pattern": [

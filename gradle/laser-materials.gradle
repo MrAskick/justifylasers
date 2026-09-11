@@ -7,7 +7,7 @@ import javax.imageio.ImageIO
 def laserMaterialOutput = layout.buildDirectory.dir('generated/laserMaterials')
 
 tasks.register('generateLaserMaterials') {
-    inputs.files(fileTree('src/main/resources/assets/justifylasers/textures/block') {
+    inputs.files(rootProject.fileTree('src/main/resources/assets/justifylasers/textures/block') {
         include 'laser_emitter_front_*.png'
     })
     outputs.dir(laserMaterialOutput)
@@ -34,7 +34,7 @@ tasks.register('generateLaserMaterials') {
         // LabPBR alpha 254 is fully emissive; 255 means no emission.
         ImageIO.write(solidImage(8, (int) 0xFE000000L), 'png', new File(beamOutput, 'beam_s.png'))
 
-        def textureDir = file('src/main/resources/assets/justifylasers/textures/block')
+        def textureDir = rootProject.file('src/main/resources/assets/justifylasers/textures/block')
         def reference = ImageIO.read(new File(textureDir, 'laser_emitter_front_red.png'))
         def emission = new BufferedImage(reference.width, reference.height, BufferedImage.TYPE_INT_ARGB)
         for (int y = 0; y < reference.height; y++) {

@@ -1,16 +1,14 @@
 package net.askcraft.justifylasers.client.render;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import net.fabricmc.fabric.api.client.rendering.v1.CoreShaderRegistrationCallback;
+import net.askcraft.justifylasers.platform.ClientPlatform;
+import net.askcraft.justifylasers.platform.RenderVersion;
 import net.minecraft.client.gl.Framebuffer;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
-import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
-import net.minecraft.util.Identifier;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
@@ -22,11 +20,7 @@ public final class LaserDepthMerger {
     private static ShaderProgram program;
 
     public static void initialize() {
-        CoreShaderRegistrationCallback.EVENT.register(context -> context.register(
-                new Identifier("justifylasers", "depth_merge"),
-                VertexFormats.POSITION,
-                loadedProgram -> program = loadedProgram
-        ));
+        ClientPlatform.registerDepthShader(loadedProgram -> program = loadedProgram);
     }
 
     /**
@@ -76,12 +70,11 @@ public final class LaserDepthMerger {
             setUniform(depthProgram, "RenderScale", renderScale);
             RenderSystem.setShader(() -> depthProgram);
 
-            BufferBuilder builder = Tessellator.getInstance().getBuffer();
-            builder.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION);
-            builder.vertex(-1.0D, -1.0D, 0.0D).next();
-            builder.vertex(1.0D, -1.0D, 0.0D).next();
-            builder.vertex(1.0D, 1.0D, 0.0D).next();
-            builder.vertex(-1.0D, 1.0D, 0.0D).next();
+            BufferBuilder builder = RenderVersion.beginQuads(VertexFormats.POSITION);
+            RenderVersion.endVertex(builder.vertex(-1.0F, -1.0F, 0.0F));
+            RenderVersion.endVertex(builder.vertex(1.0F, -1.0F, 0.0F));
+            RenderVersion.endVertex(builder.vertex(1.0F, 1.0F, 0.0F));
+            RenderVersion.endVertex(builder.vertex(-1.0F, 1.0F, 0.0F));
             BufferRenderer.drawWithGlobalProgram(builder.end());
             return GL11.glGetError() == GL11.GL_NO_ERROR;
         } finally {

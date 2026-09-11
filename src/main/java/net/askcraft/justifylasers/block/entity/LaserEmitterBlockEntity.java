@@ -2,22 +2,35 @@ package net.askcraft.justifylasers.block.entity;
 
 import net.askcraft.justifylasers.block.LaserEmitterBlock;
 import net.askcraft.justifylasers.block.LaserReceiverBlock;
+import net.askcraft.justifylasers.config.LaserConfig;
+import net.askcraft.justifylasers.energy.LaserEnergyBuffer;
+import net.askcraft.justifylasers.energy.LaserEnergyCost;
+import net.askcraft.justifylasers.energy.LaserModule;
+import net.askcraft.justifylasers.item.LaserCrystalItem;
+import net.askcraft.justifylasers.item.LaserModuleItem;
 import net.askcraft.justifylasers.laser.LaserBeamNetwork;
 import net.askcraft.justifylasers.laser.LaserBeamPath;
 import net.askcraft.justifylasers.laser.LaserBeamTrace;
 import net.askcraft.justifylasers.laser.LaserColor;
 import net.askcraft.justifylasers.laser.LaserDamage;
+import net.askcraft.justifylasers.laser.LaserMining;
 import net.askcraft.justifylasers.laser.LaserRedstoneMode;
+import net.askcraft.justifylasers.platform.InventoryNbt;
+import net.askcraft.justifylasers.platform.LaserBlockEntity;
+import net.askcraft.justifylasers.platform.LaserScreenFactory;
+import net.askcraft.justifylasers.platform.PlatformEnergyStorage;
 import net.askcraft.justifylasers.registry.ModBlockEntities;
+import net.askcraft.justifylasers.registry.ModBlocks;
 import net.askcraft.justifylasers.screen.LaserEmitterScreenHandler;
-import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
-import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
+import net.minecraft.inventory.Inventories;
+import net.minecraft.inventory.SidedInventory;
+import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.network.listener.ClientPlayPacketListener;
@@ -32,8 +45,10 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
+import net.minecraft.util.collection.DefaultedList;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
@@ -44,7 +59,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-public class LaserEmitterBlockEntity extends BlockEntity implements ExtendedScreenHandlerFactory {
+public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserScreenFactory, SidedInventory {
     public static final int MIN_RANGE = 1;
     public static final int MAX_RANGE = 512;
     public static final int DEFAULT_RANGE = 64;
@@ -53,7 +68,21 @@ public class LaserEmitterBlockEntity extends BlockEntity implements ExtendedScre
     public static final int DEFAULT_BEAM_WIDTH_STEP = BEAM_WIDTH_STEPS / 2;
     public static final float MIN_BEAM_WIDTH_SCALE = 0.1F;
     public static final float MAX_BEAM_WIDTH_SCALE = 10.0F;
-    public static final int PROPERTY_COUNT = 14;
+    public static final int PROPERTY_COUNT = 46;
+    public static final int MODULE_SLOT_COUNT = 9;
+
+    private final DefaultedList<ItemStack> modules = DefaultedList.ofSize(MODULE_SLOT_COUNT, ItemStack.EMPTY);
+    private final LaserEnergyBuffer energy = new LaserEnergyBuffer(() -> LaserConfig.get().capacity,
+            () -> LaserConfig.get().maxInput, this::markDirty);
+    private final PlatformEnergyStorage energyPort = new PlatformEnergyStorage(this);
+    private long lastEnergyTick = Long.MIN_VALUE;
+    private int paidEnergy;
+    private int syncedBeamRange = MIN_RANGE;
+    private int syncedBeamWidthStep;
+    @Nullable
+    private UUID owner;
+    private String ownerName = "";
+    private boolean privateAccess;
 
     private boolean enabled = true;
     private LaserRedstoneMode redstoneMode = LaserRedstoneMode.IGNORE;
@@ -61,6 +90,10 @@ public class LaserEmitterBlockEntity extends BlockEntity implements ExtendedScre
     private boolean breakBlocks;
     private boolean damageEntities;
     private boolean igniteEntities;
+    private int miningSpeedStep = LaserMining.DEFAULT_SPEED_STEP;
+    private boolean silkTouch;
+    private boolean dropBlocks = true;
+    private boolean scorchMarks = true;
     private int damageStep = LaserDamage.DEFAULT_DAMAGE_STEP;
     private int knockbackStep = LaserDamage.DEFAULT_KNOCKBACK_STEP;
     private int hitsPerSecond = LaserDamage.MAX_HITS_PER_SECOND;
@@ -75,6 +108,7 @@ public class LaserEmitterBlockEntity extends BlockEntity implements ExtendedScre
     private BlockPos heatedBlock;
     private float heat;
     private int lastBreakStage = -1;
+    private long lastMinedTick = Long.MIN_VALUE;
 
     private final PropertyDelegate propertyDelegate = new PropertyDelegate() {
         @Override
@@ -83,18 +117,35 @@ public class LaserEmitterBlockEntity extends BlockEntity implements ExtendedScre
                 case 0 -> enabled ? 1 : 0;
                 case 1 -> redstoneMode.ordinal();
                 case 2 -> color.ordinal();
-                case 3 -> breakBlocks ? 1 : 0;
-                case 4 -> damageEntities ? 1 : 0;
+                case 3 -> breaksBlocks() ? 1 : 0;
+                case 4 -> damagesEntities() ? 1 : 0;
                 case 5 -> active ? 1 : 0;
-                case 6 -> beamWidthStep;
+                case 6 -> getBeamWidthStep();
                 case 7 -> lightEmission ? 1 : 0;
                 case 8 -> minecraftLighting ? 1 : 0;
                 case 9 -> damageStep;
                 case 10 -> knockbackStep;
                 case 11 -> hitsPerSecond;
-                case 12 -> igniteEntities ? 1 : 0;
-                case 13 -> beamRange;
-                default -> 0;
+                case 12 -> ignitesEntities() ? 1 : 0;
+                case 13 -> getBeamRange();
+                case 14 -> miningSpeedStep;
+                case 15 -> hasSilkTouch() ? 1 : 0;
+                case 16 -> dropsBlocks() ? 1 : 0;
+                case 17 -> showsScorchMarks() ? 1 : 0;
+                case 18 -> isPoweredEmitter() ? 1 : 0;
+                case 19 -> LaserConfig.technicalMode() ? 1 : 0;
+                case 20 -> energy.stored() & 0xFFFF;
+                case 21 -> energy.stored() >>> 16;
+                case 22 -> energy.capacity() & 0xFFFF;
+                case 23 -> energy.capacity() >>> 16;
+                case 24 -> energyCost() & 0xFFFF;
+                case 25 -> energyCost() >>> 16;
+                case 26 -> moduleMask();
+                case 27 -> crystal() != null ? 1 : 0;
+                case 28 -> privateAccess ? 1 : 0;
+                case 29 -> world != null && world.isReceivingRedstonePower(pos) ? 1 : 0;
+                default -> index >= 30 && index < 46 && index - 30 < ownerName.length()
+                        ? ownerName.charAt(index - 30) : 0;
             };
         }
 
@@ -116,6 +167,10 @@ public class LaserEmitterBlockEntity extends BlockEntity implements ExtendedScre
                 case 11 -> hitsPerSecond = LaserDamage.clampHitsPerSecond(value);
                 case 12 -> igniteEntities = value != 0;
                 case 13 -> beamRange = clampBeamRange(value);
+                case 14 -> miningSpeedStep = LaserMining.clampSpeedStep(value);
+                case 15 -> silkTouch = value != 0;
+                case 16 -> dropBlocks = value != 0;
+                case 17 -> scorchMarks = value != 0;
                 default -> {
                 }
             }
@@ -147,6 +202,7 @@ public class LaserEmitterBlockEntity extends BlockEntity implements ExtendedScre
 
     public static void serverTick(World world, BlockPos pos, BlockState state, LaserEmitterBlockEntity emitter) {
         emitter.ticks++;
+        emitter.payForTick();
         emitter.refreshActiveState();
         LaserBeamNetwork.beginEmitterTick(world, pos);
 
@@ -158,7 +214,7 @@ public class LaserEmitterBlockEntity extends BlockEntity implements ExtendedScre
         LaserBeamPath path = LaserBeamNetwork.path(emitter, 1.0F);
         LaserBeamTrace trace = path.last();
 
-        if (emitter.damageEntities && LaserDamage.isHitTick(emitter.ticks - 1L, emitter.hitsPerSecond)) {
+        if (emitter.damagesEntities() && LaserDamage.isHitTick(emitter.ticks - 1L, emitter.hitsPerSecond)) {
             Set<UUID> hitEntities = new HashSet<>();
             for (LaserBeamTrace segment : path.segments()) {
                 emitter.damageEntities(segment, hitEntities);
@@ -170,7 +226,7 @@ public class LaserEmitterBlockEntity extends BlockEntity implements ExtendedScre
             BlockState hitState = world.getBlockState(trace.hitBlock());
             boolean receiverInput = hitState.getBlock() instanceof LaserReceiverBlock
                     && hitState.get(LaserReceiverBlock.FACING) == trace.hitSide();
-            if (emitter.breakBlocks && !receiverInput) {
+            if (emitter.breaksBlocks() && !receiverInput) {
                 emitter.heatBlock(trace.hitBlock(), trace.end());
             } else {
                 emitter.clearHeating();
@@ -194,7 +250,8 @@ public class LaserEmitterBlockEntity extends BlockEntity implements ExtendedScre
         }
 
         boolean powered = world.isReceivingRedstonePower(pos);
-        boolean shouldBeActive = enabled && redstoneMode.allows(powered);
+        boolean shouldBeActive = enabled && redstoneMode.allows(powered) && (!isPoweredEmitter()
+                || LaserConfig.technicalMode() && crystal() != null && lastEnergyTick == world.getTime() && paidEnergy >= energyCost());
         boolean activeChanged = active != shouldBeActive;
         active = shouldBeActive;
         boolean shouldEmitLight = shouldBeActive && lightEmission;
@@ -256,7 +313,7 @@ public class LaserEmitterBlockEntity extends BlockEntity implements ExtendedScre
             if ((hitBox.contains(trace.start()) || hitBox.raycast(trace.start(), trace.end()).isPresent())
                     && hitEntities.add(target.getUuid())) {
                 if (LaserDamage.hit(target, damageSource, trace.axis(), damage, knockback)
-                        && igniteEntities && !target.isFireImmune()) {
+                        && ignitesEntities() && !target.isFireImmune()) {
                     target.setOnFireFor(4);
                 }
             }
@@ -285,7 +342,7 @@ public class LaserEmitterBlockEntity extends BlockEntity implements ExtendedScre
                 0.025D
         );
 
-        if (breakBlocks && ticks % 4L == 0L) {
+        if (breaksBlocks() && ticks % 4L == 0L) {
             serverWorld.spawnParticles(
                     ParticleTypes.SMOKE,
                     impact.x, impact.y, impact.z,
@@ -297,7 +354,7 @@ public class LaserEmitterBlockEntity extends BlockEntity implements ExtendedScre
     }
 
     private void heatBlock(BlockPos targetPos, Vec3d impact) {
-        if (!(world instanceof ServerWorld serverWorld)) {
+        if (!(world instanceof ServerWorld serverWorld) || serverWorld.getTime() == lastMinedTick) {
             return;
         }
 
@@ -315,7 +372,7 @@ public class LaserEmitterBlockEntity extends BlockEntity implements ExtendedScre
         }
 
         heat += 1.0F;
-        float requiredHeat = MathHelper.clamp(18.0F + hardness * 28.0F, 12.0F, 600.0F);
+        int requiredHeat = LaserMining.ticksToBreak(hardness, miningSpeedStep);
         int breakStage = Math.min(9, (int) (heat / requiredHeat * 10.0F));
         if (breakStage != lastBreakStage) {
             world.setBlockBreakingInfo(breakerId(), targetPos, breakStage);
@@ -327,8 +384,9 @@ public class LaserEmitterBlockEntity extends BlockEntity implements ExtendedScre
         }
 
         world.setBlockBreakingInfo(breakerId(), targetPos, -1);
-        boolean broken = serverWorld.breakBlock(targetPos, true, null);
+        boolean broken = LaserMining.breakBlock(serverWorld, targetPos, dropsBlocks(), hasSilkTouch());
         if (broken) {
+            lastMinedTick = serverWorld.getTime();
             LaserBeamNetwork.invalidate(world);
             serverWorld.spawnParticles(
                     ParticleTypes.FLAME,
@@ -365,6 +423,7 @@ public class LaserEmitterBlockEntity extends BlockEntity implements ExtendedScre
     }
 
     public void handleButton(int buttonId) {
+        if (!allowsSetting(buttonId)) return;
         if (buttonId >= LaserEmitterScreenHandler.BEAM_WIDTH_BUTTON_BASE
                 && buttonId <= LaserEmitterScreenHandler.BEAM_WIDTH_BUTTON_MAX) {
             beamWidthStep = clampBeamWidthStep(buttonId - LaserEmitterScreenHandler.BEAM_WIDTH_BUTTON_BASE);
@@ -380,6 +439,9 @@ public class LaserEmitterBlockEntity extends BlockEntity implements ExtendedScre
         } else if (buttonId >= LaserEmitterScreenHandler.RANGE_BUTTON_MIN
                 && buttonId <= LaserEmitterScreenHandler.RANGE_BUTTON_MAX) {
             beamRange = buttonId - LaserEmitterScreenHandler.RANGE_BUTTON_BASE;
+        } else if (buttonId >= LaserEmitterScreenHandler.MINING_SPEED_BUTTON_BASE
+                && buttonId <= LaserEmitterScreenHandler.MINING_SPEED_BUTTON_MAX) {
+            miningSpeedStep = buttonId - LaserEmitterScreenHandler.MINING_SPEED_BUTTON_BASE;
         } else {
             switch (buttonId) {
                 case LaserEmitterScreenHandler.BUTTON_ENABLED -> enabled = !enabled;
@@ -390,6 +452,15 @@ public class LaserEmitterBlockEntity extends BlockEntity implements ExtendedScre
                 case LaserEmitterScreenHandler.BUTTON_LIGHT_EMISSION -> lightEmission = !lightEmission;
                 case LaserEmitterScreenHandler.BUTTON_MINECRAFT_LIGHTING -> minecraftLighting = !minecraftLighting;
                 case LaserEmitterScreenHandler.BUTTON_IGNITE_ENTITIES -> igniteEntities = !igniteEntities;
+                case LaserEmitterScreenHandler.BUTTON_SILK_TOUCH -> silkTouch = !silkTouch;
+                case LaserEmitterScreenHandler.BUTTON_DROP_BLOCKS -> dropBlocks = !dropBlocks;
+                case LaserEmitterScreenHandler.BUTTON_SCORCH_MARKS -> scorchMarks = !scorchMarks;
+                case LaserEmitterScreenHandler.BUTTON_RESET_MINING_SETTINGS -> {
+                    miningSpeedStep = LaserMining.DEFAULT_SPEED_STEP;
+                    silkTouch = false;
+                    dropBlocks = true;
+                    scorchMarks = true;
+                }
                 case LaserEmitterScreenHandler.BUTTON_RESET_DAMAGE_SETTINGS -> {
                     damageStep = LaserDamage.DEFAULT_DAMAGE_STEP;
                     knockbackStep = LaserDamage.DEFAULT_KNOCKBACK_STEP;
@@ -406,10 +477,24 @@ public class LaserEmitterBlockEntity extends BlockEntity implements ExtendedScre
     }
 
     private void sync() {
+        syncedBeamRange = getBeamRange();
+        syncedBeamWidthStep = getBeamWidthStep();
         LaserBeamNetwork.invalidate(world);
-        markDirty();
+        super.markDirty();
         if (world != null) {
             world.updateListeners(pos, getCachedState(), getCachedState(), Block.NOTIFY_LISTENERS);
+        }
+    }
+
+    @Override
+    public void markDirty() {
+        // Hoppers merge stacks in place, without calling setStack.
+        if (world != null && !world.isClient && isPoweredEmitter()
+                && (syncedBeamRange != getBeamRange() || syncedBeamWidthStep != getBeamWidthStep())) {
+            refreshActiveState();
+            sync();
+        } else {
+            super.markDirty();
         }
     }
 
@@ -427,11 +512,20 @@ public class LaserEmitterBlockEntity extends BlockEntity implements ExtendedScre
     }
 
     public float getBeamWidthScale() {
-        return beamWidthScale(beamWidthStep);
+        return beamWidthScale(getBeamWidthStep());
+    }
+
+    public int getBeamWidthStep() {
+        if (!isPoweredEmitter()) return beamWidthStep;
+        ItemStack stack = modules.get(LaserModule.THICKNESS.slot());
+        return hasModule(LaserModule.THICKNESS) ? Math.round(BEAM_WIDTH_STEPS * stack.getCount() / 64.0F) : 0;
     }
 
     public int getBeamRange() {
-        return beamRange;
+        if (!isPoweredEmitter()) return beamRange;
+        ItemStack stack = modules.get(LaserModule.RANGE.slot());
+        return stack.getItem() instanceof LaserModuleItem item && item.module() == LaserModule.RANGE
+                ? clampBeamRange(MIN_RANGE + stack.getCount() * item.rangePerItem()) : MIN_RANGE;
     }
 
     public static int clampBeamRange(int range) {
@@ -440,6 +534,227 @@ public class LaserEmitterBlockEntity extends BlockEntity implements ExtendedScre
 
     public boolean isLightEmissionEnabled() {
         return lightEmission;
+    }
+
+    public boolean showsScorchMarks() {
+        return scorchMarks && hasModule(LaserModule.SCORCH_MARKS);
+    }
+
+    public boolean isPoweredEmitter() {
+        return getCachedState().isOf(ModBlocks.POWERED_LASER_EMITTER);
+    }
+
+    public boolean acceptsEnergy() {
+        return isPoweredEmitter() && LaserConfig.technicalMode() && world != null && !world.isClient && !isRemoved();
+    }
+
+    public LaserEnergyBuffer energy() {
+        return energy;
+    }
+
+    public PlatformEnergyStorage energyPort() {
+        return energyPort;
+    }
+
+    public int energyCost() {
+        if (!isPoweredEmitter()) return 0;
+        long moduleCost = hasModule(LaserModule.THICKNESS) ? modules.get(LaserModule.THICKNESS.slot()).getCount() : 0;
+        ItemStack range = modules.get(LaserModule.RANGE.slot());
+        if (range.getItem() instanceof LaserModuleItem item && item.module() == LaserModule.RANGE) {
+            // Charge installed upgrades, including the last tier-II module at the range cap.
+            moduleCost += (long) range.getCount() * item.rangePerItem();
+        }
+        return LaserEnergyCost.perTick(LaserConfig.get().rates(), breaksBlocks(), miningSpeedStep, damagesEntities(),
+                LaserDamage.damageForStep(damageStep), hitsPerSecond, LaserDamage.knockbackForStep(knockbackStep), ignitesEntities(), moduleCost);
+    }
+
+    private void payForTick() {
+        if (!isPoweredEmitter() || world == null || world.isClient || lastEnergyTick == world.getTime()) return;
+        lastEnergyTick = world.getTime();
+        paidEnergy = 0;
+        LaserCrystalItem crystal = crystal();
+        if (crystal != null) color = crystal.color();
+        if (enabled && LaserConfig.technicalMode() && crystal != null && redstoneMode.allows(world.isReceivingRedstonePower(pos))) {
+            int cost = energyCost();
+            if (energy.consume(cost)) paidEnergy = cost;
+        }
+    }
+
+    @Nullable
+    public LaserCrystalItem crystal() {
+        return modules.get(0).getItem() instanceof LaserCrystalItem crystal ? crystal : null;
+    }
+
+    public boolean hasModule(LaserModule module) {
+        return !isPoweredEmitter() || modules.get(module.slot()).getItem() instanceof LaserModuleItem item && item.module() == module;
+    }
+
+    private int moduleMask() {
+        int mask = 0;
+        for (LaserModule module : LaserModule.values()) {
+            if (hasModule(module)) mask |= 1 << module.ordinal();
+        }
+        return mask;
+    }
+
+    public boolean hasSilkTouch() {
+        return silkTouch && hasModule(LaserModule.SILK_TOUCH);
+    }
+
+    public boolean dropsBlocks() {
+        return dropBlocks && hasModule(LaserModule.BLOCK_DROPS);
+    }
+
+    public boolean ignitesEntities() {
+        return igniteEntities && hasModule(LaserModule.IGNITION);
+    }
+
+    public boolean breaksBlocks() {
+        return breakBlocks && hasModule(LaserModule.BLOCK_DESTRUCTION);
+    }
+
+    public boolean damagesEntities() {
+        return damageEntities && hasModule(LaserModule.ENTITY_DAMAGE);
+    }
+
+    public boolean allowsSetting(int id) {
+        if (!isPoweredEmitter()) return true;
+        if (id >= LaserEmitterScreenHandler.BEAM_WIDTH_BUTTON_BASE && id <= LaserEmitterScreenHandler.BEAM_WIDTH_BUTTON_MAX
+                || id >= LaserEmitterScreenHandler.RANGE_BUTTON_MIN && id <= LaserEmitterScreenHandler.RANGE_BUTTON_MAX) return false;
+        if (id >= LaserEmitterScreenHandler.DAMAGE_BUTTON_MIN && id <= LaserEmitterScreenHandler.DAMAGE_BUTTON_MAX
+                || id >= LaserEmitterScreenHandler.KNOCKBACK_BUTTON_BASE && id <= LaserEmitterScreenHandler.KNOCKBACK_BUTTON_MAX
+                || id >= LaserEmitterScreenHandler.HIT_RATE_BUTTON_MIN && id <= LaserEmitterScreenHandler.HIT_RATE_BUTTON_MAX) {
+            return hasModule(LaserModule.ENTITY_DAMAGE);
+        }
+        if (id >= LaserEmitterScreenHandler.MINING_SPEED_BUTTON_BASE && id <= LaserEmitterScreenHandler.MINING_SPEED_BUTTON_MAX) {
+            return hasModule(LaserModule.BLOCK_DESTRUCTION);
+        }
+        return switch (id) {
+            case LaserEmitterScreenHandler.BUTTON_COLOR -> false;
+            case LaserEmitterScreenHandler.BUTTON_BREAK_BLOCKS, LaserEmitterScreenHandler.BUTTON_RESET_MINING_SETTINGS -> hasModule(LaserModule.BLOCK_DESTRUCTION);
+            case LaserEmitterScreenHandler.BUTTON_DAMAGE_ENTITIES, LaserEmitterScreenHandler.BUTTON_RESET_DAMAGE_SETTINGS -> hasModule(LaserModule.ENTITY_DAMAGE);
+            case LaserEmitterScreenHandler.BUTTON_SILK_TOUCH -> hasModule(LaserModule.SILK_TOUCH);
+            case LaserEmitterScreenHandler.BUTTON_DROP_BLOCKS -> hasModule(LaserModule.BLOCK_DROPS);
+            case LaserEmitterScreenHandler.BUTTON_SCORCH_MARKS -> hasModule(LaserModule.SCORCH_MARKS);
+            case LaserEmitterScreenHandler.BUTTON_IGNITE_ENTITIES -> hasModule(LaserModule.IGNITION) && hasModule(LaserModule.ENTITY_DAMAGE);
+            default -> true;
+        };
+    }
+
+    @Override
+    public int size() {
+        return isPoweredEmitter() ? MODULE_SLOT_COUNT : 0;
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return modules.stream().allMatch(ItemStack::isEmpty);
+    }
+
+    @Override
+    public ItemStack getStack(int slot) {
+        return modules.get(slot);
+    }
+
+    @Override
+    public ItemStack removeStack(int slot, int amount) {
+        ItemStack removed = Inventories.splitStack(modules, slot, amount);
+        if (!removed.isEmpty()) inventoryChanged();
+        return removed;
+    }
+
+    @Override
+    public ItemStack removeStack(int slot) {
+        ItemStack removed = Inventories.removeStack(modules, slot);
+        if (!removed.isEmpty()) inventoryChanged();
+        return removed;
+    }
+
+    @Override
+    public void setStack(int slot, ItemStack stack) {
+        if (!stack.isEmpty() && (!isValid(slot, stack) || stack.getCount() > stack.getMaxCount())) {
+            throw new IllegalArgumentException("Invalid crystal/module stack for slot " + slot);
+        }
+        modules.set(slot, stack);
+        inventoryChanged();
+    }
+
+    @Override
+    public boolean isValid(int slot, ItemStack stack) {
+        if (!isPoweredEmitter() || slot < 0 || slot >= MODULE_SLOT_COUNT) return false;
+        return slot == 0 ? stack.getItem() instanceof LaserCrystalItem
+                : stack.getItem() instanceof LaserModuleItem item && item.module().slot() == slot;
+    }
+
+    @Override
+    public int getMaxCountPerStack() {
+        return 64;
+    }
+
+    @Override
+    public int[] getAvailableSlots(Direction side) {
+        return isPoweredEmitter() && !privateAccess ? new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8} : new int[0];
+    }
+
+    @Override
+    public boolean canInsert(int slot, ItemStack stack, @Nullable Direction side) {
+        return !privateAccess && isValid(slot, stack);
+    }
+
+    @Override
+    public boolean canExtract(int slot, ItemStack stack, Direction side) {
+        return !privateAccess && isPoweredEmitter();
+    }
+
+    @Override
+    public boolean canPlayerUse(PlayerEntity player) {
+        return world != null && world.getBlockEntity(pos) == this
+                && player.squaredDistanceTo(Vec3d.ofCenter(pos)) <= 64 && canAccess(player);
+    }
+
+    public boolean canAccess(PlayerEntity player) {
+        return !isPoweredEmitter() || !privateAccess || canManageSecurity(player);
+    }
+
+    public boolean canManageSecurity(PlayerEntity player) {
+        return isPoweredEmitter() && (player.getUuid().equals(owner) || player.hasPermissionLevel(2));
+    }
+
+    public void initializeOwner(PlayerEntity player) {
+        if (!isPoweredEmitter() || player.isSpectator()) return;
+        if (owner == null) owner = player.getUuid();
+        if (owner.equals(player.getUuid())) {
+            ownerName = player.getGameProfile().getName();
+            sync();
+        }
+    }
+
+    public String ownerName() {
+        return ownerName;
+    }
+
+    public boolean isPrivate() {
+        return privateAccess;
+    }
+
+    public boolean togglePrivacy(PlayerEntity player) {
+        if (!canManageSecurity(player)) return false;
+        privateAccess = !privateAccess;
+        sync();
+        return true;
+    }
+
+    @Override
+    public void clear() {
+        modules.clear();
+        inventoryChanged();
+    }
+
+    public void inventoryChanged() {
+        LaserCrystalItem crystal = crystal();
+        if (isPoweredEmitter() && crystal != null) color = crystal.color();
+        refreshActiveState();
+        sync();
     }
 
     public static int clampBeamWidthStep(int step) {
@@ -477,14 +792,17 @@ public class LaserEmitterBlockEntity extends BlockEntity implements ExtendedScre
     }
 
     @Override
-    protected void writeNbt(NbtCompound nbt) {
-        super.writeNbt(nbt);
+    protected void writeLaserNbt(NbtCompound nbt, InventoryNbt inventory) {
         nbt.putBoolean("Enabled", enabled);
         nbt.putInt("RedstoneMode", redstoneMode.ordinal());
         nbt.putInt("Color", color.ordinal());
         nbt.putBoolean("BreakBlocks", breakBlocks);
         nbt.putBoolean("DamageEntities", damageEntities);
         nbt.putBoolean("IgniteEntities", igniteEntities);
+        nbt.putInt("MiningSpeedStep", miningSpeedStep);
+        nbt.putBoolean("SilkTouch", silkTouch);
+        nbt.putBoolean("DropBlocks", dropBlocks);
+        nbt.putBoolean("ScorchMarks", scorchMarks);
         nbt.putInt("DamageStep", damageStep);
         nbt.putInt("KnockbackStep", knockbackStep);
         nbt.putInt("HitsPerSecond", hitsPerSecond);
@@ -492,12 +810,24 @@ public class LaserEmitterBlockEntity extends BlockEntity implements ExtendedScre
         nbt.putInt("BeamRange", beamRange);
         nbt.putBoolean("LightEmission", lightEmission);
         nbt.putBoolean("MinecraftLighting", minecraftLighting);
+        if (isPoweredEmitter()) {
+            nbt.putInt("Energy", energy.stored());
+            inventory.write(nbt, modules);
+            if (owner != null) nbt.putUuid("Owner", owner);
+            nbt.putString("OwnerName", ownerName);
+            nbt.putBoolean("PrivateAccess", privateAccess);
+        }
     }
 
     @Override
-    public void readNbt(NbtCompound nbt) {
-        super.readNbt(nbt);
+    protected void readLaserNbt(NbtCompound nbt, InventoryNbt inventory) {
         LaserBeamNetwork.invalidate(world);
+        energy.restore(nbt.getLong("Energy"));
+        modules.clear();
+        inventory.read(nbt, modules);
+        owner = nbt.containsUuid("Owner") ? nbt.getUuid("Owner") : null;
+        ownerName = nbt.getString("OwnerName");
+        privateAccess = owner != null && nbt.getBoolean("PrivateAccess");
         if (nbt.contains("Enabled")) {
             enabled = nbt.getBoolean("Enabled");
         }
@@ -508,6 +838,10 @@ public class LaserEmitterBlockEntity extends BlockEntity implements ExtendedScre
             damageEntities = nbt.getBoolean("DamageEntities");
         }
         igniteEntities = nbt.getBoolean("IgniteEntities");
+        miningSpeedStep = LaserMining.clampSpeedStep(nbt.getInt("MiningSpeedStep"));
+        silkTouch = nbt.getBoolean("SilkTouch");
+        dropBlocks = !nbt.contains("DropBlocks") || nbt.getBoolean("DropBlocks");
+        scorchMarks = !nbt.contains("ScorchMarks") || nbt.getBoolean("ScorchMarks");
         damageStep = nbt.contains("DamageStep")
                 ? LaserDamage.clampDamageStep(nbt.getInt("DamageStep"))
                 : LaserDamage.DEFAULT_DAMAGE_STEP;
@@ -535,23 +869,20 @@ public class LaserEmitterBlockEntity extends BlockEntity implements ExtendedScre
     }
 
     @Override
-    public NbtCompound toInitialChunkDataNbt() {
-        return createNbt();
-    }
-
-    @Override
     public void writeScreenOpeningData(ServerPlayerEntity player, PacketByteBuf buf) {
         buf.writeBlockPos(pos);
     }
 
     @Override
     public Text getDisplayName() {
-        return Text.translatable("block.justifylasers.laser_emitter");
+        return Text.translatable(isPoweredEmitter() ? "block.justifylasers.powered_laser_emitter"
+                : LaserConfig.technicalMode() ? "block.justifylasers.creative_laser_emitter" : "block.justifylasers.laser_emitter");
     }
 
     @Nullable
     @Override
     public ScreenHandler createMenu(int syncId, PlayerInventory playerInventory, PlayerEntity player) {
+        if (!canPlayerUse(player)) return null;
         return new LaserEmitterScreenHandler(syncId, playerInventory, this);
     }
 }
