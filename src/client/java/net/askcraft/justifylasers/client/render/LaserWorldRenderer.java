@@ -20,6 +20,9 @@ public final class LaserWorldRenderer {
             return;
         }
         Vec3d camera = context.camera().getPos();
+        LaserGunRenderer.renderBeams(context);
+        LaserSaberRenderer.renderWorld(context);
+        LaserConfiguratorPreview.render(context);
         MatrixStack matrices = context.matrixStack();
         // Cull the optical path, not the emitter's chunk section: a long beam can cross the
         // camera while its source is far outside the terrain renderer's visible sections.
@@ -38,7 +41,8 @@ public final class LaserWorldRenderer {
                         continue;
                     }
                     LaserBeamRenderer.render(trace, origin, entry.getKey(), index,
-                            emitter.getTicks() + context.tickDelta(), emitter.getColor().rgb(), width,
+                            emitter.getTicks() + context.tickDelta(), trace.rgb() >= 0 ? trace.rgb() : emitter.getColor().rgb(),
+                            width * (float) Math.sqrt(trace.power()),
                             emitter.isLightEmissionEnabled(), matrices, consumers);
                 }
             } finally {

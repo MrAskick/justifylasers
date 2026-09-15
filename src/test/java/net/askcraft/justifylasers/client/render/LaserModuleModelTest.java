@@ -12,7 +12,7 @@ class LaserModuleModelTest {
     @Test
     void everyModuleHasItsOwnSolidMeshWithValidNormalsAndBounds() {
         var meshes = LaserModuleModel.meshes();
-        assertEquals(10, meshes.size());
+        assertEquals(11, meshes.size());
         var unique = new HashSet<>();
         for (var entry : meshes.entrySet()) {
             String id = entry.getKey();

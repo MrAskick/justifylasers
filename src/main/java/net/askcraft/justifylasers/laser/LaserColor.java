@@ -62,4 +62,20 @@ public enum LaserColor implements StringIdentifiable {
     public static LaserColor byIndex(int index) {
         return VALUES[Math.floorMod(index, VALUES.length)];
     }
+
+    public static LaserColor nearest(int rgb) {
+        LaserColor closest = RED;
+        int distance = Integer.MAX_VALUE;
+        for (LaserColor candidate : VALUES) {
+            int r = (rgb >> 16 & 255) - (candidate.rgb >> 16 & 255);
+            int g = (rgb >> 8 & 255) - (candidate.rgb >> 8 & 255);
+            int b = (rgb & 255) - (candidate.rgb & 255);
+            int difference = r * r + g * g + b * b;
+            if (difference < distance) {
+                distance = difference;
+                closest = candidate;
+            }
+        }
+        return closest;
+    }
 }

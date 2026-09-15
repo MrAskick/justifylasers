@@ -1,6 +1,5 @@
 package net.askcraft.justifylasers.client.render;
 
-import net.askcraft.justifylasers.JustifyLasers;
 import net.askcraft.justifylasers.platform.RenderVersion;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.RenderLayer;
@@ -8,7 +7,6 @@ import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.model.json.ModelTransformationMode;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.util.Identifier;
 import net.minecraft.util.math.Vec3d;
 
 import java.util.ArrayList;
@@ -18,24 +16,19 @@ import java.util.Map;
 
 public final class LaserModuleModel {
     enum Material {
-        FRAME("frame", false), STEEL("steel", false), GOLD("gold", false),
-        CYAN("cyan_light", true), RED("red_light", true), ORANGE("orange", true),
-        WHITE("white_light", true), BLUE("blue", true), YELLOW("yellow", true),
-        ENERGY("cyan", true), HEAT("red", true);
-
-        final Identifier texture;
+        FRAME(false), STEEL(false), GOLD(false), CYAN(true), RED(true), ORANGE(true),
+        WHITE(true), BLUE(true), YELLOW(true), ENERGY(true), HEAT(true);
         final boolean emissive;
-
-        Material(String texture, boolean emissive) {
-            this.texture = JustifyLasers.id("textures/item/crystal/" + texture + ".png");
-            this.emissive = emissive;
-        }
+        Material(boolean emissive) { this.emissive = emissive; }
     }
 
     record Face(Material material, Vec3d a, Vec3d b, Vec3d c, Vec3d d, Vec3d normal,
-                Vec3d uvCenter, double uvRadius) { }
+                ComponentAtlas.Uv ua, ComponentAtlas.Uv ub, ComponentAtlas.Uv uc, ComponentAtlas.Uv ud) { }
 
     private static final Map<String, List<Face>> MESHES = buildMeshes();
+    private static final Map<String, ItemModelBounds> BOUNDS = MESHES.entrySet().stream().collect(java.util.stream.Collectors.toUnmodifiableMap(
+            Map.Entry::getKey, entry -> ItemModelBounds.of(entry.getValue().stream()
+                    .flatMap(face -> java.util.stream.Stream.of(face.a(), face.b(), face.c(), face.d())).toList())));
 
     public static void render(String id, ModelTransformationMode mode, MatrixStack matrices,
                               VertexConsumerProvider consumers, int light, int overlay) {
@@ -43,17 +36,19 @@ public final class LaserModuleModel {
         if (mesh == null) return;
         matrices.push();
         try {
-            matrices.scale(1 / 16.0F, 1 / 16.0F, 1 / 16.0F);
+            if (mode == ModelTransformationMode.GUI) BOUNDS.get(id).fitGui(matrices);
+            else matrices.scale(1 / 16.0F, 1 / 16.0F, 1 / 16.0F);
+            var texture = ComponentAtlas.texture("module/" + id, "default");
             for (Material material : Material.values()) {
                 VertexConsumer buffer = consumers.getBuffer(material.emissive && mode == ModelTransformationMode.GUI
-                        ? LaserCrystalModel.EmissiveLayers.get(material.texture) : RenderLayer.getEntitySolid(material.texture));
+                        ? LaserCrystalModel.EmissiveLayers.get(texture) : RenderLayer.getEntitySolid(texture));
                 int illumination = material.emissive ? LightmapTextureManager.MAX_LIGHT_COORDINATE : light;
                 for (Face face : mesh) {
                     if (face.material != material) continue;
-                    vertex(buffer, matrices, face, face.a, 0, 1, illumination, overlay);
-                    vertex(buffer, matrices, face, face.b, 0, 0, illumination, overlay);
-                    vertex(buffer, matrices, face, face.c, 1, 0, illumination, overlay);
-                    vertex(buffer, matrices, face, face.d, 1, 1, illumination, overlay);
+                    vertex(buffer, matrices, face, face.a, face.ua, illumination, overlay);
+                    vertex(buffer, matrices, face, face.b, face.ub, illumination, overlay);
+                    vertex(buffer, matrices, face, face.c, face.uc, illumination, overlay);
+                    vertex(buffer, matrices, face, face.d, face.ud, illumination, overlay);
                 }
             }
         } finally {
@@ -66,16 +61,11 @@ public final class LaserModuleModel {
     }
 
     private static void vertex(VertexConsumer buffer, MatrixStack matrices, Face face, Vec3d point,
-                               float u, float v, int light, int overlay) {
-        if (face.uvRadius > 0) {
-            // A lens cap shares one planar UV field across all triangles, avoiding radial texture seams.
-            u = (float) (0.5 + (point.x - face.uvCenter.x) / (2 * face.uvRadius));
-            v = (float) (0.5 - (point.y - face.uvCenter.y) / (2 * face.uvRadius));
-        }
+                               ComponentAtlas.Uv uv, int light, int overlay) {
         Vec3d normal = face.normal;
         RenderVersion.endVertex(RenderVersion.normal(buffer.vertex(matrices.peek().getPositionMatrix(),
                         (float) point.x, (float) point.y, (float) point.z)
-                .color(255, 255, 255, 255).texture(u, v).overlay(overlay).light(light),
+                .color(255, 255, 255, 255).texture(uv.u(), uv.v()).overlay(overlay).light(light),
                 matrices.peek().getNormalMatrix(), (float) normal.x, (float) normal.y, (float) normal.z));
     }
 
@@ -91,20 +81,101 @@ public final class LaserModuleModel {
         result.put("block_drops_module", collector());
         result.put("scorch_marks_module", thermal(false));
         result.put("ignition_module", thermal(true));
-        result.replaceAll((id, mesh) -> List.copyOf(mesh));
+        result.put("target_filter_module", targetFilter());
+        result.replaceAll((id, mesh) -> removeCoveredPanels(mesh));
         return Map.copyOf(result);
     }
 
+    // Keep the later detail panel and trim the coplanar chassis underneath it.
+    // Unlike a depth bias, this also produces a single surface in shader shadow passes.
+    private static List<Face> removeCoveredPanels(List<Face> mesh) {
+        List<Face> result = new ArrayList<>();
+        for (Face detail : mesh) {
+            List<Face> visible = new ArrayList<>();
+            for (Face base : result) visible.addAll(trimPanel(base, detail));
+            visible.add(detail);
+            result = visible;
+        }
+        return List.copyOf(result);
+    }
+
+    private static List<Face> trimPanel(Face base, Face detail) {
+        if (base.normal.dotProduct(detail.normal) < 0.999999
+                || Math.abs(base.normal.dotProduct(base.a.subtract(detail.a))) > 1e-7) return List.of(base);
+        int axis = Math.abs(base.normal.x) > 0.999999 ? 0 : Math.abs(base.normal.y) > 0.999999 ? 1
+                : Math.abs(base.normal.z) > 0.999999 ? 2 : -1;
+        if (axis < 0 || !rectangular(base) || !rectangular(detail)) return List.of(base);
+        int u = (axis + 1) % 3, v = (axis + 2) % 3;
+        double[] a = bounds(base, u, v), b = bounds(detail, u, v);
+        double x1 = Math.max(a[0], b[0]), y1 = Math.max(a[1], b[1]);
+        double x2 = Math.min(a[2], b[2]), y2 = Math.min(a[3], b[3]);
+        if (x2 - x1 <= 1e-7 || y2 - y1 <= 1e-7) return List.of(base);
+        List<Face> pieces = new ArrayList<>(4);
+        panelPiece(pieces, base, u, v, a[0], a[1], x1, a[3]);
+        panelPiece(pieces, base, u, v, x2, a[1], a[2], a[3]);
+        panelPiece(pieces, base, u, v, x1, a[1], x2, y1);
+        panelPiece(pieces, base, u, v, x1, y2, x2, a[3]);
+        return pieces;
+    }
+
+    private static void panelPiece(List<Face> pieces, Face face, int u, int v, double x1, double y1, double x2, double y2) {
+        if (x2 - x1 < 1e-7 || y2 - y1 < 1e-7) return;
+        double[] bounds = bounds(face, u, v);
+        Vec3d[] points = {face.a, face.b, face.c, face.d};
+        ComponentAtlas.Uv[] uvs = new ComponentAtlas.Uv[4];
+        Vec3d along = face.b.subtract(face.a), across = face.d.subtract(face.a);
+        for (int i = 0; i < points.length; i++) {
+            double x = component(points[i], u) < (bounds[0] + bounds[2]) / 2 ? x1 : x2;
+            double y = component(points[i], v) < (bounds[1] + bounds[3]) / 2 ? y1 : y2;
+            points[i] = coordinate(coordinate(points[i], u, x), v, y);
+            Vec3d delta = points[i].subtract(face.a);
+            double s = delta.dotProduct(along) / along.lengthSquared(), t = delta.dotProduct(across) / across.lengthSquared();
+            uvs[i] = new ComponentAtlas.Uv((float) (face.ua.u() + s * (face.ub.u() - face.ua.u()) + t * (face.ud.u() - face.ua.u())),
+                    (float) (face.ua.v() + s * (face.ub.v() - face.ua.v()) + t * (face.ud.v() - face.ua.v())));
+        }
+        pieces.add(new Face(face.material, points[0], points[1], points[2], points[3], face.normal, uvs[0], uvs[1], uvs[2], uvs[3]));
+    }
+
+    private static double[] bounds(Face face, int u, int v) {
+        double x1 = Double.POSITIVE_INFINITY, y1 = x1, x2 = Double.NEGATIVE_INFINITY, y2 = x2;
+        for (Vec3d p : new Vec3d[]{face.a, face.b, face.c, face.d}) {
+            x1 = Math.min(x1, component(p, u)); y1 = Math.min(y1, component(p, v));
+            x2 = Math.max(x2, component(p, u)); y2 = Math.max(y2, component(p, v));
+        }
+        return new double[]{x1, y1, x2, y2};
+    }
+
+    private static boolean rectangular(Face face) {
+        Vec3d[] p = {face.a, face.b, face.c, face.d};
+        for (int i = 0; i < p.length; i++) {
+            Vec3d edge = p[(i + 1) % 4].subtract(p[i]);
+            int changes = 0;
+            for (int axis = 0; axis < 3; axis++) if (Math.abs(component(edge, axis)) > 1e-7) changes++;
+            if (changes != 1) return false;
+        }
+        return true;
+    }
+
+    private static double component(Vec3d p, int axis) { return axis == 0 ? p.x : axis == 1 ? p.y : p.z; }
+    private static Vec3d coordinate(Vec3d p, int axis, double value) {
+        return new Vec3d(axis == 0 ? value : p.x, axis == 1 ? value : p.y, axis == 2 ? value : p.z);
+    }
+
     private static List<Face> drill() {
-        Builder b = new Builder();
+        Builder b = new Builder("block_destruction_module");
+        b.skin = b.body().front(b.atlas.region("metal"));
         b.box(Material.FRAME, 2.5, 0.5, 7.8, 13.5, 10.7, 15.7);
+        b.skin = null;
         b.cylinder(Material.FRAME, 8, 6, 6.4, 9, 5.7, 5.7);
         b.cylinder(Material.ORANGE, 8, 6, 7.4, 7.8, 5.8, 5.8);
         b.cylinder(Material.STEEL, 8, 6, 6.6, 7.25, 5.6, 5.6);
         for (int i = 0; i < 5; i++) {
             double z = i * 1.3;
             double radius = 0.35 + i * 1.0;
+            b.skin = b.atlas.surface("drill_cap");
+            b.wrap = b.atlas.region("drill_wrap");
             b.cylinder(Material.STEEL, 8, 6, z, z + 0.95, radius, radius + 0.8);
+            b.skin = null; b.wrap = null;
             b.cylinder(Material.FRAME, 8, 6, z + 0.95, z + 1.3, radius + 0.75, radius + 0.75);
         }
         for (double z : new double[]{8.5, 14.6}) {
@@ -112,8 +183,8 @@ public final class LaserModuleModel {
             b.box(Material.STEEL, 13, 0.4, z, 14, 11.2, z + 0.8);
             b.box(Material.STEEL, 2, 10.4, z, 14, 11.4, z + 0.8);
             for (double x : new double[]{2, 12}) {
-                b.box(Material.FRAME, x, 0, z - 0.2, x + 2, 2, z + 1.1);
-                b.box(Material.FRAME, x, 10, z - 0.2, x + 2, 12, z + 1.1);
+                b.box(Material.FRAME, x - 0.02, 0, z - 0.22, x + 2.02, 2.02, z + 1.12);
+                b.box(Material.FRAME, x - 0.02, 9.98, z - 0.22, x + 2.02, 12.02, z + 1.12);
                 b.box(Material.CYAN, x + 0.6, 10.65, z - 0.23, x + 1.4, 11.35, z - 0.21);
             }
         }
@@ -126,13 +197,38 @@ public final class LaserModuleModel {
         return b.faces;
     }
 
+    private static List<Face> targetFilter() {
+        Builder b = new Builder("target_filter_module");
+        b.box(Material.FRAME, 1.5, 0, 1.5, 14.5, 2.5, 14.5);
+        b.skin = b.body().front(b.atlas.region("metal"));
+        b.box(Material.STEEL, 2, 2.5, 3, 14, 10, 13);
+        b.skin = null;
+        b.box(Material.FRAME, 3, 3, 2.5, 13, 10, 3.1);
+        b.ring(Material.CYAN, 8, 6.5, 2.3, 2.5, 3.1, 2.8);
+        b.ring(Material.WHITE, 8, 6.5, 2.2, 2.3, 1.5, 1.3);
+        for (int i = 0; i < 4; i++) {
+            double angle = i * Math.PI / 2;
+            double x = 8 + Math.cos(angle) * 2.1, y = 6.5 + Math.sin(angle) * 2.1;
+            b.box(Material.GOLD, x - 0.25, y - 0.25, 2.15, x + 0.25, y + 0.25, 2.3);
+        }
+        for (double x : new double[]{3, 12}) {
+            b.box(Material.FRAME, x, 10, 10, x + 1, 14, 11);
+            b.box(Material.CYAN, x - 0.2, 12.6, 9.8, x + 1.2, 13.2, 11.2);
+        }
+        return b.faces;
+    }
+
     private static List<Face> damage() {
-        Builder b = new Builder();
+        Builder b = new Builder("entity_damage_module");
+        b.skin = b.body().front(b.atlas.region("metal"));
         b.box(Material.FRAME, 3, 0.5, 4, 13, 13.4, 12.5);
+        b.skin = null;
         b.ring(Material.STEEL, 8, 7, 2.7, 3.7, 5.25, 4.4);
         b.ring(Material.HEAT, 8, 7, 2.65, 3.6, 4.4, 3.65);
         b.ring(Material.FRAME, 8, 7, 2.1, 3.8, 3.7, 2.85);
+        b.skin = b.atlas.surface("core");
         b.cylinder(Material.RED, 8, 7, 2, 3.9, 2.8, 2.8);
+        b.skin = null;
         b.cylinder(Material.WHITE, 8, 7, 1.8, 2.05, 0.75, 0.95);
         for (double x : new double[]{1, 13}) for (double z : new double[]{1.8, 11.3}) {
             b.box(Material.FRAME, x, 0, z, x + 2, 14, z + 2.3);
@@ -153,11 +249,14 @@ public final class LaserModuleModel {
     }
 
     private static List<Face> range(boolean advanced) {
-        Builder b = new Builder();
+        Builder b = new Builder(advanced ? "advanced_range_module" : "range_module");
         if (advanced) {
             b.box(Material.FRAME, 6.9, 0.2, 1.2, 9.1, 11.3, 14.8);
             for (double y : new double[]{3.3, 8.5}) {
+                b.skin = b.atlas.surface("front").back(b.atlas.region("back"));
+                b.wrap = b.atlas.region("energy");
                 b.cylinder(Material.ENERGY, 8, y, 1, 14.5, 2.2, 2.2);
+                b.skin = null; b.wrap = null;
                 b.ring(Material.STEEL, 8, y, 0.6, 1.5, 3.05, 2.1);
                 b.cylinder(Material.WHITE, 8, y, 0.55, 0.7, 0.6, 0.6);
                 for (double x : new double[]{3.1, 12.1}) {
@@ -177,11 +276,14 @@ public final class LaserModuleModel {
                 b.box(Material.CYAN, 6.5, 12.1, z + 0.1, 9.5, 12.25, z + 0.8);
             }
             for (double x : new double[]{1.45, 14.2}) {
+                b.skin = b.atlas.trim("metal").sides(b.atlas.region("left"), b.atlas.region("right"));
                 b.box(Material.FRAME, x, 3.2, 6.6, x + 0.35, 9.4, 9.6);
-                for (int i = 0; i < 3; i++) b.box(Material.GOLD, x - 0.05, 4, 7 + i * 0.75, x + 0.4, 5.5 + i, 7.4 + i * 0.75);
+                b.skin = null;
             }
         } else {
+            b.skin = b.body();
             b.box(Material.FRAME, 3.4, 0.18, 1.12, 12.6, 7.6, 14.5);
+            b.skin = null;
             for (double z : new double[]{1, 13.7}) {
                 b.box(Material.STEEL, 3, 0, z, 4, 8, z + 1);
                 b.box(Material.STEEL, 12, 0, z, 13, 8, z + 1);
@@ -191,13 +293,6 @@ public final class LaserModuleModel {
             b.box(Material.CYAN, 6, 2, 0.96, 10, 6, 0.99);
             b.box(Material.FRAME, 4.8, 7.6, 3, 11.2, 8, 11);
             for (int i = 0; i < 5; i++) b.box(Material.CYAN, 5.6, 8, 3.4 + i * 1.4, 6.8 + i * 0.7, 8.15, 4.25 + i * 1.4);
-            for (double x : new double[]{3.32, 12.63}) for (int i = 0; i < 3; i++) {
-                for (int step = 0; step < 3; step++) {
-                    double z = 4.2 + i * 2.4 + step * 0.35;
-                    b.box(Material.CYAN, x, 2 + step * 0.45, z, x + 0.05, 2.5 + step * 0.45, z + 0.65);
-                    b.box(Material.CYAN, x, 4.25 - step * 0.45, z, x + 0.05, 4.75 - step * 0.45, z + 0.65);
-                }
-            }
             b.box(Material.STEEL, 6.6, 7.6, 11, 9.4, 8.6, 13.8);
             b.box(Material.FRAME, 7.45, 8.6, 11.8, 8.55, 12.8, 12.9);
             b.box(Material.CYAN, 7, 11.4, 11.35, 9, 12.3, 13.35);
@@ -208,14 +303,20 @@ public final class LaserModuleModel {
     }
 
     private static List<Face> lens() {
-        Builder b = new Builder();
+        Builder b = new Builder("thickness_module");
+        b.skin = b.atlas.trim("metal").back(b.atlas.region("back"));
+        b.wrap = b.atlas.region("wrap");
         b.cylinder(Material.FRAME, 8, 7, 2.4, 14.5, 6, 6);
+        b.skin = null; b.wrap = null;
         for (double z : new double[]{2, 10.5, 14}) b.ring(Material.STEEL, 8, 7, z, z + 0.8, 6.65, 5.6);
+        b.skin = b.atlas.surface("front");
+        b.capRadius = 5.6;
         b.ring(Material.BLUE, 8, 7, 1.7, 2.5, 5.6, 4.65);
         b.cylinder(Material.CYAN, 8, 7, 1.6, 2.6, 4.65, 4.65);
         b.cylinder(Material.BLUE, 8, 7, 1.55, 1.6, 3.9, 3.9);
         b.cylinder(Material.CYAN, 8, 7, 1.5, 1.55, 2.8, 2.8);
         b.cylinder(Material.WHITE, 8, 7, 1.45, 1.5, 1.35, 1.35);
+        b.skin = null; b.capRadius = 0;
         for (int i = 0; i < 4; i++) {
             double angle = i * Math.PI / 2;
             double x = 8 + Math.cos(angle) * 5.9, y = 7 + Math.sin(angle) * 5.9;
@@ -233,9 +334,12 @@ public final class LaserModuleModel {
     }
 
     private static List<Face> circuit() {
-        Builder b = new Builder();
+        Builder b = new Builder("control_circuit");
+        b.skin = b.atlas.surface("side").top(b.atlas.region("top")).bottom(b.atlas.region("bottom"));
         b.box(Material.FRAME, 1, 0, 1, 15, 1.15, 15);
+        b.skin = b.atlas.surface("processor_side").top(b.atlas.region("processor"));
         b.box(Material.FRAME, 5.2, 1.15, 5.2, 10.8, 2.6, 10.8);
+        b.skin = null;
         b.box(Material.CYAN, 6.7, 2.6, 6.7, 9.3, 2.7, 9.3);
         b.box(Material.WHITE, 7.45, 2.7, 7.45, 8.55, 2.76, 8.55);
         for (int side = 0; side < 4; side++) {
@@ -245,8 +349,6 @@ public final class LaserModuleModel {
             for (int i = 0; i < 4; i++) {
                 double x = 5.5 + i * 1.35;
                 b.box(Material.STEEL, x, 1.25, 4.65, x + 0.55, 2, 5.3);
-                b.box(Material.CYAN, x + 0.1, 1.16, 2.7, x + 0.35, 1.25, 4.65);
-                b.box(Material.CYAN, x - 0.25, 1.16, 2.4, x + 0.75, 1.4, 3.1);
             }
             b.box(Material.FRAME, 2.5, 1.15, 3.8, 4.3, 1.9, 5.5);
             b.box(Material.STEEL, 2.4, 1.15, 5.6, 3.1, 1.65, 6.3);
@@ -259,9 +361,11 @@ public final class LaserModuleModel {
     }
 
     private static List<Face> silk() {
-        Builder b = new Builder();
+        Builder b = new Builder("silk_touch_module");
         for (double y : new double[]{0, 13.3}) {
+            b.skin = b.atlas.surface("side").top(b.atlas.region("top")).bottom(b.atlas.region("bottom"));
             b.box(Material.FRAME, 2, y, 2, 14, y + 2.5, 14);
+            b.skin = null;
             b.box(Material.STEEL, 4, y + 2.1, 4, 12, y + 2.6, 12);
             b.box(Material.CYAN, 6, y + 2.6, 6, 10, y + 2.7, 10);
         }
@@ -273,7 +377,9 @@ public final class LaserModuleModel {
             b.box(Material.CYAN, x + 1.15, 3.2, z + 2.52, x + 1.85, 12.8, z + 2.57);
         }
         b.box(Material.CYAN, 7.6, 2.7, 7.6, 8.4, 13.5, 8.4);
+        b.skin = b.atlas.surface("cube").back(b.atlas.region("cube_back"));
         b.box(Material.FRAME, 5.2, 5.2, 5.2, 10.8, 10.8, 10.8);
+        b.skin = null;
         for (int side = 0; side < 4; side++) {
             b.turn = side;
             b.box(Material.STEEL, 5, 5, 4.95, 11, 5.8, 5.3);
@@ -287,12 +393,17 @@ public final class LaserModuleModel {
     }
 
     private static List<Face> collector() {
-        Builder b = new Builder();
+        Builder b = new Builder("block_drops_module");
+        b.skin = b.body();
+        b.wrap = b.atlas.region("wrap");
         b.cylinder(Material.FRAME, 8, 7, 5.8, 14.8, 3.8, 3.8);
+        b.skin = null; b.wrap = null;
         for (double z : new double[]{7.8, 13.5}) b.ring(Material.STEEL, 8, 7, z, z + 0.7, 4.2, 3.3);
         b.ring(Material.CYAN, 8, 7, 12.6, 13.1, 4, 3.5);
         // The intake is a hollow tapered funnel, not a luminous flat disc.
+        b.skin = b.atlas.surface("intake");
         b.funnel(Material.FRAME, 8, 7, 1.6, 6.5, 6.4, 2.5);
+        b.skin = null;
         b.ring(Material.STEEL, 8, 7, 1.2, 1.9, 6.7, 5.9);
         b.cylinder(Material.CYAN, 8, 7, 5.65, 5.8, 2.45, 2.45);
         b.cylinder(Material.WHITE, 8, 7, 5.6, 5.65, 0.8, 0.8);
@@ -314,11 +425,16 @@ public final class LaserModuleModel {
     }
 
     private static List<Face> thermal(boolean ignition) {
-        Builder b = new Builder();
+        Builder b = new Builder(ignition ? "ignition_module" : "scorch_marks_module");
         Material glow = ignition ? Material.HEAT : Material.ORANGE;
+        b.skin = new ComponentAtlas.Skin(b.atlas.region("chamber_0"), b.atlas.region("chamber_2"),
+                b.atlas.region("chamber_3"), b.atlas.region("chamber_1"), b.atlas.region("orange"), b.atlas.region("orange"), false);
         b.box(glow, 4.3, 2, 4.3, 11.7, 14, 11.7);
+        b.skin = null;
         for (double y : new double[]{0, 13.5}) {
+            b.skin = b.atlas.surface(y == 0 ? "vent" : "hazard").top(b.atlas.region("top")).bottom(b.atlas.region("bottom"));
             b.box(Material.FRAME, 3, y, 3, 13, y + 2.5, 13);
+            b.skin = null;
             b.box(Material.STEEL, 3.4, y + 0.4, 3.4, 12.6, y + 0.9, 12.6);
         }
         for (int side = 0; side < 4; side++) {
@@ -351,38 +467,78 @@ public final class LaserModuleModel {
 
     private static final class Builder {
         private final List<Face> faces = new ArrayList<>();
+        private final ComponentAtlas atlas;
+        private ComponentAtlas.Skin skin;
+        private ComponentAtlas.Region wrap;
+        private double capRadius;
         private int turn;
+        private Vec3d min, max;
 
-        private Vec3d point(double x, double y, double z) {
+        private Builder(String id) { atlas = ComponentAtlas.load("module/" + id, "default"); }
+
+        private ComponentAtlas.Skin body() {
+            return new ComponentAtlas.Skin(atlas.regionOr("front", "metal"), atlas.regionOr("back", "metal"),
+                    atlas.regionOr("left", "metal"), atlas.regionOr("right", "metal"),
+                    atlas.regionOr("top", "metal"), atlas.regionOr("bottom", "metal"), false);
+        }
+
+        private ComponentAtlas.Skin materialSkin(Material material) {
+            String key = switch (material) {
+                case FRAME -> "metal";
+                case STEEL -> "steel";
+                case CYAN -> "light";
+                default -> material.name().toLowerCase(java.util.Locale.ROOT);
+            };
+            var region = atlas.regionOr(key, material.emissive ? "light" : "steel");
+            return new ComponentAtlas.Skin(region, region, region, region, region, region, !material.emissive, true);
+        }
+
+        private Vec3d point(double x, double y, double z) { return new Vec3d(x, y, z); }
+
+        private Vec3d turn(Vec3d point) {
+            double x = point.x, y = point.y, z = point.z;
             return switch (turn) {
                 case 1 -> new Vec3d(16 - z, y, x);
                 case 2 -> new Vec3d(16 - x, y, 16 - z);
                 case 3 -> new Vec3d(z, y, 16 - x);
-                default -> new Vec3d(x, y, z);
+                default -> point;
             };
         }
 
-        private void face(Material material, Vec3d a, Vec3d b, Vec3d c, Vec3d d) {
-            faces.add(new Face(material, a, b, c, d, b.subtract(a).crossProduct(c.subtract(a)).normalize(), Vec3d.ZERO, 0));
+        private void add(Material material, Vec3d a, Vec3d b, Vec3d c, Vec3d d,
+                         ComponentAtlas.Uv ua, ComponentAtlas.Uv ub, ComponentAtlas.Uv uc, ComponentAtlas.Uv ud) {
+            a = turn(a); b = turn(b); c = turn(c); d = turn(d);
+            Vec3d normal = b.subtract(a).crossProduct(c.subtract(a));
+            normal = normal.multiply(1 / normal.length());
+            faces.add(new Face(material, a, b, c, d, normal, ua, ub, uc, ud));
         }
 
-        private void cap(Material material, Vec3d center, Vec3d a, Vec3d b, double radius) {
-            planarFace(material, center, a, b, b, center, radius);
+        private void face(Material material, Vec3d a, Vec3d b, Vec3d c, Vec3d d) {
+            var selected = skin != null ? skin : materialSkin(material);
+            Vec3d normal = b.subtract(a).crossProduct(c.subtract(a));
+            add(material, a, b, c, d, selected.project(a, normal, min, max), selected.project(b, normal, min, max),
+                    selected.project(c, normal, min, max), selected.project(d, normal, min, max));
         }
 
         private void planarFace(Material material, Vec3d a, Vec3d b, Vec3d c, Vec3d d, Vec3d center, double radius) {
-            faces.add(new Face(material, a, b, c, d, b.subtract(a).crossProduct(c.subtract(a)).normalize(), center, radius));
+            Vec3d normal = b.subtract(a).crossProduct(c.subtract(a));
+            var region = (skin != null ? skin : materialSkin(material)).face(normal);
+            double r = capRadius > 0 ? capRadius : radius;
+            add(material, a, b, c, d, planarUv(region, a, center, r), planarUv(region, b, center, r),
+                    planarUv(region, c, center, r), planarUv(region, d, center, r));
+        }
+
+        private ComponentAtlas.Uv planarUv(ComponentAtlas.Region region, Vec3d point, Vec3d center, double radius) {
+            return region.uv(0.5 + (point.x - center.x) / (2 * radius), 0.5 - (point.y - center.y) / (2 * radius));
         }
 
         private void box(Material material, double x1, double y1, double z1, double x2, double y2, double z2) {
+            min = point(x1, y1, z1); max = point(x2, y2, z2);
             Vec3d a = point(x1, y1, z1), b = point(x1, y2, z1), c = point(x2, y2, z1), d = point(x2, y1, z1);
             Vec3d e = point(x1, y1, z2), f = point(x1, y2, z2), g = point(x2, y2, z2), h = point(x2, y1, z2);
-            face(material, a, b, c, d);
-            face(material, h, g, f, e);
-            face(material, e, f, b, a);
-            face(material, d, c, g, h);
-            face(material, b, f, g, c);
-            face(material, e, a, d, h);
+            face(material, a, b, c, d); face(material, h, g, f, e);
+            face(material, e, f, b, a); face(material, d, c, g, h);
+            face(material, b, f, g, c); face(material, e, a, d, h);
         }
 
         private Vec3d[] circle(double x, double y, double z, double radius) {
@@ -395,10 +551,15 @@ public final class LaserModuleModel {
         }
 
         private void join(Material material, Vec3d[] front, Vec3d[] back, boolean inward) {
+            var region = wrap != null ? wrap : materialSkin(material).front();
             for (int i = 0; i < front.length; i++) {
                 int n = (i + 1) % front.length;
-                if (inward) face(material, front[n], front[i], back[i], back[n]);
-                else face(material, front[i], front[n], back[n], back[i]);
+                var a = region.uv((double) i / front.length, 0);
+                var b = region.uv((double) (i + 1) / front.length, 0);
+                var c = region.uv((double) (i + 1) / front.length, 1);
+                var d = region.uv((double) i / front.length, 1);
+                if (inward) add(material, front[n], front[i], back[i], back[n], b, a, d, c);
+                else add(material, front[i], front[n], back[n], back[i], a, b, c, d);
             }
         }
 
@@ -407,16 +568,15 @@ public final class LaserModuleModel {
             join(material, front, back, false);
             for (int i = 0; i < front.length; i++) {
                 int n = (i + 1) % front.length;
-                cap(material, point(x, y, z1), front[n], front[i], r1);
-                cap(material, point(x, y, z2), back[i], back[n], r2);
+                planarFace(material, point(x, y, z1), front[n], front[i], front[i], point(x, y, z1), r1);
+                planarFace(material, point(x, y, z2), back[i], back[n], back[n], point(x, y, z2), r2);
             }
         }
 
         private void ring(Material material, double x, double y, double z1, double z2, double outer, double inner) {
             Vec3d[] a = circle(x, y, z1, outer), b = circle(x, y, z2, outer);
             Vec3d[] c = circle(x, y, z1, inner), d = circle(x, y, z2, inner);
-            join(material, a, b, false);
-            join(material, c, d, true);
+            join(material, a, b, false); join(material, c, d, true);
             for (int i = 0; i < a.length; i++) {
                 int n = (i + 1) % a.length;
                 planarFace(material, a[i], c[i], c[n], a[n], point(x, y, z1), outer);
@@ -426,7 +586,12 @@ public final class LaserModuleModel {
 
         private void funnel(Material material, double x, double y, double z1, double z2, double r1, double r2) {
             join(material, circle(x, y, z1, r1), circle(x, y, z2, r2), false);
-            join(material, circle(x, y, z1, r1 - 0.35), circle(x, y, z2, r2 - 0.2), true);
+            var front = circle(x, y, z1, r1 - 0.35);
+            var back = circle(x, y, z2, r2 - 0.2);
+            for (int i = 0; i < front.length; i++) {
+                int n = (i + 1) % front.length;
+                planarFace(material, front[n], front[i], back[i], back[n], point(x, y, z1), r1);
+            }
         }
     }
 

@@ -7,3 +7,16 @@ backups/
 logs/
 publish/
 ref/
+src/main/materials/**/*.png
+
+# Local authoring records and machine-specific launch helpers.
+/docs/development/
+/src/main/materials/README.md
+/tools/ReferenceContactSheets.ps1
+/tools/RunInstalledClientSmoke.ps1
+.env
+.env.*
+*.hprof
+*.jfr
+Thumbs.db
+.DS_Store

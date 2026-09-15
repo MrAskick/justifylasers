@@ -11,6 +11,10 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 
 public final class GameVersion {
+    public static ItemStack replaceItem(ItemStack stack, net.minecraft.item.Item replacement) {
+        return stack.copyComponentsToNewStack(replacement, stack.getCount());
+    }
+    public static boolean canStack(ItemStack a, ItemStack b) { return ItemStack.areItemsAndComponentsEqual(a, b); }
     public static Identifier id(String namespace, String path) {
         return Identifier.of(namespace, path);
     }
@@ -32,6 +36,12 @@ public final class GameVersion {
     public static void setCustomName(ItemStack stack, Text name) {
         stack.set(DataComponentTypes.CUSTOM_NAME, name);
     }
+
+    public static NbtCompound itemData(ItemStack stack) {
+        return stack.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT).copyNbt();
+    }
+
+    public static void setItemData(ItemStack stack, NbtCompound data) { stack.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(data)); }
 
     private GameVersion() {
     }

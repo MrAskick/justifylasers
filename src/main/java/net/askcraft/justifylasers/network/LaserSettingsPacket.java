@@ -6,22 +6,28 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.util.Identifier;
 
-public record LaserSettingsPacket(int syncId, int buttonId) {
+public record LaserSettingsPacket(int syncId, int buttonId, String argument) {
     public static final Identifier ID = JustifyLasers.id("emitter_setting");
+    public LaserSettingsPacket(int syncId, int buttonId) { this(syncId, buttonId, ""); }
     public LaserSettingsPacket(PacketByteBuf buf) {
-        this(buf.readVarInt(), buf.readVarInt());
+        this(buf.readVarInt(), buf.readVarInt(), buf.readString(16));
     }
 
     public void write(PacketByteBuf buf) {
         // Vanilla ButtonClickC2SPacket truncates button IDs to a signed byte in 1.20.1.
         buf.writeVarInt(syncId);
         buf.writeVarInt(buttonId);
+        buf.writeString(argument, 16);
     }
 
     public boolean apply(PlayerEntity player) {
+        if (player.isAlive() && !player.isSpectator()
+                && player.currentScreenHandler instanceof net.askcraft.justifylasers.screen.LaserTurretScreenHandler turret
+                && turret.syncId == syncId) return buttonId == 6 && turret.toggleExcludedPlayer(player, argument);
         return player.isAlive() && !player.isSpectator()
                 && player.currentScreenHandler instanceof LaserEmitterScreenHandler handler
                 && handler.syncId == syncId
-                && handler.onButtonClick(player, buttonId);
+                && (buttonId == LaserEmitterScreenHandler.BUTTON_FILTER_PLAYER
+                        ? handler.toggleExcludedPlayer(player, argument) : handler.onButtonClick(player, buttonId));
     }
 }

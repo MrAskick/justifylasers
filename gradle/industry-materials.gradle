@@ -1,0 +1,84 @@
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import java.awt.image.BufferedImage
+import javax.imageio.ImageIO
+
+// Explicit crops from the author's UV sheets; no full reference image enters the resources.
+tasks.register('generateIndustryMaterials') {
+    inputs.file(rootProject.file('src/main/materials/industry-parts.json'))
+    inputs.dir(rootProject.file('ref/Blocks'))
+    inputs.dir(rootProject.file('ref/parts'))
+    inputs.dir(rootProject.file('ref/Tablet'))
+    inputs.dir(rootProject.file('ref/blueprints'))
+    inputs.file(rootProject.file('gradle/industry-materials.gradle'))
+    def target = layout.buildDirectory.dir('generated/industryMaterials')
+    outputs.dir(target)
+    doLast {
+        def plans = new JsonSlurper().parse(rootProject.file('src/main/materials/industry-parts.json'))
+        plans.each { name, plan ->
+            int size = plan.size
+            def images = ['base','base_n','base_s','glow','glow_n','glow_s','indicator','indicator_n','indicator_s'].collectEntries {
+                [(it): new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB)]
+            }
+            def sources = [:]
+            def read = { String path -> sources.computeIfAbsent(path) { ImageIO.read(rootProject.file((plan.root ?: 'ref/Blocks') + '/' + path)) } }
+            def regions = [:]
+            int left = 4, top = 4, row = 0
+            plan.parts.each { part, spec ->
+                int width = spec.size[0], height = spec.size[1]
+                if (left + width + 4 > size) { left = 4; top += row + 8; row = 0 }
+                if (top + height + 4 > size) throw new GradleException("Industrial material atlas overflow: ${name}")
+                def rect = spec.rect, source = read(spec.sheet ?: plan.sheet)
+                def mask = name == 'crystal_chamber' && !spec.sheet ? read(plan.mask) : null
+                regions[part] = [left, top, width, height]
+                for (int y = -4; y < height + 4; y++) for (int x = -4; x < width + 4; x++) {
+                    int sx = rect[0] + (int)((Math.max(0, Math.min(width-1, x)) + .5) * rect[2] / width)
+                    int sy = rect[1] + (int)((Math.max(0, Math.min(height-1, y)) + .5) * rect[3] / height)
+                    int pixel = source.getRGB(sx, sy)
+                    int r = pixel >> 16 & 255, g = pixel >> 8 & 255, b = pixel & 255
+                    if (plan.neutralAccents && r > Math.max(g, b) + 25) {
+                        int gray = (int)(r * .65 + g * .2 + b * .15)
+                        r = gray; g = gray; b = gray
+                    }
+                    double emission = 0
+                    if (plan.mineral) {
+                        if (name == 'photonite') emission = Math.max(0, Math.max(b, g) - 65) / 190d
+                        else emission = Math.max(0, r - 90) / 165d * .3
+                    } else if (spec.glow) {
+                        int glowPixel = mask == null ? pixel : mask.getRGB(sx, sy)
+                        int mr = glowPixel >> 16 & 255, mg = glowPixel >> 8 & 255, mb = glowPixel & 255
+                        emission = Math.max(0, Math.min(mg, mb) - mr - 20) / 100d
+                    }
+                    if (name == 'photonite') { r = Math.max(r, (int)(b * .76)); g = (int)(g * .64) }
+                    if (spec.solidEmission) { emission = 1; r = 45; g = 49; b = 54 }
+                    emission = Math.min(1, emission)
+                    if (!plan.mineral && emission > 0) {
+                        int neutral = (int)((r + g + b) / 3d * (1 - emission) + 36 * emission)
+                        r = neutral; g = neutral; b = neutral
+                    }
+                    int dx = left + x, dy = top + y
+                    images.base.setRGB(dx, dy, (int)0xFF000000L | r << 16 | g << 8 | b)
+                    images.base_n.setRGB(dx, dy, (int)0xFF7F7FFFL)
+                    images.base_s.setRGB(dx, dy, ((plan.mineral ? (emission > 0 ? (int)(emission*215) : 255) : 255) << 24) | (name == 'wolframite' ? 0x88DA00 : 0x684000))
+                    int alpha = (int)Math.round(emission * 255)
+                    int glow = (alpha << 24) | 0xE3F9FF
+                    images.glow.setRGB(dx, dy, glow); images.indicator.setRGB(dx, dy, glow)
+                    images.glow_n.setRGB(dx, dy, (int)0xFF7F7FFFL); images.indicator_n.setRGB(dx, dy, (int)0xFF7F7FFFL)
+                    images.glow_s.setRGB(dx, dy, ((int)(emission*225) << 24) | 0x602000)
+                    images.indicator_s.setRGB(dx, dy, (int)0xFF602000L)
+                }
+                left += width + 8; row = Math.max(row, height)
+            }
+            def output = new File(target.get().asFile, name); output.mkdirs()
+            images.each { id, image -> ImageIO.write(image, 'png', new File(output, id + '.png')) }
+            if (name == 'extraterrestrial_tablet') {
+                ['ui':0xFFFFFFFFL, 'ui_n':0xFF7F7FFFL, 'ui_s':0xD0201000L].each { id, rgba ->
+                    def pixel = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB)
+                    pixel.setRGB(0, 0, (int)(long)rgba)
+                    ImageIO.write(pixel, 'png', new File(output, id + '.png'))
+                }
+            }
+            new File(output, 'base.json').setText(JsonOutput.toJson([size:size, regions:regions]), 'UTF-8')
+        }
+    }
+}

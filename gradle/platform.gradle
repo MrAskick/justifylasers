@@ -3,9 +3,11 @@ apply plugin: 'dev.architectury.loom'
 def fabric = project.property('loom.platform') == 'fabric'
 def modern = minecraft_version == '1.21.1'
 def loader = project.property('loom.platform')
-base.archivesName = "JustifyLasers-${loader}-${minecraft_version}"
+base.archivesName = "JustifyLasers-${project.name}"
+ext.loaderSources = rootProject.file("platforms/${findProperty('platform_sources') ?: project.name}")
 
 repositories {
+    maven { url = 'https://api.modrinth.com/maven'; content { includeGroup 'maven.modrinth' } }
     maven { url = 'https://maven.fabricmc.net/' }
     maven { url = 'https://maven.architectury.dev/' }
     maven { url = 'https://maven.neoforged.net/releases/' }
@@ -35,21 +37,35 @@ loom {
 
 sourceSets.main {
     java.srcDirs = [rootProject.file('src/main/java'), rootProject.file("versions/${minecraft_version}/src/main/java"),
-                    file('src/main/java')]
-    resources.srcDirs = [rootProject.file('src/main/resources'), file('src/main/resources')]
+                    new File(loaderSources, 'src/main/java')]
+    resources.srcDirs = [rootProject.file('src/main/resources'), new File(loaderSources, 'src/main/resources')]
     if (!fabric) resources.exclude 'fabric.mod.json'
 }
 def clientSources = [rootProject.file('src/client/java'), rootProject.file("versions/${minecraft_version}/src/client/java"),
-                     file('src/client/java')]
+                     new File(loaderSources, 'src/client/java')]
 if (fabric) {
     sourceSets.client.java.srcDirs = clientSources
     sourceSets.client.resources.srcDirs = [rootProject.file('src/client/resources'), file('src/client/resources')]
 } else {
     sourceSets.main.java.srcDirs += clientSources
+    if (loader == 'forge') sourceSets.main.java.srcDir rootProject.file('src/universal/java')
     sourceSets.main.resources.srcDirs += [rootProject.file('src/client/resources')]
 }
 
 dependencies {
+    // Compile-only API baselines: Jade 11.12.3 / 15.8.3, JEI 15.20.0.106 / 19.21.0.247.
+    def optionalMods = [
+            'fabric-1.20.1': ['jade:oJx1UoWN', 'jei:KcsHvRrB'],
+            'forge-1.20.1': ['jade:SOuuRR07', 'jei:WTWP98yg'],
+            'fabric-1.21.1': ['jade:1Ucj3FzM', 'jei:Ni0ejaDO'],
+            'forge-1.21.1': ['jade:ALpv8KVb', 'jei:P1PNwnEw'],
+            'neoforge-1.21.1': ['jade:ALpv8KVb', 'jei:TxS03dKM']
+    ]
+    optionalMods["${loader}-${minecraft_version}"].each { artifact ->
+        modCompileOnly "maven.modrinth:${artifact}"
+        if (project.hasProperty('tooltipMods') && !(modern && loader == 'forge' && artifact.startsWith('jade:')))
+            modLocalRuntime "maven.modrinth:${artifact}"
+    }
     minecraft "com.mojang:minecraft:${minecraft_version}"
     if (loader == 'neoforge') {
         mappings loom.layered {
@@ -64,14 +80,14 @@ dependencies {
             modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
             include modImplementation("teamreborn:energy:${modern ? '4.1.0' : '3.0.0'}")
         } else {
-            forge "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+            forge "${project.hasProperty('legacy_neoforge') ? 'net.neoforged' : 'net.minecraftforge'}:forge:${minecraft_version}-${forge_version}"
         }
     }
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
     if (project.hasProperty('compatibilityModsDir') && fabric && !modern) {
         modLocalRuntime fileTree(dir: project.property('compatibilityModsDir'),
-                include: ['iris-*-mc1.20.1.jar', 'sodium-fabric-0.5.*+mc1.20.1.jar', 'indium-*.jar'])
+                include: ['iris-*mc1.20.1.jar', 'sodium-fabric-0.5.*+mc1.20.1.jar', 'indium-*.jar'])
         runtimeOnly rootProject.fileTree(dir: 'run/compat-libs',
                 include: ['**/antlr4-runtime-*.jar', '**/glsl-transformer-*.jar', '**/jcpp-*.jar'])
     }
@@ -79,7 +95,8 @@ dependencies {
 
 apply from: rootProject.file('gradle/laser-materials.gradle')
 apply from: rootProject.file('gradle/laser-parts.gradle')
-apply from: rootProject.file('gradle/crystal-materials.gradle')
+apply from: rootProject.file('gradle/laser-optics.gradle')
+apply from: rootProject.file('gradle/industry-resources.gradle')
 
 processResources {
     def metadata = [version: project.version, minecraft_version: minecraft_version, loader_version: loader_version,
@@ -92,6 +109,11 @@ processResources {
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
     options.release = modern ? 21 : 17
+}
+if (project.hasProperty('testJavaHome')) {
+    tasks.withType(JavaExec).configureEach {
+        executable = new File(project.property('testJavaHome').toString(), 'bin/java.exe').absolutePath
+    }
 }
 java { withSourcesJar() }
 tasks.withType(Jar).configureEach { preserveFileTimestamps = false; reproducibleFileOrder = true }

@@ -31,6 +31,7 @@ import org.jetbrains.annotations.Nullable;
 
 public class RefocusingCubeEntity extends net.askcraft.justifylasers.platform.CubeEntity {
     private static final TrackedData<Integer> COLOR = DataTracker.registerData(RefocusingCubeEntity.class, TrackedDataHandlerRegistry.INTEGER);
+    private static final TrackedData<Integer> BEAM_RGB = DataTracker.registerData(RefocusingCubeEntity.class, TrackedDataHandlerRegistry.INTEGER);
     private static final TrackedData<Boolean> LIT = DataTracker.registerData(RefocusingCubeEntity.class, TrackedDataHandlerRegistry.BOOLEAN);
     private static final TrackedData<Boolean> EMISSION = DataTracker.registerData(RefocusingCubeEntity.class, TrackedDataHandlerRegistry.BOOLEAN);
     private static final TrackedData<Integer> HOLDER = DataTracker.registerData(RefocusingCubeEntity.class, TrackedDataHandlerRegistry.INTEGER);
@@ -47,6 +48,7 @@ public class RefocusingCubeEntity extends net.askcraft.justifylasers.platform.Cu
     @Override
     protected void defineTrackedData(TrackedValues values) {
         values.add(COLOR, LaserColor.RED.ordinal());
+        values.add(BEAM_RGB, LaserColor.RED.rgb());
         values.add(LIT, false);
         values.add(EMISSION, true);
         values.add(HOLDER, -1);
@@ -309,6 +311,7 @@ public class RefocusingCubeEntity extends net.askcraft.justifylasers.platform.Cu
         dataTracker.set(LIT, input != null);
         if (input != null) {
             dataTracker.set(COLOR, input.color().ordinal());
+            dataTracker.set(BEAM_RGB, input.rgb());
             dataTracker.set(EMISSION, input.emission());
         }
     }
@@ -316,6 +319,8 @@ public class RefocusingCubeEntity extends net.askcraft.justifylasers.platform.Cu
     public LaserColor getColor() {
         return LaserColor.byIndex(dataTracker.get(COLOR));
     }
+
+    public int beamRgb() { return isLit() ? dataTracker.get(BEAM_RGB) : getColor().rgb(); }
 
     public boolean isLit() {
         return dataTracker.get(LIT);

@@ -228,7 +228,7 @@ public class LaserReceiverGameTests implements FabricGameTest {
         context.assertFalse(serverMenu.onButtonClick(player, 6), "Unknown button must be rejected");
         player.setPosition(player.getPos().add(20, 0, 0));
         context.assertFalse(serverMenu.onButtonClick(player, 0), "Out-of-reach interaction must be rejected");
-        context.assertTrue(context.getWorld().getRecipeManager().get(JustifyLasers.id("laser_receiver")).isPresent(), "Receiver recipe must load");
+        context.assertTrue(context.getWorld().getRecipeManager().get(JustifyLasers.id("industry/laser_receiver")).isPresent(), "Receiver assembly recipe must load");
         finish(context);
     }
 

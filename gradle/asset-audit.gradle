@@ -1,0 +1,52 @@
+import groovy.json.JsonOutput
+import java.security.MessageDigest
+import java.util.zip.ZipFile
+
+tasks.register('verifyPublishedAssets') {
+    dependsOn 'collectJars', 'mergeJars'
+    dependsOn subprojects.collect { "${it.path}:remapSourcesJar" }
+    doLast {
+        def hash = { byte[] bytes -> MessageDigest.getInstance('SHA-256').digest(bytes).encodeHex().toString() }
+        // Private inputs are optional: a clean public checkout must build without them.
+        def privateInputs = fileTree('ref/private_material_sources') { include '**/*.png' }.files +
+                ['Reciever', 'Cube', 'Mirror', 'Splitter', 'Configurator', 'LightSaber'].collectMany { folder -> fileTree("ref/modules/${folder}") { include '**/*.png' }.files } +
+                ['Blocks', 'parts', 'Tablet', 'blueprints'].collectMany { folder -> fileTree("ref/${folder}") { include '**/*.png' }.files }
+        def privateHashes = privateInputs.collect { hash(it.bytes) }.toSet()
+        def forbidden = { String name ->
+            name =~ /(?i)(^|\/)(ref|publish|backups|private_material_sources|materials)\/|model_reference|uv_0[1f]|\.psd$|\.blend$|\.bbmodel$|\.(mp3|wav)$/
+        }
+        def obsolete = { String name ->
+            name.startsWith('assets/justifylasers/textures/block/industry/') ||
+                    name == 'assets/justifylasers/textures/block/laser_emitter_front.png' ||
+                    name =~ /textures\/item\/crystal\/(gold|rubber)(_[sn])?\.png$/ ||
+                    name =~ /textures\/item\/crystal\/(red|orange|yellow|green|cyan|blue|violet|magenta|white)_[sn]\.png$/ ||
+                    name =~ /textures\/item\/crystal\/(red|orange|yellow|green|blue|violet|magenta|white)_light(_[sn])?\.png$/
+        }
+        def archives = fileTree(layout.buildDirectory.dir('libs')) { include "*-${project.version}*.jar" }.files +
+                subprojects.collect { it.tasks.named('remapSourcesJar').get().archiveFile.get().asFile }
+        def results = []
+        archives.sort { it.name }.each { archive ->
+            new ZipFile(archive).withCloseable { jar ->
+                long textures = 0
+                int pngs = 0
+                jar.entries().each { entry ->
+                    if (forbidden(entry.name)) throw new GradleException("Private source asset in ${archive.name}: ${entry.name}")
+                    if (obsolete(entry.name)) throw new GradleException("Obsolete texture in ${archive.name}: ${entry.name}")
+                    if (!entry.name.endsWith('.png')) return
+                    byte[] bytes = jar.getInputStream(entry).withCloseable { it.bytes }
+                    if (privateHashes.contains(hash(bytes)))
+                        throw new GradleException("Reference sheet was packaged under another name: ${archive.name}: ${entry.name}")
+                    textures += entry.compressedSize
+                    pngs++
+                }
+                results.add([file: archive.name, bytes: archive.length(), textureBytes: textures, textures: pngs])
+            }
+        }
+        def report = layout.buildDirectory.file('reports/asset-audit.json').get().asFile
+        report.parentFile.mkdirs()
+        report.setText(JsonOutput.prettyPrint(JsonOutput.toJson([privateSheetsChecked: privateHashes.size(), archives: results])) + '\n', 'UTF-8')
+        logger.lifecycle("Verified {} distributable/source archives: no private sheets or obsolete textures", results.size())
+    }
+}
+
+tasks.named('build') { dependsOn 'verifyPublishedAssets' }

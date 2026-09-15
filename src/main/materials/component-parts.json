@@ -1,0 +1,2751 @@
+{
+  "gun": {
+    "variants": [
+      "red",
+      "orange",
+      "yellow",
+      "green",
+      "cyan",
+      "blue",
+      "violet",
+      "magenta",
+      "white"
+    ],
+    "regions": {
+      "metal": {
+        "rect": [
+          276,
+          1108,
+          36,
+          121
+        ],
+        "emission": "none"
+      },
+      "steel": {
+        "rect": [
+          24,
+          1110,
+          50,
+          116
+        ],
+        "emission": "none"
+      },
+      "trim": {
+        "rect": [
+          625,
+          1171,
+          147,
+          17
+        ],
+        "emission": "none"
+      },
+      "rubber": {
+        "rect": [
+          55,
+          734,
+          31,
+          40
+        ],
+        "emission": "none"
+      },
+      "bolt": {
+        "rect": [
+          480,
+          1108,
+          39,
+          42
+        ],
+        "emission": "none"
+      },
+      "vent": {
+        "rect": [
+          449,
+          487,
+          75,
+          128
+        ],
+        "emission": "color"
+      },
+      "light": {
+        "rect": [
+          692,
+          908,
+          142,
+          16
+        ],
+        "emission": "light"
+      },
+      "panel": {
+        "rect": [
+          18,
+          531,
+          65,
+          76
+        ],
+        "emission": "none"
+      },
+      "receiver_left": {
+        "rect": [
+          228,
+          100,
+          100,
+          144
+        ],
+        "emission": "color"
+      },
+      "receiver_right": {
+        "rect": [
+          732,
+          106,
+          103,
+          140
+        ],
+        "emission": "color"
+      },
+      "stock_left": {
+        "rect": [
+          339,
+          99,
+          81,
+          141
+        ],
+        "emission": "color"
+      },
+      "stock_right": {
+        "rect": [
+          641,
+          99,
+          80,
+          139
+        ],
+        "emission": "color"
+      },
+      "receiver_top": {
+        "rect": [
+          145,
+          389,
+          200,
+          29
+        ],
+        "emission": "color"
+      },
+      "receiver_bottom": {
+        "rect": [
+          692,
+          304,
+          145,
+          30
+        ],
+        "emission": "none"
+      },
+      "stock_back": {
+        "rect": [
+          838,
+          484,
+          72,
+          131
+        ],
+        "emission": "color"
+      },
+      "rail": {
+        "rect": [
+          1012,
+          222,
+          225,
+          24
+        ],
+        "emission": "none"
+      },
+      "chamber": {
+        "rect": [
+          586,
+          690,
+          265,
+          80
+        ],
+        "emission": "light"
+      },
+      "chamber_end": {
+        "rect": [
+          1022,
+          695,
+          88,
+          81
+        ],
+        "emission": "light"
+      },
+      "muzzle_ring": {
+        "rect": [
+          1138,
+          478,
+          95,
+          96
+        ],
+        "emission": "color"
+      },
+      "grip_left": {
+        "rect": [
+          81,
+          744,
+          29,
+          43
+        ],
+        "emission": "none"
+      },
+      "grip_right": {
+        "rect": [
+          242,
+          744,
+          31,
+          43
+        ],
+        "emission": "none"
+      },
+      "grip_end": {
+        "rect": [
+          360,
+          696,
+          27,
+          59
+        ],
+        "emission": "none"
+      },
+      "muzzle_plate": {
+        "rect": [
+          999,
+          309,
+          89,
+          82
+        ],
+        "emission": "none"
+      },
+      "steel_panel": {
+        "rect": [
+          202,
+          1107,
+          49,
+          120
+        ],
+        "emission": "none"
+      }
+    }
+  },
+  "crystal": {
+    "variants": {
+      "red": {
+        "regions": {
+          "metal": {
+            "rect": [
+              500,
+              1091,
+              74,
+              33
+            ],
+            "emission": "none"
+          },
+          "steel": {
+            "rect": [
+              24,
+              670,
+              26,
+              153
+            ],
+            "emission": "none"
+          },
+          "light": {
+            "rect": [
+              880,
+              887,
+              159,
+              17
+            ],
+            "emission": "light"
+          },
+          "column_light": {
+            "rect": [
+              107,
+              702,
+              13,
+              95
+            ],
+            "emission": "light"
+          },
+          "front": {
+            "rect": [
+              19,
+              40,
+              226,
+              339
+            ],
+            "emission": "crystal"
+          },
+          "left": {
+            "rect": [
+              272,
+              40,
+              137,
+              339
+            ],
+            "emission": "crystal"
+          },
+          "right": {
+            "rect": [
+              432,
+              40,
+              141,
+              339
+            ],
+            "emission": "crystal"
+          },
+          "back": {
+            "rect": [
+              603,
+              40,
+              171,
+              339
+            ],
+            "emission": "crystal"
+          },
+          "tip": {
+            "rect": [
+              812,
+              40,
+              187,
+              162
+            ],
+            "emission": "crystal"
+          },
+          "base_front": {
+            "rect": [
+              53,
+              505,
+              94,
+              79
+            ],
+            "emission": "color"
+          },
+          "base_back": {
+            "rect": [
+              53,
+              505,
+              94,
+              79
+            ],
+            "emission": "color"
+          }
+        }
+      },
+      "blue": {
+        "regions": {
+          "metal": {
+            "rect": [
+              156,
+              481,
+              69,
+              13
+            ],
+            "emission": "none"
+          },
+          "steel": {
+            "rect": [
+              101,
+              703,
+              28,
+              150
+            ],
+            "emission": "none"
+          },
+          "light": {
+            "rect": [
+              703,
+              927,
+              178,
+              13
+            ],
+            "emission": "light"
+          },
+          "column_light": {
+            "rect": [
+              34,
+              756,
+              13,
+              53
+            ],
+            "emission": "light"
+          },
+          "front": {
+            "rect": [
+              21,
+              41,
+              154,
+              355
+            ],
+            "emission": "crystal"
+          },
+          "left": {
+            "rect": [
+              381,
+              41,
+              137,
+              355
+            ],
+            "emission": "crystal"
+          },
+          "right": {
+            "rect": [
+              544,
+              41,
+              137,
+              355
+            ],
+            "emission": "crystal"
+          },
+          "back": {
+            "rect": [
+              199,
+              41,
+              141,
+              355
+            ],
+            "emission": "crystal"
+          },
+          "tip": {
+            "rect": [
+              768,
+              40,
+              143,
+              142
+            ],
+            "emission": "crystal"
+          },
+          "base_front": {
+            "rect": [
+              73,
+              525,
+              73,
+              91
+            ],
+            "emission": "color"
+          },
+          "base_back": {
+            "rect": [
+              73,
+              525,
+              73,
+              91
+            ],
+            "emission": "color"
+          }
+        }
+      },
+      "cyan": {
+        "regions": {
+          "metal": {
+            "rect": [
+              75,
+              1074,
+              35,
+              52
+            ],
+            "emission": "none"
+          },
+          "steel": {
+            "rect": [
+              19,
+              849,
+              30,
+              91
+            ],
+            "emission": "none"
+          },
+          "light": {
+            "rect": [
+              664,
+              853,
+              155,
+              15
+            ],
+            "emission": "light"
+          },
+          "column_light": {
+            "rect": [
+              385,
+              664,
+              14,
+              63
+            ],
+            "emission": "light"
+          },
+          "front": {
+            "rect": [
+              17,
+              38,
+              217,
+              217
+            ],
+            "emission": "crystal"
+          },
+          "left": {
+            "rect": [
+              265,
+              39,
+              68,
+              215
+            ],
+            "emission": "crystal"
+          },
+          "right": {
+            "rect": [
+              505,
+              39,
+              62,
+              215
+            ],
+            "emission": "crystal"
+          },
+          "back": {
+            "rect": [
+              593,
+              39,
+              167,
+              215
+            ],
+            "emission": "crystal"
+          },
+          "tip": {
+            "rect": [
+              790,
+              38,
+              195,
+              219
+            ],
+            "emission": "crystal",
+            "quad": [
+              [
+                887,
+                57
+              ],
+              [
+                967,
+                136
+              ],
+              [
+                887,
+                212
+              ],
+              [
+                809,
+                136
+              ]
+            ],
+            "size": [
+              160,
+              160
+            ]
+          },
+          "base_front": {
+            "rect": [
+              44,
+              442,
+              72,
+              71
+            ],
+            "emission": "color"
+          },
+          "base_back": {
+            "rect": [
+              44,
+              442,
+              72,
+              71
+            ],
+            "emission": "color"
+          }
+        }
+      },
+      "green": {
+        "regions": {
+          "metal": {
+            "rect": [
+              22,
+              972,
+              54,
+              27
+            ],
+            "emission": "none"
+          },
+          "steel": {
+            "rect": [
+              402,
+              852,
+              18,
+              43
+            ],
+            "emission": "none"
+          },
+          "light": {
+            "rect": [
+              797,
+              858,
+              155,
+              15
+            ],
+            "emission": "light"
+          },
+          "column_light": {
+            "rect": [
+              638,
+              660,
+              13,
+              85
+            ],
+            "emission": "light"
+          },
+          "front": {
+            "rect": [
+              116,
+              41,
+              77,
+              265
+            ],
+            "emission": "crystal"
+          },
+          "left": {
+            "rect": [
+              431,
+              41,
+              52,
+              265
+            ],
+            "emission": "crystal"
+          },
+          "right": {
+            "rect": [
+              505,
+              41,
+              54,
+              265
+            ],
+            "emission": "crystal"
+          },
+          "back": {
+            "rect": [
+              739,
+              41,
+              54,
+              265
+            ],
+            "emission": "crystal"
+          },
+          "tip": {
+            "rect": [
+              918,
+              41,
+              94,
+              96
+            ],
+            "emission": "crystal"
+          },
+          "base_front": {
+            "rect": [
+              50,
+              456,
+              74,
+              72
+            ],
+            "emission": "color"
+          },
+          "base_back": {
+            "rect": [
+              50,
+              456,
+              74,
+              72
+            ],
+            "emission": "color"
+          }
+        }
+      },
+      "magenta": {
+        "regions": {
+          "metal": {
+            "rect": [
+              100,
+              815,
+              66,
+              14
+            ],
+            "emission": "none"
+          },
+          "steel": {
+            "rect": [
+              206,
+              872,
+              19,
+              73
+            ],
+            "emission": "none"
+          },
+          "light": {
+            "rect": [
+              666,
+              1038,
+              140,
+              15
+            ],
+            "emission": "light"
+          },
+          "column_light": {
+            "rect": [
+              124,
+              854,
+              15,
+              77
+            ],
+            "emission": "light"
+          },
+          "front": {
+            "rect": [
+              25,
+              40,
+              205,
+              376
+            ],
+            "emission": "crystal"
+          },
+          "left": {
+            "rect": [
+              277,
+              40,
+              111,
+              376
+            ],
+            "emission": "crystal"
+          },
+          "right": {
+            "rect": [
+              408,
+              40,
+              110,
+              376
+            ],
+            "emission": "crystal"
+          },
+          "back": {
+            "rect": [
+              562,
+              40,
+              191,
+              376
+            ],
+            "emission": "crystal"
+          },
+          "tip": {
+            "rect": [
+              800,
+              40,
+              254,
+              211
+            ],
+            "emission": "crystal"
+          },
+          "base_front": {
+            "rect": [
+              155,
+              527,
+              130,
+              72
+            ],
+            "emission": "color"
+          },
+          "base_back": {
+            "rect": [
+              155,
+              527,
+              130,
+              72
+            ],
+            "emission": "color"
+          }
+        }
+      },
+      "orange": {
+        "regions": {
+          "metal": {
+            "rect": [
+              26,
+              1062,
+              65,
+              49
+            ],
+            "emission": "none"
+          },
+          "steel": {
+            "rect": [
+              487,
+              615,
+              44,
+              50
+            ],
+            "emission": "none"
+          },
+          "light": {
+            "rect": [
+              418,
+              883,
+              233,
+              15
+            ],
+            "emission": "light"
+          },
+          "column_light": {
+            "rect": [
+              44,
+              679,
+              16,
+              72
+            ],
+            "emission": "light"
+          },
+          "front": {
+            "rect": [
+              25,
+              43,
+              207,
+              245
+            ],
+            "emission": "crystal"
+          },
+          "left": {
+            "rect": [
+              273,
+              44,
+              98,
+              244
+            ],
+            "emission": "crystal"
+          },
+          "right": {
+            "rect": [
+              395,
+              44,
+              99,
+              244
+            ],
+            "emission": "crystal"
+          },
+          "back": {
+            "rect": [
+              535,
+              43,
+              179,
+              245
+            ],
+            "emission": "crystal"
+          },
+          "tip": {
+            "rect": [
+              750,
+              44,
+              235,
+              246
+            ],
+            "emission": "crystal",
+            "triangle": [
+              [
+                755,
+                153
+              ],
+              [
+                860,
+                49
+              ],
+              [
+                860,
+                153
+              ]
+            ],
+            "size": [
+              160,
+              160
+            ]
+          },
+          "base_front": {
+            "rect": [
+              337,
+              432,
+              122,
+              66
+            ],
+            "emission": "color"
+          },
+          "base_back": {
+            "rect": [
+              337,
+              432,
+              122,
+              66
+            ],
+            "emission": "color"
+          }
+        }
+      },
+      "violet": {
+        "regions": {
+          "metal": {
+            "rect": [
+              462,
+              1045,
+              99,
+              17
+            ],
+            "emission": "none"
+          },
+          "steel": {
+            "rect": [
+              328,
+              644,
+              19,
+              76
+            ],
+            "emission": "none"
+          },
+          "light": {
+            "rect": [
+              26,
+              1056,
+              147,
+              14
+            ],
+            "emission": "light"
+          },
+          "column_light": {
+            "rect": [
+              102,
+              681,
+              16,
+              73
+            ],
+            "emission": "light"
+          },
+          "front": {
+            "rect": [
+              119,
+              42,
+              165,
+              295
+            ],
+            "emission": "crystal"
+          },
+          "left": {
+            "rect": [
+              418,
+              42,
+              68,
+              295
+            ],
+            "emission": "crystal"
+          },
+          "right": {
+            "rect": [
+              506,
+              42,
+              65,
+              295
+            ],
+            "emission": "crystal"
+          },
+          "back": {
+            "rect": [
+              782,
+              42,
+              136,
+              295
+            ],
+            "emission": "crystal"
+          },
+          "tip": {
+            "rect": [
+              954,
+              42,
+              183,
+              159
+            ],
+            "emission": "crystal"
+          },
+          "base_front": {
+            "rect": [
+              82,
+              480,
+              85,
+              64
+            ],
+            "emission": "color"
+          },
+          "base_back": {
+            "rect": [
+              82,
+              480,
+              85,
+              64
+            ],
+            "emission": "color"
+          }
+        }
+      },
+      "white": {
+        "regions": {
+          "metal": {
+            "rect": [
+              531,
+              839,
+              58,
+              14
+            ],
+            "emission": "none"
+          },
+          "steel": {
+            "rect": [
+              174,
+              1122,
+              73,
+              85
+            ],
+            "emission": "none"
+          },
+          "light": {
+            "rect": [
+              928,
+              844,
+              130,
+              16
+            ],
+            "emission": "light"
+          },
+          "column_light": {
+            "rect": [
+              338,
+              622,
+              17,
+              85
+            ],
+            "emission": "light"
+          },
+          "front": {
+            "rect": [
+              147,
+              43,
+              101,
+              302
+            ],
+            "emission": "crystal"
+          },
+          "left": {
+            "rect": [
+              417,
+              43,
+              85,
+              302
+            ],
+            "emission": "crystal"
+          },
+          "right": {
+            "rect": [
+              525,
+              43,
+              81,
+              302
+            ],
+            "emission": "crystal"
+          },
+          "back": {
+            "rect": [
+              768,
+              43,
+              110,
+              302
+            ],
+            "emission": "crystal"
+          },
+          "tip": {
+            "rect": [
+              945,
+              43,
+              137,
+              135
+            ],
+            "emission": "crystal"
+          },
+          "base_front": {
+            "rect": [
+              61,
+              453,
+              78,
+              54
+            ],
+            "emission": "color"
+          },
+          "base_back": {
+            "rect": [
+              61,
+              453,
+              78,
+              54
+            ],
+            "emission": "color"
+          }
+        }
+      },
+      "yellow": {
+        "regions": {
+          "metal": {
+            "rect": [
+              638,
+              952,
+              40,
+              39
+            ],
+            "emission": "none"
+          },
+          "steel": {
+            "rect": [
+              23,
+              680,
+              27,
+              188
+            ],
+            "emission": "none"
+          },
+          "light": {
+            "rect": [
+              33,
+              961,
+              203,
+              14
+            ],
+            "emission": "light"
+          },
+          "column_light": {
+            "rect": [
+              418,
+              720,
+              19,
+              101
+            ],
+            "emission": "light"
+          },
+          "front": {
+            "rect": [
+              142,
+              43,
+              101,
+              295
+            ],
+            "emission": "crystal"
+          },
+          "left": {
+            "rect": [
+              401,
+              43,
+              84,
+              295
+            ],
+            "emission": "crystal"
+          },
+          "right": {
+            "rect": [
+              505,
+              43,
+              93,
+              295
+            ],
+            "emission": "crystal"
+          },
+          "back": {
+            "rect": [
+              746,
+              43,
+              123,
+              295
+            ],
+            "emission": "crystal"
+          },
+          "tip": {
+            "rect": [
+              919,
+              42,
+              130,
+              136
+            ],
+            "emission": "crystal"
+          },
+          "base_front": {
+            "rect": [
+              68,
+              507,
+              64,
+              79
+            ],
+            "emission": "color"
+          },
+          "base_back": {
+            "rect": [
+              68,
+              507,
+              64,
+              79
+            ],
+            "emission": "color"
+          }
+        }
+      }
+    }
+  },
+  "module/block_destruction_module": {
+    "sheet": "module/block_destruction_module.png",
+    "regions": {
+      "metal": {
+        "rect": [
+          320,
+          779,
+          35,
+          73
+        ],
+        "emission": "none"
+      },
+      "steel": {
+        "rect": [
+          466,
+          677,
+          198,
+          25
+        ],
+        "emission": "none"
+      },
+      "light": {
+        "rect": [
+          483,
+          994,
+          138,
+          16
+        ],
+        "emission": "light"
+      },
+      "orange": {
+        "rect": [
+          37,
+          927,
+          198,
+          15
+        ],
+        "emission": "light"
+      },
+      "white": {
+        "rect": [
+          494,
+          940,
+          14,
+          17
+        ],
+        "emission": "light"
+      },
+      "left": {
+        "rect": [
+          520,
+          168,
+          78,
+          155
+        ],
+        "emission": "none"
+      },
+      "right": {
+        "rect": [
+          732,
+          218,
+          94,
+          104
+        ],
+        "emission": "color"
+      },
+      "back": {
+        "rect": [
+          244,
+          149,
+          175,
+          194
+        ],
+        "emission": "color"
+      },
+      "top": {
+        "rect": [
+          84,
+          452,
+          103,
+          107
+        ],
+        "emission": "none"
+      },
+      "bottom": {
+        "rect": [
+          299,
+          447,
+          139,
+          105
+        ],
+        "emission": "none"
+      },
+      "front": {
+        "rect": [
+          86,
+          193,
+          57,
+          72
+        ],
+        "emission": "none"
+      },
+      "drill_cap": {
+        "rect": [
+          880,
+          419,
+          76,
+          77
+        ],
+        "emission": "none"
+      },
+      "drill_wrap": {
+        "rect": [
+          479,
+          681,
+          128,
+          16
+        ],
+        "emission": "none"
+      },
+      "vent": {
+        "rect": [
+          769,
+          742,
+          94,
+          109
+        ],
+        "emission": "none"
+      },
+      "bolt": {
+        "rect": [
+          1042,
+          679,
+          35,
+          39
+        ],
+        "emission": "none"
+      },
+      "rim": {
+        "rect": [
+          469,
+          775,
+          35,
+          74
+        ],
+        "emission": "none"
+      },
+      "panel": {
+        "rect": [
+          107,
+          677,
+          60,
+          31
+        ],
+        "emission": "none"
+      }
+    }
+  },
+  "module/entity_damage_module": {
+    "sheet": "module/entity_damage_module.png",
+    "regions": {
+      "metal": {
+        "rect": [
+          400,
+          717,
+          48,
+          34
+        ],
+        "emission": "none"
+      },
+      "steel": {
+        "rect": [
+          675,
+          718,
+          78,
+          61
+        ],
+        "emission": "none"
+      },
+      "light": {
+        "rect": [
+          35,
+          722,
+          40,
+          14
+        ],
+        "emission": "light"
+      },
+      "red": {
+        "rect": [
+          973,
+          723,
+          13,
+          45
+        ],
+        "emission": "light"
+      },
+      "heat": {
+        "rect": [
+          931,
+          723,
+          8,
+          20
+        ],
+        "emission": "light"
+      },
+      "white": {
+        "rect": [
+          548,
+          530,
+          20,
+          20
+        ],
+        "emission": "light"
+      },
+      "back": {
+        "rect": [
+          370,
+          198,
+          113,
+          121
+        ],
+        "emission": "color"
+      },
+      "left": {
+        "rect": [
+          601,
+          211,
+          65,
+          125
+        ],
+        "emission": "color"
+      },
+      "right": {
+        "rect": [
+          756,
+          211,
+          64,
+          126
+        ],
+        "emission": "color"
+      },
+      "top": {
+        "rect": [
+          932,
+          207,
+          80,
+          91
+        ],
+        "emission": "color"
+      },
+      "bottom": {
+        "rect": [
+          1116,
+          183,
+          80,
+          105
+        ],
+        "emission": "color"
+      },
+      "front": {
+        "rect": [
+          72,
+          186,
+          169,
+          159
+        ],
+        "emission": "color"
+      },
+      "core": {
+        "rect": [
+          519,
+          502,
+          77,
+          77
+        ],
+        "emission": "light"
+      },
+      "vent": {
+        "rect": [
+          742,
+          441,
+          70,
+          68
+        ],
+        "emission": "color"
+      },
+      "fin": {
+        "rect": [
+          49,
+          473,
+          40,
+          149
+        ],
+        "emission": "color"
+      },
+      "bolt": {
+        "rect": [
+          1144,
+          789,
+          20,
+          20
+        ],
+        "emission": "none"
+      }
+    }
+  },
+  "module/range_module": {
+    "sheet": "module/range_module.png",
+    "regions": {
+      "metal": {
+        "rect": [
+          675,
+          474,
+          147,
+          216
+        ],
+        "emission": "none"
+      },
+      "steel": {
+        "rect": [
+          134,
+          185,
+          93,
+          16
+        ],
+        "emission": "none"
+      },
+      "light": {
+        "rect": [
+          106,
+          904,
+          26,
+          15
+        ],
+        "emission": "light"
+      },
+      "yellow": {
+        "rect": [
+          976,
+          870,
+          25,
+          26
+        ],
+        "emission": "light"
+      },
+      "white": {
+        "rect": [
+          165,
+          266,
+          27,
+          31
+        ],
+        "emission": "light"
+      },
+      "front": {
+        "rect": [
+          103,
+          226,
+          130,
+          99
+        ],
+        "emission": "color"
+      },
+      "back": {
+        "rect": [
+          424,
+          229,
+          136,
+          105
+        ],
+        "emission": "none"
+      },
+      "left": {
+        "rect": [
+          161,
+          442,
+          342,
+          128
+        ],
+        "emission": "color"
+      },
+      "right": {
+        "rect": [
+          163,
+          650,
+          340,
+          127
+        ],
+        "emission": "color"
+      },
+      "top": {
+        "rect": [
+          737,
+          226,
+          57,
+          82
+        ],
+        "emission": "none"
+      },
+      "bottom": {
+        "rect": [
+          684,
+          484,
+          139,
+          216
+        ],
+        "emission": "none"
+      },
+      "antenna": {
+        "rect": [
+          103,
+          856,
+          31,
+          184
+        ],
+        "emission": "color"
+      },
+      "antenna_top": {
+        "rect": [
+          297,
+          869,
+          42,
+          44
+        ],
+        "emission": "none"
+      },
+      "vent": {
+        "rect": [
+          445,
+          246,
+          100,
+          70
+        ],
+        "emission": "none"
+      },
+      "bolt": {
+        "rect": [
+          1026,
+          1007,
+          12,
+          12
+        ],
+        "emission": "none"
+      }
+    }
+  },
+  "module/advanced_range_module": {
+    "sheet": "module/advanced_range_module.png",
+    "regions": {
+      "metal": {
+        "rect": [
+          107,
+          720,
+          90,
+          16
+        ],
+        "emission": "none"
+      },
+      "steel": {
+        "rect": [
+          686,
+          963,
+          30,
+          29
+        ],
+        "emission": "none"
+      },
+      "light": {
+        "rect": [
+          334,
+          788,
+          166,
+          21
+        ],
+        "emission": "light"
+      },
+      "energy": {
+        "rect": [
+          338,
+          722,
+          159,
+          25
+        ],
+        "emission": "light"
+      },
+      "gold": {
+        "rect": [
+          856,
+          710,
+          26,
+          18
+        ],
+        "emission": "none"
+      },
+      "white": {
+        "rect": [
+          88,
+          251,
+          20,
+          25
+        ],
+        "emission": "light"
+      },
+      "yellow": {
+        "rect": [
+          855,
+          710,
+          25,
+          20
+        ],
+        "emission": "none"
+      },
+      "front": {
+        "rect": [
+          57,
+          232,
+          83,
+          83
+        ],
+        "emission": "light"
+      },
+      "back": {
+        "rect": [
+          490,
+          224,
+          91,
+          93
+        ],
+        "emission": "light"
+      },
+      "top": {
+        "rect": [
+          974,
+          194,
+          54,
+          63
+        ],
+        "emission": "color"
+      },
+      "bottom": {
+        "rect": [
+          992,
+          513,
+          86,
+          67
+        ],
+        "emission": "none"
+      },
+      "left": {
+        "rect": [
+          268,
+          506,
+          69,
+          85
+        ],
+        "emission": "color"
+      },
+      "right": {
+        "rect": [
+          458,
+          505,
+          64,
+          86
+        ],
+        "emission": "color"
+      },
+      "vent": {
+        "rect": [
+          1091,
+          718,
+          38,
+          68
+        ],
+        "emission": "none"
+      },
+      "bolt": {
+        "rect": [
+          1112,
+          807,
+          14,
+          14
+        ],
+        "emission": "none"
+      }
+    }
+  },
+  "module/thickness_module": {
+    "sheet": "module/thickness_module.png",
+    "regions": {
+      "metal": {
+        "rect": [
+          405,
+          505,
+          71,
+          29
+        ],
+        "emission": "none"
+      },
+      "steel": {
+        "rect": [
+          352,
+          958,
+          34,
+          25
+        ],
+        "emission": "none"
+      },
+      "light": {
+        "rect": [
+          44,
+          958,
+          111,
+          17
+        ],
+        "emission": "light"
+      },
+      "blue": {
+        "rect": [
+          647,
+          249,
+          14,
+          57
+        ],
+        "emission": "light"
+      },
+      "white": {
+        "rect": [
+          724,
+          263,
+          28,
+          20
+        ],
+        "emission": "light"
+      },
+      "front": {
+        "rect": [
+          627,
+          154,
+          221,
+          240
+        ],
+        "emission": "light"
+      },
+      "back": {
+        "rect": [
+          347,
+          146,
+          246,
+          257
+        ],
+        "emission": "color"
+      },
+      "wrap": {
+        "rect": [
+          34,
+          766,
+          1185,
+          114
+        ],
+        "emission": "color",
+        "size": [
+          593,
+          57
+        ]
+      },
+      "ring": {
+        "rect": [
+          41,
+          151,
+          259,
+          254
+        ],
+        "emission": "color"
+      },
+      "rim": {
+        "rect": [
+          350,
+          1127,
+          141,
+          14
+        ],
+        "emission": "none"
+      },
+      "bolt": {
+        "rect": [
+          650,
+          970,
+          30,
+          22
+        ],
+        "emission": "none"
+      },
+      "panel": {
+        "rect": [
+          757,
+          1119,
+          16,
+          24
+        ],
+        "emission": "none"
+      }
+    }
+  },
+  "module/control_circuit": {
+    "sheet": "module/control_circuit.png",
+    "regions": {
+      "metal": {
+        "rect": [
+          751,
+          986,
+          53,
+          56
+        ],
+        "emission": "none"
+      },
+      "steel": {
+        "rect": [
+          737,
+          1120,
+          105,
+          15
+        ],
+        "emission": "none"
+      },
+      "light": {
+        "rect": [
+          1038,
+          758,
+          4,
+          36
+        ],
+        "emission": "light"
+      },
+      "white": {
+        "rect": [
+          123,
+          826,
+          11,
+          12
+        ],
+        "emission": "light"
+      },
+      "top": {
+        "rect": [
+          35,
+          122,
+          404,
+          380
+        ],
+        "emission": "color"
+      },
+      "bottom": {
+        "rect": [
+          484,
+          123,
+          377,
+          380
+        ],
+        "emission": "none"
+      },
+      "side": {
+        "rect": [
+          90,
+          588,
+          168,
+          76
+        ],
+        "emission": "color"
+      },
+      "processor": {
+        "rect": [
+          70,
+          774,
+          112,
+          112
+        ],
+        "emission": "color"
+      },
+      "processor_side": {
+        "rect": [
+          279,
+          770,
+          75,
+          33
+        ],
+        "emission": "none"
+      },
+      "chip": {
+        "rect": [
+          140,
+          988,
+          61,
+          23
+        ],
+        "emission": "none"
+      },
+      "bolt": {
+        "rect": [
+          563,
+          1046,
+          14,
+          17
+        ],
+        "emission": "none"
+      },
+      "gold": {
+        "rect": [
+          140,
+          1025,
+          13,
+          7
+        ],
+        "emission": "none"
+      }
+    }
+  },
+  "module/silk_touch_module": {
+    "sheet": "module/silk_touch_module.png",
+    "regions": {
+      "metal": {
+        "rect": [
+          682,
+          907,
+          22,
+          28
+        ],
+        "emission": "none"
+      },
+      "steel": {
+        "rect": [
+          809,
+          909,
+          20,
+          26
+        ],
+        "emission": "none"
+      },
+      "light": {
+        "rect": [
+          1030,
+          511,
+          9,
+          83
+        ],
+        "emission": "light"
+      },
+      "white": {
+        "rect": [
+          1130,
+          513,
+          17,
+          21
+        ],
+        "emission": "light"
+      },
+      "top": {
+        "rect": [
+          48,
+          584,
+          112,
+          124
+        ],
+        "emission": "color"
+      },
+      "bottom": {
+        "rect": [
+          416,
+          586,
+          101,
+          122
+        ],
+        "emission": "color"
+      },
+      "side": {
+        "rect": [
+          30,
+          348,
+          62,
+          86
+        ],
+        "emission": "color"
+      },
+      "column": {
+        "rect": [
+          539,
+          260,
+          17,
+          106
+        ],
+        "emission": "light"
+      },
+      "cube": {
+        "rect": [
+          782,
+          584,
+          52,
+          63
+        ],
+        "emission": "light"
+      },
+      "cube_back": {
+        "rect": [
+          784,
+          745,
+          52,
+          53
+        ],
+        "emission": "color"
+      },
+      "bolt": {
+        "rect": [
+          349,
+          902,
+          32,
+          34
+        ],
+        "emission": "none"
+      },
+      "panel": {
+        "rect": [
+          451,
+          1084,
+          31,
+          30
+        ],
+        "emission": "none"
+      }
+    }
+  },
+  "module/block_drops_module": {
+    "sheet": "module/block_drops_module.png",
+    "regions": {
+      "metal": {
+        "rect": [
+          158,
+          500,
+          15,
+          113
+        ],
+        "emission": "none"
+      },
+      "steel": {
+        "rect": [
+          877,
+          735,
+          23,
+          82
+        ],
+        "emission": "none"
+      },
+      "light": {
+        "rect": [
+          415,
+          800,
+          60,
+          12
+        ],
+        "emission": "light"
+      },
+      "white": {
+        "rect": [
+          422,
+          738,
+          13,
+          17
+        ],
+        "emission": "light"
+      },
+      "yellow": {
+        "rect": [
+          600,
+          742,
+          17,
+          12
+        ],
+        "emission": "light"
+      },
+      "intake": {
+        "rect": [
+          42,
+          135,
+          209,
+          217
+        ],
+        "emission": "color"
+      },
+      "back": {
+        "rect": [
+          622,
+          201,
+          128,
+          127
+        ],
+        "emission": "color"
+      },
+      "left": {
+        "rect": [
+          63,
+          483,
+          100,
+          134
+        ],
+        "emission": "none"
+      },
+      "right": {
+        "rect": [
+          804,
+          488,
+          127,
+          127
+        ],
+        "emission": "none"
+      },
+      "top": {
+        "rect": [
+          464,
+          488,
+          106,
+          110
+        ],
+        "emission": "color"
+      },
+      "bottom": {
+        "rect": [
+          1045,
+          466,
+          143,
+          181
+        ],
+        "emission": "none"
+      },
+      "wrap": {
+        "rect": [
+          468,
+          449,
+          102,
+          21
+        ],
+        "emission": "none"
+      },
+      "rim": {
+        "rect": [
+          847,
+          843,
+          25,
+          48
+        ],
+        "emission": "none"
+      },
+      "bolt": {
+        "rect": [
+          999,
+          790,
+          19,
+          21
+        ],
+        "emission": "none"
+      },
+      "panel": {
+        "rect": [
+          1100,
+          793,
+          60,
+          94
+        ],
+        "emission": "color"
+      }
+    }
+  },
+  "module/scorch_marks_module": {
+    "sheet": "module/scorch_marks_module.png",
+    "regions": {
+      "metal": {
+        "rect": [
+          875,
+          914,
+          94,
+          26
+        ],
+        "emission": "none"
+      },
+      "steel": {
+        "rect": [
+          46,
+          1067,
+          167,
+          25
+        ],
+        "emission": "none"
+      },
+      "light": {
+        "rect": [
+          408,
+          923,
+          8,
+          50
+        ],
+        "emission": "light"
+      },
+      "orange": {
+        "rect": [
+          578,
+          921,
+          52,
+          57
+        ],
+        "emission": "light"
+      },
+      "heat": {
+        "rect": [
+          681,
+          925,
+          17,
+          51
+        ],
+        "emission": "light"
+      },
+      "yellow": {
+        "rect": [
+          126,
+          740,
+          14,
+          19
+        ],
+        "emission": "light"
+      },
+      "gold": {
+        "rect": [
+          81,
+          916,
+          19,
+          10
+        ],
+        "emission": "none"
+      },
+      "hazard": {
+        "rect": [
+          42,
+          912,
+          242,
+          37
+        ],
+        "emission": "none"
+      },
+      "top": {
+        "rect": [
+          58,
+          684,
+          146,
+          135
+        ],
+        "emission": "color"
+      },
+      "bottom": {
+        "rect": [
+          277,
+          683,
+          146,
+          135
+        ],
+        "emission": "color"
+      },
+      "vent": {
+        "rect": [
+          454,
+          913,
+          81,
+          80
+        ],
+        "emission": "color"
+      },
+      "bolt": {
+        "rect": [
+          465,
+          1074,
+          20,
+          24
+        ],
+        "emission": "none"
+      },
+      "panel": {
+        "rect": [
+          961,
+          904,
+          53,
+          87
+        ],
+        "emission": "none"
+      },
+      "chamber_0": {
+        "rect": [
+          483,
+          680,
+          77,
+          151
+        ],
+        "emission": "light"
+      },
+      "chamber_1": {
+        "rect": [
+          560,
+          680,
+          77,
+          151
+        ],
+        "emission": "light"
+      },
+      "chamber_2": {
+        "rect": [
+          637,
+          680,
+          77,
+          151
+        ],
+        "emission": "light"
+      },
+      "chamber_3": {
+        "rect": [
+          714,
+          680,
+          77,
+          151
+        ],
+        "emission": "light"
+      }
+    }
+  },
+  "module/ignition_module": {
+    "sheet": "module/scorch_marks_module.png",
+    "regions": {
+      "metal": {
+        "rect": [
+          875,
+          914,
+          94,
+          26
+        ],
+        "emission": "none"
+      },
+      "steel": {
+        "rect": [
+          46,
+          1067,
+          167,
+          25
+        ],
+        "emission": "none"
+      },
+      "light": {
+        "rect": [
+          408,
+          923,
+          8,
+          50
+        ],
+        "emission": "light"
+      },
+      "orange": {
+        "rect": [
+          578,
+          921,
+          52,
+          57
+        ],
+        "emission": "light"
+      },
+      "heat": {
+        "rect": [
+          681,
+          925,
+          17,
+          51
+        ],
+        "emission": "light"
+      },
+      "yellow": {
+        "rect": [
+          126,
+          740,
+          14,
+          19
+        ],
+        "emission": "light"
+      },
+      "gold": {
+        "rect": [
+          81,
+          916,
+          19,
+          10
+        ],
+        "emission": "none"
+      },
+      "hazard": {
+        "rect": [
+          42,
+          912,
+          242,
+          37
+        ],
+        "emission": "none"
+      },
+      "top": {
+        "rect": [
+          58,
+          684,
+          146,
+          135
+        ],
+        "emission": "color"
+      },
+      "bottom": {
+        "rect": [
+          277,
+          683,
+          146,
+          135
+        ],
+        "emission": "color"
+      },
+      "vent": {
+        "rect": [
+          454,
+          913,
+          81,
+          80
+        ],
+        "emission": "color"
+      },
+      "bolt": {
+        "rect": [
+          465,
+          1074,
+          20,
+          24
+        ],
+        "emission": "none"
+      },
+      "panel": {
+        "rect": [
+          961,
+          904,
+          53,
+          87
+        ],
+        "emission": "none"
+      },
+      "chamber_0": {
+        "rect": [
+          483,
+          680,
+          77,
+          151
+        ],
+        "emission": "light"
+      },
+      "chamber_1": {
+        "rect": [
+          560,
+          680,
+          77,
+          151
+        ],
+        "emission": "light"
+      },
+      "chamber_2": {
+        "rect": [
+          637,
+          680,
+          77,
+          151
+        ],
+        "emission": "light"
+      },
+      "chamber_3": {
+        "rect": [
+          714,
+          680,
+          77,
+          151
+        ],
+        "emission": "light"
+      }
+    }
+  },
+  "module/target_filter_module": {
+    "sheet": "module/range_module.png",
+    "regions": {
+      "metal": {
+        "rect": [
+          675,
+          474,
+          147,
+          216
+        ],
+        "emission": "none"
+      },
+      "steel": {
+        "rect": [
+          134,
+          185,
+          93,
+          16
+        ],
+        "emission": "none"
+      },
+      "light": {
+        "rect": [
+          106,
+          904,
+          26,
+          15
+        ],
+        "emission": "light"
+      },
+      "yellow": {
+        "rect": [
+          976,
+          870,
+          25,
+          26
+        ],
+        "emission": "light"
+      },
+      "white": {
+        "rect": [
+          165,
+          266,
+          27,
+          31
+        ],
+        "emission": "light"
+      },
+      "front": {
+        "rect": [
+          766,
+          991,
+          29,
+          29
+        ],
+        "emission": "none",
+        "sheet": "module/control_circuit.png"
+      },
+      "back": {
+        "rect": [
+          424,
+          229,
+          136,
+          105
+        ],
+        "emission": "none"
+      },
+      "left": {
+        "rect": [
+          161,
+          442,
+          342,
+          128
+        ],
+        "emission": "color"
+      },
+      "right": {
+        "rect": [
+          163,
+          650,
+          340,
+          127
+        ],
+        "emission": "color"
+      },
+      "top": {
+        "rect": [
+          737,
+          226,
+          57,
+          82
+        ],
+        "emission": "none"
+      },
+      "bottom": {
+        "rect": [
+          684,
+          484,
+          139,
+          216
+        ],
+        "emission": "none"
+      },
+      "antenna": {
+        "rect": [
+          103,
+          856,
+          31,
+          184
+        ],
+        "emission": "color"
+      },
+      "antenna_top": {
+        "rect": [
+          297,
+          869,
+          42,
+          44
+        ],
+        "emission": "none"
+      },
+      "vent": {
+        "rect": [
+          445,
+          246,
+          100,
+          70
+        ],
+        "emission": "none"
+      },
+      "bolt": {
+        "rect": [
+          1026,
+          1007,
+          12,
+          12
+        ],
+        "emission": "none"
+      },
+      "sensor": {
+        "rect": [
+          627,
+          154,
+          221,
+          240
+        ],
+        "emission": "light",
+        "sheet": "module/thickness_module.png"
+      },
+      "gold": {
+        "rect": [
+          855,
+          710,
+          25,
+          20
+        ],
+        "emission": "none",
+        "sheet": "module/advanced_range_module.png"
+      }
+    }
+  }
+}

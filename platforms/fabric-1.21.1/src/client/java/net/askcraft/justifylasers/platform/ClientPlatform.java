@@ -31,13 +31,18 @@ import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.gui.screen.ingame.HandledScreens;
-import net.minecraft.client.render.VertexFormats;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.item.Item;
 
 import java.util.function.Consumer;
 
 public final class ClientPlatform {
     public static void initialize() {
+        net.askcraft.justifylasers.network.SaberStatePacket.receiver = net.askcraft.justifylasers.client.SaberFencingClient::receive;
+        ClientPlayNetworking.registerGlobalReceiver(net.askcraft.justifylasers.network.SaberStatePayload.ID, (payload, context) -> payload.packet().deliver());
+        net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback.EVENT.register((stack, context, type, lines) -> net.askcraft.justifylasers.client.SaberTooltips.append(stack, lines));
+        net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper.registerKeyBinding(net.askcraft.justifylasers.client.ClientSettingsKey.OPEN);
+        net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper.registerKeyBinding(net.askcraft.justifylasers.client.ClientSettingsKey.SABER_TOGGLE);
         ClientPlayNetworking.registerGlobalReceiver(PolicyPayload.ID, (payload, context) ->
                 LaserConfig.applyServerMode(payload.packet().technicalMode()));
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> LaserConfig.resetServerMode());
@@ -49,12 +54,18 @@ public final class ClientPlatform {
             LaserWorldRenderer.render(frame);
             LaserScorchRenderer.prepare(frame);
         });
-        ClientTickEvents.END_CLIENT_TICK.register(LaserScorchRenderer::tick);
+        ClientTickEvents.END_CLIENT_TICK.register(net.askcraft.justifylasers.client.JustifyLasersClient::tick);
         HandledScreens.register(ModScreenHandlers.LASER_EMITTER, LaserEmitterScreen::new);
         HandledScreens.register(ModScreenHandlers.POWERED_LASER_EMITTER, PoweredLaserEmitterScreen::new);
         HandledScreens.register(ModScreenHandlers.LASER_RECEIVER, LaserReceiverScreen::new);
+        HandledScreens.register(ModScreenHandlers.INDUSTRIAL_MACHINE, net.askcraft.justifylasers.client.screen.IndustrialMachineScreen::new);
+        HandledScreens.register(ModScreenHandlers.TABLET, net.askcraft.justifylasers.client.screen.TabletScreen::new);
+        HandledScreens.register(ModScreenHandlers.LASER_TURRET, net.askcraft.justifylasers.client.screen.LaserTurretScreen::new);
         EntityRendererRegistry.register(ModEntities.REFOCUSING_CUBE, RefocusingCubeRenderer::new);
         BlockEntityRendererFactories.register(ModBlockEntities.LASER_PART, LaserPartRenderer::new);
+        BlockEntityRendererFactories.register(ModBlockEntities.INDUSTRIAL_MACHINE, net.askcraft.justifylasers.client.render.IndustrialMachineRenderer::new);
+        BlockEntityRendererFactories.register(ModBlockEntities.LASER_TURRET, net.askcraft.justifylasers.client.render.LaserTurretRenderer::new);
+        BlockEntityRendererFactories.register(ModBlockEntities.LASER_OPTIC, net.askcraft.justifylasers.client.render.LaserOpticRenderer::new);
         ModLaserParts.items().forEach(item -> BuiltinItemRendererRegistry.INSTANCE.register(item, LaserPartRenderer::renderItem));
         BuiltinItemRendererRegistry.INSTANCE.register(ModEntities.REFOCUSING_CUBE_ITEM,
                 (stack, mode, matrices, consumers, light, overlay) -> {
@@ -66,9 +77,9 @@ public final class ClientPlatform {
                 });
     }
 
-    public static void registerDepthShader(Consumer<ShaderProgram> loaded) {
+    public static void registerShader(String name, VertexFormat format, Consumer<ShaderProgram> loaded) {
         CoreShaderRegistrationCallback.EVENT.register(context ->
-                context.register(JustifyLasers.id("depth_merge"), VertexFormats.POSITION, loaded));
+                context.register(JustifyLasers.id(name), format, loaded));
     }
 
     public static void sendSettings(LaserSettingsPacket packet) {
@@ -76,5 +87,13 @@ public final class ClientPlatform {
     }
 
     private ClientPlatform() {
+    }
+
+    public static void sendSaberToggle(net.askcraft.justifylasers.network.SaberTogglePacket packet) {
+        ClientPlayNetworking.send(new net.askcraft.justifylasers.network.SaberTogglePayload(packet));
+    }
+
+    public static void sendGunControl(net.askcraft.justifylasers.network.LaserGunControlPacket packet) {
+        ClientPlayNetworking.send(new net.askcraft.justifylasers.network.GunControlPayload(packet));
     }
 }

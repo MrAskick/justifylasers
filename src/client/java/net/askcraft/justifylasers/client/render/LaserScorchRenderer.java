@@ -20,8 +20,9 @@ public final class LaserScorchRenderer {
     private static final LaserScorchMarks MARKS = new LaserScorchMarks();
     private static final List<VisibleMark> VISIBLE = new ArrayList<>();
 
-    public static void tick(MinecraftClient client) {
-        MARKS.tick(client.world);
+    public static void tick(MinecraftClient client, List<LaserScorchMarks.WeaponContact> saberContacts) {
+        boolean enabled = net.askcraft.justifylasers.client.ClientSettings.get().scorchMarks;
+        MARKS.tick(enabled ? client.world : null, enabled ? saberContacts : List.of());
     }
 
     public static void prepare(LaserRenderFrame context) {
@@ -29,6 +30,8 @@ public final class LaserScorchRenderer {
             return;
         }
         VISIBLE.clear();
+        var settings = net.askcraft.justifylasers.client.ClientSettings.get();
+        if (!settings.scorchMarks) return;
         if (!MARKS.belongsTo(context.world()) || context.consumers() == null) {
             return;
         }
@@ -42,12 +45,12 @@ public final class LaserScorchRenderer {
             Vec3d normal = Vec3d.of(patch.face().getVector());
             Vec3d surface = origin.add(patch.soot().get(0).position());
             double distance = camera.distanceTo(surface);
-            if (distance >= 96 || camera.subtract(surface).dotProduct(normal) <= 0
+            if (distance >= settings.scorchDistance || camera.subtract(surface).dotProduct(normal) <= 0
                     || context.world().getBlockState(patch.position()) != patch.state()
                     || context.frustum() != null && !context.frustum().isVisible(new Box(patch.position()).expand(0.01D))) {
                 continue;
             }
-            float opacity = LaserScorchMarks.opacity(mark.age(now)) * (float) MathHelper.clamp((96 - distance) / 24, 0, 1);
+            float opacity = LaserScorchMarks.opacity(mark.age(now)) * (float) MathHelper.clamp((settings.scorchDistance - distance) / Math.min(24, settings.scorchDistance / 2d), 0, 1);
             float heat = LaserScorchMarks.heat(mark.age(now));
             VISIBLE.add(new VisibleMark(patch, opacity, heat));
             if (shaders && mark.emitsLight() && heat > 0.035F) {

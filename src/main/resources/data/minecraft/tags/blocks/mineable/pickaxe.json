@@ -1,8 +1,20 @@
 {
   "replace": false,
   "values": [
+    "justifylasers:laser_turret",
     "justifylasers:laser_emitter",
     "justifylasers:powered_laser_emitter",
-    "justifylasers:laser_receiver"
+    "justifylasers:laser_receiver",
+    "justifylasers:laser_mirror",
+    "justifylasers:beam_splitter",
+    "justifylasers:energy_receiver",
+    "justifylasers:wolframite_ore",
+    "justifylasers:photonic_crystal_ore",
+    "justifylasers:deepslate_wolframite_ore",
+    "justifylasers:deepslate_photonic_crystal_ore",
+    "justifylasers:fuel_generator",
+    "justifylasers:electric_smelter",
+    "justifylasers:crystal_growth_chamber",
+    "justifylasers:assembly_chamber"
   ]
 }

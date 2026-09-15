@@ -11,6 +11,8 @@
   "icon": "assets/justifylasers/icon.png",
   "environment": "*",
   "entrypoints": {
+    "jade": ["net.askcraft.justifylasers.compat.JustifyLasersJadePlugin"],
+    "jei_mod_plugin": ["net.askcraft.justifylasers.client.compat.JustifyLasersJeiPlugin"],
     "client": [
       "net.askcraft.justifylasers.fabric.JustifyLasersFabricClient"
     ],

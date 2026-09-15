@@ -1,5 +1,138 @@
 # Changelog
 
+For the public update from alpha.6, see the [short alpha.21 release notes](docs/releases/2.0.0-alpha.21.md). The entries below retain the individual development changes.
+
+## 2.0.0-alpha.21
+
+- Replaced saber audio with 22 recorded OGG sounds: equip, five idle variants, nine swings, three surface contacts, and separate single/staff ignition and retraction.
+- Fixed independent hand audio, clipped sound tails and repeated ignition during sound reloads. Surface audio works with scorch marks disabled and is rate-limited during sustained contact.
+- Retained existing blade-clash sounds and weapon mechanics; removed four unused synthesized saber recordings.
+
+## 2.0.0-alpha.20
+
+- Rebuilt ore inclusions as separated, faceted minerals with larger crystals and smaller chips; removed overlapping stacked cubes.
+- Added full-silhouette clearance and neighbor-face culling. Ore textures, generation, hardness and loot are unchanged.
+
+## 2.0.0-alpha.19
+
+- Increased chamber water opacity to about 70%; corrected stretched panel UVs and full-multiblock render bounds.
+- Rebuilt the tablet frame; fixed preview face orientation and rotation, formalized Russian prompts, and made screen power drain active only while its interface is open.
+- Replaced schematic models with framed cards carrying cached, flat item thumbnails.
+- Added independent dual-wield gun/saber controls: right-click for the physical right hand, left-click for the left; disabled shared dual-gun aiming.
+- Randomized ore inclusion placement and rotation without changing density, vein generation or loot.
+- Corrected Crystal Mount breaking particles to use its own frame material.
+- Replaced legacy Laser Chassis/Optical Assembly with the new housing/lens components, preserving old stacks. Assigned distinct time and energy costs to all 26 assembly recipes.
+
+## 2.0.0-alpha.18
+
+- Enlarged and doubled ore inclusions. Added diamond-style small, buried and large veins: more accessible Wolframite, rarer Photonite; retained Fortune and Silk Touch.
+- Fixed overlapping chamber/casing geometry and material mapping. Turned assembly arms inward and increased their movement.
+- Added chamber security/redstone tabs, all-face item/fluid access, cycling ingredient ghosts and centered titles. Matched Crystal Mount collision to laser crystals.
+- Added five modeled laser components and their schematics; updated device/module assembly recipes to use them. Schematics now display their output item.
+- Added craftable Blank Schematics and the rechargeable Extraterrestrial Tablet: interactive handheld display, rotatable 3D previews, world clock, battery meter and server-validated schematic recording.
+- Updated English/Russian guides. Tablet discovery structures are not included yet; existing generator/smelter WIP restrictions remain.
+
+## 2.0.0-alpha.17
+
+- Fixed LightSaber slot-switch crashes and third-person grips. Added server-timed directional fencing, short combos, frontal guards, timed parries, stamina, guard breaks and blade clashes with colored sparks and sound.
+- Rebuilt ores with resource-pack stone/deepslate and protruding 3D mineral inclusions; added black Wolframite ingots and volumetric raw minerals.
+- Replaced single-block growth/assembly machines with 2×2×2 casing multiblocks, animated interiors and emitter-style interfaces. Added a visible, consumable water tank and native item/fluid/energy automation.
+- Added bare Photonite Crystals and placeable Crystal Mounts. Mount a grown crystal before using or dyeing it.
+- Moved 21 advanced-device/module recipes into schematic-driven assembly and added real JEI recipe categories. Schematics are reusable and Creative-only for now.
+- Moved Wolframite smelting to a normal furnace (150 seconds). Removed Fuel Generator/Electric Smelter recipes and marked both WIP; preserved existing items and machines.
+
+## 2.0.0-alpha.16
+
+- Fixed first-person saber visibility with F1, camera-pole flips, yaw-dependent rolling and clipping into nearby walls. Added Laser Gun-style movement inertia.
+- Added two alternating LightSaber cuts and a three-hit Light Staff combo using the opposite blade, with smooth recovery between inputs.
+- Rebuilt both hilts with angular geometry, component-mapped textures and blade-colored emissive details. Renamed Laser Saber to LightSaber; kept its item ID.
+- Added Wolframite and Photonic Crystal ores, a Fuel Generator, Electric Smelter, Crystal Growth Chamber and animated Assembly Chamber.
+- Added heat-resistant alloys, chassis and optics. Raw crystals must be grown; powered emitters are assembled with a preinstalled crystal, not crafted at a workbench.
+- Enabled standalone industrial progression by default, with configurable machine costs/times, native energy transfer, inventory automation, recipe unlocks and English/Russian guides. Existing blocks and parts remain valid; legacy mode is configurable.
+
+## 2.0.0-alpha.15
+
+- Added craftable Laser Saber and double-ended Light Staff: nine colors, retractable blades, fast melee sweeps, impact sparks, surface scorch trails and dedicated sounds. No energy required yet.
+- Added server-validated melee with attack-rate limits, armor/resistance checks, wall occlusion and modest knockback. The staff trades attack speed for a wider sweep.
+- Added a rebindable client-settings key (J), with cube/scope lens toggles and adjustable 1–3× cube magnification; changed the default to 1.8×.
+- Added local controls for lens distance/count, scorch visibility/distance, weapon sway, saber sparks, sound volume and voice limits.
+- Added component-mapped hilt models and rounded, white-core blades with shader emission; updated English/Russian controls and JEI guides.
+- Preserved existing emitter energy costs, optical routing, inventories and gun/turret mechanics. Private reference sheets are excluded from release archives.
+
+## 2.0.0-alpha.14
+
+- Fixed removed Laser Guns remaining visible on turret stands; inventory updates now clear empty slots.
+- Replaced patchy cube emission with continuous color-matched rings and guides; removed the dark shader-glass cover.
+- Added depth-tested 1.28x convex cube lenses, preserving the white-hot core and foreground occlusion with shaders.
+- Fixed remaining splitter corner seams and matched the redstone receiver's GUI scale to the emitter.
+- Rebuilt the Configurator with an open fork, suspended core and component-mapped materials from the new artwork.
+- Added inventory-sync, emission-mask, seam and paired-image optical regression checks. Recipes, energy and beam mechanics are unchanged.
+
+## 2.0.0-alpha.13
+
+- Fixed overlapping module panels and flickering corner caps; removed hidden coplanar faces.
+- Added block-specific breaking-particle textures for crystals, modules and optical hardware; emitter particles follow their selected panel texture.
+- Restored shader-compatible scope magnification: 1.5× camera focus and 2.5× total magnification through the lens. Fixed the lens pass interfering with vignette blending.
+- Removed walking bob and movement sway while aiming; retained firing recoil and normal hip-fire handling.
+- Rebuilt the refocusing cube, mirror and six-port splitter with component-mapped textures, neutral idle materials and beam-colored emission.
+- Preserved cube physics, port configuration, optical routing, saved settings and energy costs.
+
+## 2.0.0-alpha.12
+
+- Removed 49 unused textures and losslessly optimized the remaining PNGs, reducing universal JARs by about 6 MB.
+- Separated private reference sheets from public sources and added build-time archive checks to prevent accidental packaging.
+- Fixed shader-washed scope colors with a dedicated final-image lens pass; retained magnification, aiming and weapon handling.
+- Rebuilt the energy receiver with mapped chassis panels, raised details, configurable sockets and neutral beam-colored emission. It turns gray and stops glowing without an incoming beam.
+- Preserved port settings, energy conversion, inventories and gameplay balance.
+
+## 2.0.0-alpha.11
+
+- Rebuilt gun, turret, crystal and module textures from individually selected reference components.
+- Corrected per-face UVs, cylindrical wraps, crystal tips and color-specific layouts; removed repeated panel projections.
+- Preserved shader emission, transparent crystal rendering and all gameplay mechanics.
+
+## 2.0.0-alpha.10
+
+- Fixed translucent crystals disappearing against the sky with shaders, and scorch marks drawing over nearer beams without shaders.
+- Added cooling surface scorch trails to the Laser Gun; walls behind hit entities remain untouched.
+- Added aim-down-sights, a transparent 2.5× screen-space lens, a dedicated reticle and smoother look/movement inertia.
+- Changed gun controls to hold Attack for fire, hold Use for aiming, and sneak + Use for color selection. Turret mounting is unchanged.
+- Replaced gun/crystal/turret textures with the supplied nine-color artwork and matching LabPBR maps; rebuilt the turret's base and angled support.
+- Added validated server-side fire input with a lost-input timeout; retained damage, energy, inventory and optical settings.
+- Updated English/Russian weapon guides.
+
+## 2.0.0-alpha.9
+
+- Added a craftable Laser Gun with nine colors, continuous fire, two-handed first/third-person handling, recoil and configurable damage/range.
+- Added a rotating turret stand with a gun slot, Target Filter slot, owner-only settings and named-player exclusions. Guns and turrets require no charge yet.
+- Made the Target Filter craftable without technical mods; added English/Russian weapon controls and guides.
+- Reworked metal materials and UVs, slimmed the wrench head, made crystals translucent, and fitted item models to GUI slots. Mirror items now use the same round mesh as placed mirrors.
+- Fixed mirror rear geometry/halo clipping and beams drawing over nearer custom models without shaders.
+- Restored white beam/cube cores on Forge/Oculus by repairing universal-JAR manifest wrapping and mixin discovery.
+- Isolated Forge/NeoForge classes, mixins and optional Jade/JEI discovery in universal JARs to prevent cross-loader crashes.
+- Fixed a rare server crash when optical components register or disappear during the network's tick update.
+- Preserved emitter/receiver models, saved settings, optical mechanics and powered-emitter energy costs.
+
+## 2.0.0-alpha.8
+
+- Added Forge 1.21.1 and legacy NeoForge 1.20.1 targets, plus one Fabric/Forge/NeoForge universal JAR per Minecraft version.
+- Replaced the configurator with a modeled sci-fi wrench.
+- Rebuilt the splitter as a six-port cross. Configure each face as input, output or disabled; enabled outputs share incoming power.
+- Rebuilt the energy receiver with configurable laser-input, energy-output and disabled faces. Closing a port also stops extraction through existing cable connections.
+- Added beam-colored accents and shader emission to both optical models; without an input beam they turn gray and stop glowing.
+- Preserved existing splitter layouts and saved settings; updated English/Russian hints and guides.
+- Fixed the Forge 1.21.1 world-render transform and a remapped Fabric 1.21.1 GUI-opening method conflict.
+
+## 2.0.0-alpha.7
+
+- Added crystal beam recoloring, additive mixing, and floor/wall/ceiling mounting.
+- Added adjustable mirrors, three-way beam splitters, and energy receivers with conversion loss; split branches share power and creative beams produce no FE.
+- Added a crafted configurator for rotation, settings-only copy/paste, mirror aiming, and trajectory previews.
+- Added the Target Filter module and settings for mob categories, players, owner exclusion, and named-player exclusions.
+- Replaced beacon sounds with laser start/loop/stop/contact audio, thickness-dependent pitch, separate volume, and a source limit.
+- Added optional Jade status overlays and detailed English/Russian JEI guides. Crystal recipes now work without technical mods.
+- Preserved existing module slot IDs, emitter settings, energy costs, cube controls, and beam rendering materials.
+
 ## 2.0.0-alpha.6
 
 Changes since 1.4.0:

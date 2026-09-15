@@ -1,0 +1,12 @@
+{
+  "blend": {"func": "add", "srcrgb": "srcalpha", "dstrgb": "1-srcalpha"},
+  "vertex": "justifylasers:scope",
+  "fragment": "justifylasers:cube_lens",
+  "attributes": ["Position", "UV0", "Color"],
+  "samplers": [{"name": "Scene"}, {"name": "SceneDepth"}],
+  "uniforms": [
+    {"name": "Viewport", "type": "float", "count": 2, "values": [1, 1]},
+    {"name": "Center", "type": "float", "count": 2, "values": [0.5, 0.5]},
+    {"name": "Magnification", "type": "float", "count": 1, "values": [1.8]}
+  ]
+}

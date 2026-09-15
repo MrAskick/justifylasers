@@ -83,6 +83,10 @@ public final class Platform {
         return FabricItemGroup.builder();
     }
 
+    public static Item tabletItem(Item.Settings settings) {
+        return new net.askcraft.justifylasers.item.ExtraterrestrialTabletItem(settings);
+    }
+
     public static Item cubeItem(Item.Settings settings) {
         return new RefocusingCubeItem(settings);
     }
@@ -133,6 +137,11 @@ public final class Platform {
     }
 
     public static void registerSettingsReceiver() {
+        ServerPlayNetworking.registerGlobalReceiver(net.askcraft.justifylasers.network.SaberTogglePacket.ID, (server, player, handler, buffer, sender) -> server.execute(() -> new net.askcraft.justifylasers.network.SaberTogglePacket().apply(player)));
+        ServerPlayNetworking.registerGlobalReceiver(net.askcraft.justifylasers.network.LaserGunControlPacket.ID, (server, player, handler, buffer, sender) -> {
+            var packet = new net.askcraft.justifylasers.network.LaserGunControlPacket(buffer);
+            server.execute(() -> packet.apply(player));
+        });
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
             PacketByteBuf buffer = PacketByteBufs.create();
             new LaserPolicyPacket(LaserConfig.technicalMode()).write(buffer);
@@ -145,10 +154,66 @@ public final class Platform {
     }
 
     public static void registerEnergy() {
+        EnergyStorage.ITEM.registerForItems((stack, context) -> new PlatformTabletEnergy(context),
+                net.askcraft.justifylasers.registry.ModIndustry.EXTRATERRESTRIAL_TABLET);
+        net.fabricmc.fabric.api.transfer.v1.fluid.FluidStorage.SIDED.registerForBlockEntity((machine, side) ->
+                machine.kind() == net.askcraft.justifylasers.industry.MachineKind.CRYSTAL_GROWER ? new PlatformWaterStorage(machine) : null, ModBlockEntities.INDUSTRIAL_MACHINE);
+        EnergyStorage.SIDED.registerForBlockEntity((machine, side) -> machine.energyPort(), ModBlockEntities.INDUSTRIAL_MACHINE);
+        for (String ore : new String[]{"wolframite", "photonic_crystal"})
+            for (String variant : new String[]{"", "_buried", "_large"})
+            net.fabricmc.fabric.api.biome.v1.BiomeModifications.addFeature(
+                    net.fabricmc.fabric.api.biome.v1.BiomeSelectors.foundInOverworld(),
+                    net.minecraft.world.gen.GenerationStep.Feature.UNDERGROUND_ORES,
+                    RegistryKey.of(net.minecraft.registry.RegistryKeys.PLACED_FEATURE, JustifyLasers.id("ore_" + ore + variant)));
+
         ResourceConditions.register(JustifyLasers.id("energy_mode"), json -> json.get("enabled").getAsBoolean() == LaserConfig.technicalMode());
         EnergyStorage.SIDED.registerForBlockEntity((emitter, side) -> emitter.isPoweredEmitter() ? emitter.energyPort() : null,
                 ModBlockEntities.LASER_EMITTER);
+        EnergyStorage.SIDED.registerForBlockEntity((receiver, side) ->
+                receiver.kind() == net.askcraft.justifylasers.block.LaserOpticBlock.Kind.ENERGY_RECEIVER
+                        && receiver.isEnergyOutput(side) ? receiver.energyPort(side) : null, ModBlockEntities.LASER_OPTIC);
     }
+
+    public static void exportEnergy(net.askcraft.justifylasers.block.entity.LaserOpticBlockEntity receiver) {
+        var world = receiver.getWorld();
+        int remaining = Math.min(receiver.energy().stored(), LaserConfig.get().maxInput);
+        if (!receiver.exportsEnergy() || remaining <= 0) return;
+        for (var side : net.minecraft.util.math.Direction.values()) {
+            if (!receiver.isEnergyOutput(side) || remaining <= 0) continue;
+            BlockPos target = receiver.getPos().offset(side);
+            if (!world.isChunkLoaded(target)) continue;
+            EnergyStorage storage = EnergyStorage.SIDED.find(world, target, side.getOpposite());
+            if (storage == null || !storage.supportsInsertion()) continue;
+            try (var transaction = net.fabricmc.fabric.api.transfer.v1.transaction.Transaction.openOuter()) {
+                long sent = storage.insert(remaining, transaction);
+                if (sent > 0 && receiver.energyPort(side).extract(sent, transaction) == sent) {
+                    transaction.commit();
+                    remaining -= (int) sent;
+                }
+            }
+        }
+    }
+
+    public static void exportEnergy(net.askcraft.justifylasers.block.entity.IndustrialMachineBlockEntity receiver) {
+        var world = receiver.getWorld();
+        int remaining = Math.min(receiver.energy().stored(), LaserConfig.get().machineTransfer);
+        if (!receiver.exportsEnergy() || remaining <= 0) return;
+        for (var side : net.minecraft.util.math.Direction.values()) {
+            if (remaining <= 0) continue;
+            BlockPos target = receiver.getPos().offset(side);
+            if (!world.isChunkLoaded(target)) continue;
+            EnergyStorage storage = EnergyStorage.SIDED.find(world, target, side.getOpposite());
+            if (storage == null || !storage.supportsInsertion()) continue;
+            try (var transaction = net.fabricmc.fabric.api.transfer.v1.transaction.Transaction.openOuter()) {
+                long sent = storage.insert(remaining, transaction);
+                if (sent > 0 && receiver.energyPort().extract(sent, transaction) == sent) {
+                    transaction.commit();
+                    remaining -= (int) sent;
+                }
+            }
+        }
+    }
+
 
     public static void onEndWorldTick(Consumer<ServerWorld> callback) {
         ServerTickEvents.END_WORLD_TICK.register(callback::accept);
@@ -158,10 +223,22 @@ public final class Platform {
         return FabricLoader.getInstance().isModLoaded(id);
     }
 
+    public static void opticPortsChanged(net.askcraft.justifylasers.block.entity.LaserOpticBlockEntity optic) {
+        var world = optic.getWorld();
+        world.updateNeighborsAlways(optic.getPos(), optic.getCachedState().getBlock());
+        world.updateListeners(optic.getPos(), optic.getCachedState(), optic.getCachedState(), net.minecraft.block.Block.NOTIFY_ALL);
+    }
+
     public static Path configDirectory() {
         return FabricLoader.getInstance().getConfigDir();
     }
 
     private Platform() {
+    }
+
+    public static void sendSaberState(ServerPlayerEntity player, net.askcraft.justifylasers.network.SaberStatePacket packet) {
+        var buffer = PacketByteBufs.create();
+        packet.write(buffer);
+        ServerPlayNetworking.send(player, net.askcraft.justifylasers.network.SaberStatePacket.ID, buffer);
     }
 }

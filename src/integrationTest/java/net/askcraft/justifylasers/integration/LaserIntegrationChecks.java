@@ -51,6 +51,14 @@ public final class LaserIntegrationChecks {
         emitter.setStack(0, new ItemStack(ModLaserParts.CRYSTALS.get(LaserColor.RED)));
         emitter.setStack(7, new ItemStack(ModLaserParts.ADVANCED_RANGE_MODULE, 64));
         emitter.setStack(8, new ItemStack(ModLaserParts.MODULES.get(LaserModule.THICKNESS), 64));
+        BlockPos receiverPos = supply.east(6);
+        world.setBlockState(receiverPos, ModBlocks.ENERGY_RECEIVER.getDefaultState()
+                .with(net.askcraft.justifylasers.block.LaserOpticBlock.FACING, Direction.WEST));
+        world.setBlockState(receiverPos.south(), cable);
+        world.setBlockState(receiverPos.south(2), cable);
+        world.setBlockState(receiverPos.south(3), ModBlocks.POWERED_LASER_EMITTER.getDefaultState());
+        var sink = (LaserEmitterBlockEntity) world.getBlockEntity(receiverPos.south(3));
+        sink.getPropertyDelegate().set(0, 0);
         try {
             Object source = world.getBlockEntity(supply);
             Object container = source.getClass().getMethod("getEnergyContainer").invoke(source);
@@ -87,20 +95,28 @@ public final class LaserIntegrationChecks {
                     + emitter.energy().stored() + ", cost=" + emitter.energyCost() + ", mode=" + LaserConfig.technicalMode()
                     + ", crystal=" + (emitter.crystal() != null) + ", enabled=" + emitter.getPropertyDelegate().get(0));
             check(context, emitter.energyCost() == LaserConfig.get().basePerTick + 576, "Mekanism supplies a beam with the full module surcharge");
+            check(context, sink.energy().stored() > 0,
+                    "The laser receiver exports recovered power through a separate Universal Cable network");
             context.complete();
         });
     }
 
     public static void verify(TestContext context) {
         verifyDecorations(context);
+        verifyWorkshopAndDualControls(context);
+        IntegrationEnergy.tablet();
         boolean initialMode = LaserConfig.technicalMode();
         check(context, context.getWorld().getRecipeManager().get(JustifyLasers.id("laser_emitter")).isPresent() != initialMode,
                 "Creative emitter cannot be crafted in technical mode");
-        check(context, context.getWorld().getRecipeManager().get(JustifyLasers.id("powered_laser_emitter")).isPresent() == initialMode,
-                "Powered recipe follows server technical mode");
+        check(context, context.getWorld().getRecipeManager().get(JustifyLasers.id("powered_laser_emitter")).isEmpty(),
+                "Powered emitters no longer bypass industrial assembly");
+        check(context, context.getWorld().getRecipeManager().get(JustifyLasers.id("industry/powered_laser_emitter")).isPresent(),
+                "Native recipe manager loads blueprint assembly");
         if (Platform.isModLoaded("mekanism")) check(context, initialMode, "Mekanism activates technical mode");
         try {
             LaserConfig.applyServerMode(true);
+            verifyIndustry(context);
+            verifyEnergyOutput(context);
             var world = context.getWorld();
             BlockPos relative = new BlockPos(1, 4, 3);
             BlockPos source = context.getAbsolutePos(relative);
@@ -196,6 +212,70 @@ public final class LaserIntegrationChecks {
         }
     }
 
+    private static void verifyWorkshopAndDualControls(TestContext context) {
+        var player = IntegrationEnergy.player(context);
+        var industry = net.askcraft.justifylasers.industry.IndustryRecipe.all(context.getWorld()).stream()
+                .filter(recipe -> recipe.kind() == net.askcraft.justifylasers.industry.MachineKind.ASSEMBLY_CHAMBER).toList();
+        check(context, industry.size() == 26 && industry.stream().map(r -> r.ticks()).distinct().count() == 26
+                && industry.stream().map(r -> r.energy()).distinct().count() == 26, "Native recipe codec preserves all distinct assembly costs");
+        for (var old : new net.minecraft.item.Item[]{net.askcraft.justifylasers.registry.ModIndustry.LASER_CHASSIS,
+                net.askcraft.justifylasers.registry.ModIndustry.OPTICAL_ASSEMBLY}) {
+            var stack = new ItemStack(old, 7);
+            var data = GameVersion.itemData(stack); data.putString("MigrationNote", "keep"); GameVersion.setItemData(stack, data);
+            player.getInventory().setStack(9, stack);
+            old.inventoryTick(stack, context.getWorld(), player, 9, false);
+            var updated = player.getInventory().getStack(9);
+            check(context, updated.getItem() != old && updated.getCount() == 7 && GameVersion.itemData(updated).getString("MigrationNote").equals("keep"),
+                    "Native legacy item migration preserves quantity and NBT/components");
+        }
+        for (var hand : net.minecraft.util.Hand.values()) {
+            player.setStackInHand(hand, new ItemStack(ModBlocks.LASER_GUN));
+            new net.askcraft.justifylasers.network.LaserGunControlPacket(hand, true).apply(player);
+        }
+        check(context, net.askcraft.justifylasers.item.LaserGunItem.isFiring(player, net.minecraft.util.Hand.MAIN_HAND)
+                && net.askcraft.justifylasers.item.LaserGunItem.isFiring(player, net.minecraft.util.Hand.OFF_HAND), "Both native gun triggers start");
+        net.askcraft.justifylasers.item.LaserGunItem.stopFiring(player, net.minecraft.util.Hand.MAIN_HAND);
+        check(context, net.askcraft.justifylasers.item.LaserGunItem.isFiring(player, net.minecraft.util.Hand.OFF_HAND), "Stopping one native trigger preserves the other");
+        net.askcraft.justifylasers.item.LaserGunItem.stopFiring(player, net.minecraft.util.Hand.OFF_HAND);
+        for (var hand : net.minecraft.util.Hand.values()) {
+            var saber = new ItemStack(ModBlocks.LASER_SABER);
+            net.askcraft.justifylasers.item.LaserSaberItem.setActive(saber, true); player.setStackInHand(hand, saber);
+            check(context, net.askcraft.justifylasers.laser.SaberCombat.swing(player, hand), "Native saber accepts " + hand);
+        }
+        var packet = new net.askcraft.justifylasers.network.SaberStatePacket(player.getId(), 1,
+                net.askcraft.justifylasers.laser.SaberCombat.state(player, net.minecraft.util.Hand.OFF_HAND),
+                net.askcraft.justifylasers.laser.SaberCombat.Contact.NONE, Vec3d.ZERO, 0x00FFFF, net.minecraft.util.Hand.OFF_HAND);
+        var buffer = new net.minecraft.network.PacketByteBuf(io.netty.buffer.Unpooled.buffer());
+        try {
+            packet.write(buffer);
+            check(context, packet.equals(new net.askcraft.justifylasers.network.SaberStatePacket(buffer)), "Native offhand saber packet round-trip");
+        } finally { buffer.release(); }
+        for (var hand : net.minecraft.util.Hand.values()) player.setStackInHand(hand, ItemStack.EMPTY);
+        net.askcraft.justifylasers.laser.SaberCombat.tick(player);
+    }
+
+    private static void verifyIndustry(TestContext context) {
+        var world = context.getWorld();
+        var origin = context.getAbsolutePos(new BlockPos(6, 5, 6));
+        var block = net.askcraft.justifylasers.registry.ModIndustry.MACHINES.get(net.askcraft.justifylasers.industry.MachineKind.CRYSTAL_GROWER);
+        for (var pos : net.askcraft.justifylasers.industry.ChamberStructure.positions(origin)) world.setBlockState(pos, block.getDefaultState());
+        var controller = (net.askcraft.justifylasers.block.entity.IndustrialMachineBlockEntity) world.getBlockEntity(origin);
+        net.askcraft.justifylasers.industry.ChamberStructure.form(controller);
+        var member = (net.askcraft.justifylasers.block.entity.IndustrialMachineBlockEntity) world.getBlockEntity(origin.add(1, 1, 1));
+        check(context, member.formed() && member.controller() == controller, "Eight native casing entities share one controller");
+        for (var pos : net.askcraft.justifylasers.industry.ChamberStructure.positions(origin)) for (Direction side : Direction.values()) {
+            controller.drainWater(controller.water(), false);
+            controller.setStack(0, ItemStack.EMPTY);
+            IntegrationEnergy.industrialPorts((net.askcraft.justifylasers.block.entity.IndustrialMachineBlockEntity) world.getBlockEntity(pos), side);
+        }
+        check(context, controller.water() == 750 && controller.getStack(0).getCount() == 1,
+                "Native fluid and item transfers reach the shared controller");
+        IntegrationEnergy.roundTrip(controller);
+        check(context, controller.water() == 750 && controller.getStack(0).getCount() == 1,
+                "Tank and automated inventory survive native serialization");
+        for (var pos : net.askcraft.justifylasers.industry.ChamberStructure.positions(origin)) world.setBlockState(pos, Blocks.AIR.getDefaultState());
+    }
+
     private static void verifyDecorations(TestContext context) {
         var world = context.getWorld();
         BlockPos support = context.getAbsolutePos(new BlockPos(3, 2, 1));
@@ -221,7 +301,58 @@ public final class LaserIntegrationChecks {
             check(context, drops.size() == 1 && drops.get(0).getStack().getCount() == 1, "Native decoration loot returns exactly one " + part.partId());
             drops.forEach(ItemEntity::discard);
         }
+        for (Direction face : Direction.values()) {
+            BlockPos mounted = support.offset(face);
+            world.setBlockState(mounted, Blocks.AIR.getDefaultState());
+            ItemStack crystal = new ItemStack(ModLaserParts.CRYSTALS.get(LaserColor.BLUE));
+            player.setStackInHand(net.minecraft.util.Hand.MAIN_HAND, crystal);
+            var hit = new net.minecraft.util.hit.BlockHitResult(Vec3d.ofCenter(support).add(Vec3d.of(face.getVector()).multiply(0.5)), face, support, false);
+            check(context, crystal.useOnBlock(new net.minecraft.item.ItemUsageContext(player, net.minecraft.util.Hand.MAIN_HAND, hit)).isAccepted(), "Crystal mounts on " + face);
+            check(context, world.getBlockState(mounted).get(net.askcraft.justifylasers.block.LaserPartBlock.MOUNT) == face, "Crystal tip points away from " + face.getOpposite());
+            world.setBlockState(mounted, Blocks.AIR.getDefaultState());
+        }
         player.discard();
+    }
+
+    private static void verifyEnergyOutput(TestContext context) {
+        var world = context.getWorld();
+        BlockPos receiverPos = context.getAbsolutePos(new BlockPos(6, 4, 1));
+        world.setBlockState(receiverPos, ModBlocks.ENERGY_RECEIVER.getDefaultState()
+                .with(net.askcraft.justifylasers.block.LaserOpticBlock.FACING, Direction.NORTH));
+        world.setBlockState(receiverPos.east(), ModBlocks.POWERED_LASER_EMITTER.getDefaultState());
+        var receiver = (net.askcraft.justifylasers.block.entity.LaserOpticBlockEntity) world.getBlockEntity(receiverPos);
+        var sink = (LaserEmitterBlockEntity) world.getBlockEntity(receiverPos.east());
+        receiver.receiveBeam(500, LaserColor.CYAN.rgb());
+        Platform.exportEnergy(receiver);
+        check(context, receiver.energy().stored() == 0 && sink.energy().stored() == 500,
+                "Native receiver exports paid beam energy to adjacent native energy storage");
+        receiver.energy().restore(1000);
+        for (Direction side : Direction.values()) {
+            receiver.setPortMode(side, net.askcraft.justifylasers.laser.OpticPortMode.OUTPUT);
+            var cached = IntegrationEnergy.extractor(receiver, side);
+            check(context, cached != null, "Native output on " + side);
+            for (var mode : new net.askcraft.justifylasers.laser.OpticPortMode[]{
+                    net.askcraft.justifylasers.laser.OpticPortMode.INPUT, net.askcraft.justifylasers.laser.OpticPortMode.DISABLED}) {
+                receiver.setPortMode(side, mode);
+                check(context, IntegrationEnergy.extractor(receiver, side) == null, "No native energy access through " + mode);
+                check(context, cached.applyAsLong(1) == 0, "Cached native storage respects " + mode + " on " + side);
+            }
+            receiver.setPortMode(side, net.askcraft.justifylasers.laser.OpticPortMode.OUTPUT);
+            check(context, cached.applyAsLong(1) == 1, "Reopening native output restores extraction");
+        }
+        check(context, IntegrationEnergy.extractor(receiver, null) == null, "No unsided bypass");
+        receiver.setPortMode(Direction.EAST, net.askcraft.justifylasers.laser.OpticPortMode.DISABLED);
+        receiver.setPortMode(Direction.UP, net.askcraft.justifylasers.laser.OpticPortMode.INPUT);
+        IntegrationEnergy.roundTrip(receiver);
+        check(context, receiver.portMode(Direction.EAST) == net.askcraft.justifylasers.laser.OpticPortMode.DISABLED
+                && receiver.portMode(Direction.UP) == net.askcraft.justifylasers.laser.OpticPortMode.INPUT, "Native port state persists");
+        Platform.exportEnergy(receiver);
+        check(context, sink.energy().stored() == 500, "Auto-export obeys a disabled side");
+        receiver.setPortMode(Direction.EAST, net.askcraft.justifylasers.laser.OpticPortMode.OUTPUT);
+        Platform.exportEnergy(receiver);
+        check(context, sink.energy().stored() == 1494 && receiver.energy().stored() == 0, "Re-enabled native output resumes transfer without loss or duplication");
+        world.setBlockState(receiverPos, Blocks.AIR.getDefaultState());
+        world.setBlockState(receiverPos.east(), Blocks.AIR.getDefaultState());
     }
 
     private static void tick(LaserEmitterBlockEntity emitter) {

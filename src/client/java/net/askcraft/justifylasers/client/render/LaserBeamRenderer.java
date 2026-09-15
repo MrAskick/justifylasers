@@ -15,11 +15,25 @@ import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 
+import java.util.function.UnaryOperator;
+
 public final class LaserBeamRenderer {
     private static final double[] CORE_BRIGHTNESS = {1.0D, 1.0D, 1.0D, 1.0D, 1.0D};
     private static final int FLARE_SEGMENTS = 24;
 
     public static void render(
+            LaserBeamTrace trace, Vec3d renderOrigin, Object sourceKey, int segment,
+            float time, int colorRgb, double widthScale, boolean emission,
+            MatrixStack matrices, VertexConsumerProvider vertexConsumers
+    ) {
+        if (!IrisCompatibility.isShaderPackInUse()) {
+            LaserBeamLateRenderer.queueVanilla(sourceKey, segment, trace, time, colorRgb, widthScale);
+            return;
+        }
+        renderResolved(trace, renderOrigin, sourceKey, segment, time, colorRgb, widthScale, emission, matrices, vertexConsumers);
+    }
+
+    static void renderResolved(
             LaserBeamTrace trace, Vec3d renderOrigin, Object sourceKey, int segment,
             float time, int colorRgb, double widthScale, boolean emission,
             MatrixStack matrices, VertexConsumerProvider vertexConsumers
@@ -37,6 +51,7 @@ public final class LaserBeamRenderer {
         Vec3d localStart = trace.start().subtract(blockOrigin);
         Vec3d axis = trace.axis();
         Vec3d localEnd = trace.end().subtract(blockOrigin).subtract(axis.multiply(0.008D));
+        UnaryOperator<Vec3d> clip = endpointClip(trace, renderOrigin);
         Vec3d midpoint = trace.start().add(trace.end()).multiply(0.5D);
 
         Camera camera = MinecraftClient.getInstance().gameRenderer.getCamera();
@@ -61,7 +76,7 @@ public final class LaserBeamRenderer {
             renderEmissionTube(
                     emissionBuffer, matrix, matrices.peek().getNormalMatrix(),
                     localStart, localEnd, axis,
-                    LaserBeamProfile.EMISSION_RADIUS * widthScale, colorRgb
+                    LaserBeamProfile.EMISSION_RADIUS * widthScale, colorRgb, clip
             );
         }
 
@@ -79,8 +94,8 @@ public final class LaserBeamRenderer {
             return;
         }
 
-        renderVanillaBody(vertexConsumers.getBuffer(LaserRenderLayers.BEAM_GLOW), matrix,
-                localStart, localEnd, screenSide, depthSide, colorRgb, flicker, widthScale);
+        renderBody(vertexConsumers.getBuffer(LaserRenderLayers.BEAM_GLOW), matrix,
+                localStart, localEnd, screenSide, depthSide, colorRgb, flicker, widthScale, clip);
 
         VertexConsumer flareBuffer = vertexConsumers.getBuffer(LaserRenderLayers.FLARE_GLOW);
         Vec3d normalizedView = viewVector.lengthSquared() < 1.0E-8D
@@ -89,20 +104,37 @@ public final class LaserBeamRenderer {
         Vec3d flareUp = normalizedView.crossProduct(screenSide).normalize();
 
         renderFlare(flareBuffer, matrix, localStart, screenSide, flareUp,
-                0.155D * widthScale, colorRgb, 92);
+                0.155D * widthScale, colorRgb, 92, clip);
         renderFlare(flareBuffer, matrix, localStart, screenSide, flareUp,
-                0.052D * widthScale, 0xFFFFFF, 205);
+                0.052D * widthScale, 0xFFFFFF, 205, clip);
 
         if (trace.hasBlockHit()) {
             renderFlare(flareBuffer, matrix, localEnd, screenSide, flareUp,
-                    0.205D * widthScale, colorRgb, 118);
+                    0.205D * widthScale, colorRgb, 118, clip);
             renderFlare(flareBuffer, matrix, localEnd, screenSide, flareUp,
-                    0.068D * widthScale, 0xFFFFFF, 235);
+                    0.068D * widthScale, 0xFFFFFF, 235, clip);
         }
     }
 
     static void renderVanillaBody(VertexConsumer buffer, Matrix4f matrix, Vec3d start, Vec3d end,
                                   Vec3d side, Vec3d depthSide, int rgb, float intensity, double widthScale) {
+        renderBody(buffer, matrix, start, end, side, depthSide, rgb, intensity, widthScale, UnaryOperator.identity());
+    }
+
+    private static UnaryOperator<Vec3d> endpointClip(LaserBeamTrace trace, Vec3d origin) {
+        BeamEndpointClip start = BeamEndpointClip.atMirror(trace.start(), trace.axis());
+        BeamEndpointClip end = BeamEndpointClip.atMirror(trace.end(), trace.axis().negate());
+        if (start == null && end == null) return UnaryOperator.identity();
+        BeamEndpointClip a = start == null ? null : start.relativeTo(origin);
+        BeamEndpointClip b = end == null ? null : end.relativeTo(origin);
+        return vertex -> {
+            Vec3d clipped = a == null ? vertex : a.clip(vertex);
+            return b == null ? clipped : b.clip(clipped);
+        };
+    }
+
+    private static void renderBody(VertexConsumer buffer, Matrix4f matrix, Vec3d start, Vec3d end,
+                                   Vec3d side, Vec3d depthSide, int rgb, float intensity, double widthScale, UnaryOperator<Vec3d> clip) {
         double length = start.distanceTo(end);
         // Vanilla interpolates fog between vertices. On a long quad, two distant endpoints
         // would hide even the portion next to the camera. Keep the original short-beam mesh.
@@ -112,11 +144,11 @@ public final class LaserBeamRenderer {
             Vec3d b = sections == 1 ? end : start.lerp(end, (section + 1) / (double) sections);
             renderGradientRibbon(buffer, matrix, a, b, side,
                     LaserBeamProfile.COLOR_RADII, LaserBeamProfile.COLOR_ALPHA, LaserBeamProfile.COLOR_BRIGHTNESS,
-                    rgb, intensity, widthScale);
+                    rgb, intensity, widthScale, clip);
             renderGradientRibbon(buffer, matrix, a, b, side,
                     LaserBeamProfile.CORE_RADII, LaserBeamProfile.CORE_ALPHA, CORE_BRIGHTNESS,
-                    0xFFFFFF, intensity, widthScale);
-            renderCorePrism(buffer, matrix, a, b, side, depthSide, 0.0105D * widthScale);
+                    0xFFFFFF, intensity, widthScale, clip);
+            renderCorePrism(buffer, matrix, a, b, side, depthSide, 0.0105D * widthScale, clip);
         }
     }
 
@@ -131,7 +163,8 @@ public final class LaserBeamRenderer {
             double[] brightness,
             int rgb,
             float intensity,
-            double radiusScale
+            double radiusScale,
+            UnaryOperator<Vec3d> clip
     ) {
         for (int i = 0; i < radii.length - 1; i++) {
             int innerAlpha = LaserBeamProfile.scaleAlpha(alphas[i], intensity);
@@ -142,10 +175,10 @@ public final class LaserBeamRenderer {
             double outerRadius = radii[i + 1] * radiusScale;
             drawBand(buffer, matrix, start, end, side,
                     innerRadius, outerRadius, innerRgb, outerRgb,
-                    innerAlpha, outerAlpha);
+                    innerAlpha, outerAlpha, clip);
             drawBand(buffer, matrix, start, end, side,
                     -innerRadius, -outerRadius, innerRgb, outerRgb,
-                    innerAlpha, outerAlpha);
+                    innerAlpha, outerAlpha, clip);
         }
     }
 
@@ -160,12 +193,13 @@ public final class LaserBeamRenderer {
             int innerRgb,
             int outerRgb,
             int innerAlpha,
-            int outerAlpha
+            int outerAlpha,
+            UnaryOperator<Vec3d> clip
     ) {
-        Vec3d startInner = start.add(side.multiply(innerOffset));
-        Vec3d endInner = end.add(side.multiply(innerOffset));
-        Vec3d endOuter = end.add(side.multiply(outerOffset));
-        Vec3d startOuter = start.add(side.multiply(outerOffset));
+        Vec3d startInner = clip.apply(start.add(side.multiply(innerOffset)));
+        Vec3d endInner = clip.apply(end.add(side.multiply(innerOffset)));
+        Vec3d endOuter = clip.apply(end.add(side.multiply(outerOffset)));
+        Vec3d startOuter = clip.apply(start.add(side.multiply(outerOffset)));
 
         glowVertex(buffer, matrix, startInner, innerRgb, innerAlpha);
         glowVertex(buffer, matrix, endInner, innerRgb, innerAlpha);
@@ -180,7 +214,8 @@ public final class LaserBeamRenderer {
             Vec3d end,
             Vec3d side,
             Vec3d depthSide,
-            double radius
+            double radius,
+            UnaryOperator<Vec3d> clip
     ) {
         int segments = 8;
         for (int i = 0; i < segments; i++) {
@@ -191,16 +226,16 @@ public final class LaserBeamRenderer {
             Vec3d offsetB = side.multiply(Math.cos(angleB) * radius)
                     .add(depthSide.multiply(Math.sin(angleB) * radius));
 
-            glowVertex(buffer, matrix, start.add(offsetA), 0xFFFFFF, 138);
-            glowVertex(buffer, matrix, end.add(offsetA), 0xFFFFFF, 138);
-            glowVertex(buffer, matrix, end.add(offsetB), 0xFFFFFF, 138);
-            glowVertex(buffer, matrix, start.add(offsetB), 0xFFFFFF, 138);
+            glowVertex(buffer, matrix, clip.apply(start.add(offsetA)), 0xFFFFFF, 138);
+            glowVertex(buffer, matrix, clip.apply(end.add(offsetA)), 0xFFFFFF, 138);
+            glowVertex(buffer, matrix, clip.apply(end.add(offsetB)), 0xFFFFFF, 138);
+            glowVertex(buffer, matrix, clip.apply(start.add(offsetB)), 0xFFFFFF, 138);
         }
     }
 
     private static void renderEmissionTube(
             VertexConsumer buffer, Matrix4f matrix, Matrix3f normalMatrix,
-            Vec3d start, Vec3d end, Vec3d axis, double radius, int rgb
+            Vec3d start, Vec3d end, Vec3d axis, double radius, int rgb, UnaryOperator<Vec3d> clip
     ) {
         // World-locked cross-section: rotating the camera must not move reflective geometry.
         Vec3d side = Math.abs(axis.y) > 0.9D ? new Vec3d(1, 0, 0) : new Vec3d(0, 1, 0);
@@ -213,10 +248,10 @@ public final class LaserBeamRenderer {
             Vec3d offsetA = side.multiply(Math.cos(a) * radius).add(depth.multiply(Math.sin(a) * radius));
             Vec3d offsetB = side.multiply(Math.cos(b) * radius).add(depth.multiply(Math.sin(b) * radius));
             Vec3d normal = offsetA.add(offsetB).normalize();
-            emissionVertex(buffer, matrix, normalMatrix, start.add(offsetA), normal, rgb, 0, 0);
-            emissionVertex(buffer, matrix, normalMatrix, start.add(offsetB), normal, rgb, 1, 0);
-            emissionVertex(buffer, matrix, normalMatrix, end.add(offsetB), normal, rgb, 1, 1);
-            emissionVertex(buffer, matrix, normalMatrix, end.add(offsetA), normal, rgb, 0, 1);
+            emissionVertex(buffer, matrix, normalMatrix, clip.apply(start.add(offsetA)), normal, rgb, 0, 0);
+            emissionVertex(buffer, matrix, normalMatrix, clip.apply(start.add(offsetB)), normal, rgb, 1, 0);
+            emissionVertex(buffer, matrix, normalMatrix, clip.apply(end.add(offsetB)), normal, rgb, 1, 1);
+            emissionVertex(buffer, matrix, normalMatrix, clip.apply(end.add(offsetA)), normal, rgb, 0, 1);
         }
     }
 
@@ -228,7 +263,8 @@ public final class LaserBeamRenderer {
             Vec3d up,
             double radius,
             int rgb,
-            int centerAlpha
+            int centerAlpha,
+            UnaryOperator<Vec3d> clip
     ) {
         for (int i = 0; i < FLARE_SEGMENTS; i++) {
             double angleA = Math.PI * 2.0D * i / FLARE_SEGMENTS;
@@ -240,9 +276,9 @@ public final class LaserBeamRenderer {
                     .add(right.multiply(Math.cos(angleB) * radius))
                     .add(up.multiply(Math.sin(angleB) * radius));
 
-            glowVertex(buffer, matrix, center, rgb, centerAlpha);
-            glowVertex(buffer, matrix, edgeA, 0x000000, 0);
-            glowVertex(buffer, matrix, edgeB, 0x000000, 0);
+            glowVertex(buffer, matrix, clip.apply(center), rgb, centerAlpha);
+            glowVertex(buffer, matrix, clip.apply(edgeA), 0x000000, 0);
+            glowVertex(buffer, matrix, clip.apply(edgeB), 0x000000, 0);
         }
     }
 

@@ -182,8 +182,13 @@ public class LaserEmitterBlock extends LaserBlock {
     @Override
     public void onPlaced(World world, BlockPos pos, BlockState state, @Nullable LivingEntity placer, ItemStack stack) {
         super.onPlaced(world, pos, state, placer, stack);
-        if (!world.isClient && placer instanceof PlayerEntity player
-                && world.getBlockEntity(pos) instanceof LaserEmitterBlockEntity emitter) emitter.initializeOwner(player);
+        if (!world.isClient && world.getBlockEntity(pos) instanceof LaserEmitterBlockEntity emitter) {
+            if (placer instanceof PlayerEntity player) emitter.initializeOwner(player);
+            var data = net.askcraft.justifylasers.platform.GameVersion.itemData(stack);
+            String key = net.askcraft.justifylasers.industry.IndustryRecipes.INSTALLED_CRYSTAL;
+            if (emitter.isPoweredEmitter() && data.contains(key)) emitter.setStack(0, new ItemStack(
+                    net.askcraft.justifylasers.registry.ModLaserParts.CRYSTALS.get(net.askcraft.justifylasers.laser.LaserColor.byIndex(data.getInt(key)))));
+        }
     }
 
     @Override

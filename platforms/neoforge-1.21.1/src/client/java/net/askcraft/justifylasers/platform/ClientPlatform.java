@@ -13,7 +13,7 @@ import net.askcraft.justifylasers.network.SettingsPayload;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.VertexFormats;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.item.BuiltinModelItemRenderer;
 import net.minecraft.client.render.model.json.ModelTransformationMode;
 import net.minecraft.client.util.math.MatrixStack;
@@ -30,9 +30,12 @@ import java.io.IOException;
 import java.util.function.Consumer;
 
 public final class ClientPlatform {
-    private static Consumer<ShaderProgram> depthShaderLoaded;
+    private record ShaderRegistration(String name, VertexFormat format, Consumer<ShaderProgram> loaded) { }
+    private static final java.util.List<ShaderRegistration> SHADERS = new java.util.ArrayList<>();
 
     public static void initialize() {
+        net.askcraft.justifylasers.network.SaberStatePacket.receiver = net.askcraft.justifylasers.client.SaberFencingClient::receive;
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.player.ItemTooltipEvent event) -> net.askcraft.justifylasers.client.SaberTooltips.append(event.getItemStack(), event.getToolTip()));
         NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut event) -> LaserConfig.resetServerMode());
         NeoForge.EVENT_BUS.addListener((RenderLevelStageEvent event) -> {
             if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_ENTITIES) return;
@@ -44,17 +47,19 @@ public final class ClientPlatform {
             LaserScorchRenderer.prepare(frame);
         });
         NeoForge.EVENT_BUS.addListener((ClientTickEvent.Post event) -> {
-            LaserScorchRenderer.tick(MinecraftClient.getInstance());
+            net.askcraft.justifylasers.client.JustifyLasersClient.tick(MinecraftClient.getInstance());
         });
     }
 
-    public static void registerDepthShader(Consumer<ShaderProgram> loaded) {
-        depthShaderLoaded = loaded;
+    public static void registerShader(String name, VertexFormat format, Consumer<ShaderProgram> loaded) {
+        SHADERS.add(new ShaderRegistration(name, format, loaded));
     }
 
-    public static void loadDepthShader(RegisterShadersEvent event) throws IOException {
-        event.registerShader(new ShaderProgram(event.getResourceProvider(), JustifyLasers.id("depth_merge"), VertexFormats.POSITION),
-                shader -> depthShaderLoaded.accept(shader));
+    public static void loadShaders(RegisterShadersEvent event) throws IOException {
+        for (var registration : SHADERS) {
+            event.registerShader(new ShaderProgram(event.getResourceProvider(), JustifyLasers.id(registration.name()), registration.format()),
+                    registration.loaded());
+        }
     }
 
     public static void sendSettings(LaserSettingsPacket packet) {
@@ -108,5 +113,13 @@ public final class ClientPlatform {
     }
 
     private ClientPlatform() {
+    }
+
+    public static void sendSaberToggle(net.askcraft.justifylasers.network.SaberTogglePacket packet) {
+        PacketDistributor.sendToServer(new net.askcraft.justifylasers.network.SaberTogglePayload(packet));
+    }
+
+    public static void sendGunControl(net.askcraft.justifylasers.network.LaserGunControlPacket packet) {
+        PacketDistributor.sendToServer(new net.askcraft.justifylasers.network.GunControlPayload(packet));
     }
 }

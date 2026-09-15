@@ -5,7 +5,7 @@ import java.util.Locale;
 public enum LaserModule {
     // Slot order is persisted in existing worlds.
     SILK_TOUCH, BLOCK_DROPS, SCORCH_MARKS, IGNITION,
-    BLOCK_DESTRUCTION, ENTITY_DAMAGE, RANGE, THICKNESS;
+    BLOCK_DESTRUCTION, ENTITY_DAMAGE, RANGE, THICKNESS, TARGET_FILTER;
 
     public int maxCount() {
         return this == RANGE || this == THICKNESS ? 64 : 1;

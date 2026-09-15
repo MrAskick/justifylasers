@@ -25,7 +25,8 @@ public final class LaserPartRenderer implements BlockEntityRenderer<LaserPartBlo
         if (stack.getItem() instanceof LaserCrystalItem) {
             LaserCrystalModel.render(stack, mode, matrices, consumers, light, overlay);
         } else if (stack.getItem() instanceof LaserPartItem part) {
-            LaserModuleModel.render(part.partId(), mode, matrices, consumers, light, overlay);
+            if (part.partId().equals("crystal_mount")) LaserCrystalModel.renderMount(mode, matrices, consumers, light, overlay);
+            else LaserModuleModel.render(part.partId(), mode, matrices, consumers, light, overlay);
         }
     }
 
@@ -37,7 +38,15 @@ public final class LaserPartRenderer implements BlockEntityRenderer<LaserPartBlo
         ItemStack stack = stacks.computeIfAbsent(block.partId(), id -> new ItemStack(block));
         matrices.push();
         try {
-            matrices.translate(0.5, 0, 0.5);
+            matrices.translate(0.5, 0.5, 0.5);
+            switch (state.get(LaserPartBlock.MOUNT)) {
+                case DOWN -> matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(180));
+                case NORTH -> matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(-90));
+                case SOUTH -> matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(90));
+                case EAST -> matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(-90));
+                case WEST -> matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(90));
+                default -> { }
+            }
             float angle = switch (state.get(LaserPartBlock.FACING)) {
                 case EAST -> 270;
                 case SOUTH -> 180;
@@ -45,7 +54,7 @@ public final class LaserPartRenderer implements BlockEntityRenderer<LaserPartBlo
                 default -> 0;
             };
             matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(angle));
-            matrices.translate(-0.5, 0, -0.5);
+            matrices.translate(-0.5, -0.5, -0.5);
             renderItem(stack, ModelTransformationMode.NONE, matrices, consumers, light, overlay);
         } finally {
             matrices.pop();

@@ -1,0 +1,19 @@
+{
+  "sources": [
+    {
+      "type": "minecraft:single",
+      "resource": "justifylasers:component/laser_saber/base",
+      "sprite": "justifylasers:component/laser_saber/base"
+    },
+    {
+      "type": "minecraft:single",
+      "resource": "justifylasers:component/photonite/base",
+      "sprite": "justifylasers:component/photonite/base"
+    },
+    {
+      "type": "minecraft:single",
+      "resource": "justifylasers:component/wolframite/base",
+      "sprite": "justifylasers:component/wolframite/base"
+    }
+  ]
+}

@@ -117,12 +117,13 @@ public class PoweredEmitterGameTests implements FabricGameTest {
         context.assertTrue(menu.getType() == ModScreenHandlers.POWERED_LASER_EMITTER, "Powered emitter has a separate GUI type");
         emitter.setStack(7, new ItemStack(ModLaserParts.ADVANCED_RANGE_MODULE, 48));
         player.getInventory().setStack(9, new ItemStack(ModLaserParts.ADVANCED_RANGE_MODULE, 32));
-        menu.quickMove(player, 9);
+        menu.quickMove(player, LaserEmitterBlockEntity.MODULE_SLOT_COUNT);
         context.assertTrue(emitter.getStack(7).getCount() == 64 && player.getInventory().getStack(9).getCount() == 16, "Shift-click respects stack64 and leaves remainder");
         context.assertTrue(emitter.getBeamRange() == 512, "Merging updates range");
         emitter.removeStack(7, 32);
         player.getInventory().setStack(10, new ItemStack(ModLaserParts.MODULES.get(LaserModule.RANGE), 32));
-        context.assertTrue(menu.quickMove(player, 10).isEmpty() && emitter.getStack(7).getCount() == 32, "Two tiers cannot merge");
+        context.assertTrue(menu.quickMove(player, LaserEmitterBlockEntity.MODULE_SLOT_COUNT + 1).isEmpty()
+                && emitter.getStack(7).getCount() == 32, "Two tiers cannot merge");
         context.assertFalse(menu.quickMove(player, 7).isEmpty(), "Installed stack can be recovered");
         context.assertTrue(emitter.getBeamRange() == 1 && emitter.getStack(7).isEmpty(), "Recovered stack removes its upgrade");
         context.removeBlock(SOURCE);

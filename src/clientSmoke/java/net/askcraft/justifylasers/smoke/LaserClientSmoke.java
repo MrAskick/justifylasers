@@ -28,6 +28,26 @@ public final class LaserClientSmoke {
     private static boolean reloading;
 
     public static void tick(MinecraftClient client) {
+        if (Boolean.getBoolean("justifylasers.smokeSaberAudio")) { OpticsWorldSmoke.tick(client); return; }
+        if (Boolean.getBoolean("justifylasers.smokeOres")) { OpticsWorldSmoke.tick(client); return; }
+        if (Boolean.getBoolean("justifylasers.smokeDualWeapons")) { OpticsWorldSmoke.tick(client); return; }
+        if (Boolean.getBoolean("justifylasers.smokeTablet")) { OpticsWorldSmoke.tick(client); return; }
+        if (Boolean.getBoolean("justifylasers.smokeReceiver")) {
+            ReceiverWorldSmoke.tick(client);
+            return;
+        }
+        if (Boolean.getBoolean("justifylasers.smokeTextures")) {
+            TextureModelSmoke.tick(client);
+            return;
+        }
+        if (Boolean.getBoolean("justifylasers.smokeWeapons")) {
+            WeaponWorldSmoke.tick(client);
+            return;
+        }
+        if (Boolean.getBoolean("justifylasers.smokeOptics") || Boolean.getBoolean("justifylasers.smokeCubeLens") || Boolean.getBoolean("justifylasers.smokeSabers") || Boolean.getBoolean("justifylasers.smokeIndustry")) {
+            OpticsWorldSmoke.tick(client);
+            return;
+        }
         if (Boolean.getBoolean("justifylasers.smokeDecorations")) {
             PartWorldSmoke.tick(client);
             return;
@@ -89,7 +109,10 @@ public final class LaserClientSmoke {
                 language(client, "en_us");
             }
             case 16 -> { capture(client, "en-powered-main-large"); preview.energy(); }
-            case 17 -> capture(client, "en-energy-large");
+            case 17 -> { capture(client, "en-energy-large"); preview.settings(2); }
+            case 18 -> { capture(client, "en-target-filter"); language(client, "ru_ru"); }
+            case 19 -> { preview.energy(); preview.settings(2); }
+            case 20 -> capture(client, "ru-target-filter");
             default -> {
                 LoggerFactory.getLogger("justifylasers-client-smoke").info("CLIENT_SMOKE_PASSED");
                 client.scheduleStop();
@@ -128,6 +151,8 @@ public final class LaserClientSmoke {
             int[] defaults = {1, 0, 0, 1, 1, 1, 100, 1, 0, 5, 10, 20, 1, 65, 100, 1, 1, 1,
                     1, 1, 33920, 15, 33920, 30, 2614, 0, 255, 1, 0, 0};
             for (int i = 0; i < defaults.length; i++) handler.setProperty(i, defaults[i]);
+            handler.setProperty(26, 511);
+            handler.setProperty(46, 7);
             handler.getSlot(0).setStack(new ItemStack(ModLaserParts.CRYSTALS.get(LaserColor.RED)));
             for (LaserModule module : LaserModule.values()) handler.getSlot(module.slot()).setStack(new ItemStack(ModLaserParts.MODULES.get(module)));
             handler.getSlot(LaserModule.RANGE.slot()).setStack(new ItemStack(ModLaserParts.ADVANCED_RANGE_MODULE, 8));
@@ -151,7 +176,7 @@ public final class LaserClientSmoke {
 
         private void energy() {
             named("modules");
-            if (handler.slots.stream().filter(slot -> slot.isEnabled()).count() != 45) throw new AssertionError("Missing module/player inventory slots");
+            if (handler.slots.stream().filter(slot -> slot.isEnabled()).count() != 36 + LaserEmitterBlockEntity.MODULE_SLOT_COUNT) throw new AssertionError("Missing module/player inventory slots");
         }
 
         private void named(String name) {
@@ -176,7 +201,7 @@ public final class LaserClientSmoke {
 
         private void enterModules() {
             if (!menu.keyPressed(GLFW.GLFW_KEY_ENTER, 0, 0)) throw new AssertionError("Keyboard activation was not handled");
-            if (handler.slots.stream().filter(slot -> slot.isEnabled()).count() != 45)
+            if (handler.slots.stream().filter(slot -> slot.isEnabled()).count() != 36 + LaserEmitterBlockEntity.MODULE_SLOT_COUNT)
                 throw new AssertionError("Keyboard activation did not open the module page");
         }
 
@@ -184,12 +209,13 @@ public final class LaserClientSmoke {
             handler.setProperty(26, 255 & ~(1 << LaserModule.BLOCK_DESTRUCTION.ordinal()) & ~(1 << LaserModule.ENTITY_DAMAGE.ordinal()));
             handler.getSlot(LaserModule.BLOCK_DESTRUCTION.slot()).setStack(ItemStack.EMPTY);
             handler.getSlot(LaserModule.ENTITY_DAMAGE.slot()).setStack(ItemStack.EMPTY);
+            handler.getSlot(LaserModule.TARGET_FILTER.slot()).setStack(ItemStack.EMPTY);
             init();
         }
 
         private void checkDisabledSettings() {
             var buttons = controls().stream().filter(widget -> widget.getMessage().getString().isEmpty()).toList();
-            if (buttons.size() != 2) throw new AssertionError("Missing disabled settings buttons");
+            if (buttons.size() != 3) throw new AssertionError("Missing disabled settings buttons");
             buttons.forEach(this::checkDisabled);
         }
 
@@ -209,7 +235,7 @@ public final class LaserClientSmoke {
             var buttons = controls().stream().filter(ButtonWidget.class::isInstance)
                     .filter(widget -> widget.getMessage().getString().isEmpty())
                     .sorted(java.util.Comparator.comparingInt(ClickableWidget::getX)).toList();
-            if (buttons.size() != 2) throw new AssertionError("Missing settings buttons");
+            if (buttons.size() != 3) throw new AssertionError("Missing settings buttons");
             click(buttons.get(index));
         }
 
@@ -226,9 +252,9 @@ public final class LaserClientSmoke {
                 if (widget.getX() < 0 || widget.getY() < 0 || widget.getX() + widget.getWidth() > width
                         || widget.getY() + widget.getHeight() > height) throw new AssertionError("Widget outside screen");
             }
-            long playerSlots = handler.slots.stream().filter(slot -> slot.id >= 9 && slot.isEnabled()).count();
+            long playerSlots = handler.slots.stream().filter(slot -> slot.id >= LaserEmitterBlockEntity.MODULE_SLOT_COUNT && slot.isEnabled()).count();
             if (playerSlots != 36) throw new AssertionError("Player inventory must stay visible on every page");
-            var slots = handler.slots.stream().filter(slot -> slot.id >= 9).toList();
+            var slots = handler.slots.stream().filter(slot -> slot.id >= LaserEmitterBlockEntity.MODULE_SLOT_COUNT).toList();
             for (var slot : slots) {
                 if (slot.x - 2 < 40 || slot.x + 18 > 280 || slot.y - 2 < 132 || slot.y + 18 > 217)
                     throw new AssertionError("Inventory slot crosses the inner GUI frame: " + slot.id);

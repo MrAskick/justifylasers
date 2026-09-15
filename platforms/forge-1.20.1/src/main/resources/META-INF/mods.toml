@@ -13,7 +13,7 @@ description='''High-energy laser emitters, redstone receivers, and portable refo
 [[dependencies.justifylasers]]
 modId="forge"
 mandatory=true
-versionRange="[47.4,)"
+versionRange="[47.1.106,)"
 ordering="NONE"
 side="BOTH"
 

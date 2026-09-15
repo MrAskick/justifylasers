@@ -151,7 +151,7 @@ class LaserGeometryTest {
             for (double width : new double[]{0.1D, 1.0D, 10.0D}) {
                 for (LaserColor color : LaserColor.values()) {
                     for (float intensity : new float[]{0.97F, 1.0F}) {
-                        Object beam = constructor.newInstance(start, end, axis, color.rgb(), intensity, width);
+                        Object beam = constructor.newInstance(start, end, axis, color.rgb(), intensity, width, null, null);
                         Vec3d side = (Vec3d) invoke(renderer, "screenSide", beam, camera);
                         buffer.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
                         invoke(renderer, "renderGradientRibbon", buffer, beam, side, camera, false);
@@ -168,6 +168,10 @@ class LaserGeometryTest {
         Method method = Arrays.stream(owner.getDeclaredMethods())
                 .filter(candidate -> candidate.getName().equals(name)).findFirst().orElseThrow();
         method.setAccessible(true);
+        if (method.getParameterTypes()[method.getParameterCount() - 1] == java.util.function.UnaryOperator.class) {
+            arguments = Arrays.copyOf(arguments, arguments.length + 1);
+            arguments[arguments.length - 1] = java.util.function.UnaryOperator.identity();
+        }
         return method.invoke(null, arguments);
     }
 

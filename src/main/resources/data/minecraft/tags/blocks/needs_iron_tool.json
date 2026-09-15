@@ -2,6 +2,10 @@
   "replace": false,
   "values": [
     "justifylasers:laser_emitter",
-    "justifylasers:laser_receiver"
+    "justifylasers:laser_receiver",
+    "justifylasers:wolframite_ore",
+    "justifylasers:photonic_crystal_ore",
+    "justifylasers:deepslate_wolframite_ore",
+    "justifylasers:deepslate_photonic_crystal_ore"
   ]
 }

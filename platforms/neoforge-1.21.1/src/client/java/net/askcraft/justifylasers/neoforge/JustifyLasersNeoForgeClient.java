@@ -34,14 +34,23 @@ public final class JustifyLasersNeoForgeClient {
     }
 
     @SubscribeEvent
+    public static void keys(net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent event) {
+        event.register(net.askcraft.justifylasers.client.ClientSettingsKey.OPEN);
+        event.register(net.askcraft.justifylasers.client.ClientSettingsKey.SABER_TOGGLE);
+    }
+
+    @SubscribeEvent
     public static void renderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(ModEntities.REFOCUSING_CUBE, RefocusingCubeRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.LASER_PART, LaserPartRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntities.INDUSTRIAL_MACHINE, net.askcraft.justifylasers.client.render.IndustrialMachineRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntities.LASER_TURRET, net.askcraft.justifylasers.client.render.LaserTurretRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntities.LASER_OPTIC, net.askcraft.justifylasers.client.render.LaserOpticRenderer::new);
     }
 
     @SubscribeEvent
     public static void shaders(RegisterShadersEvent event) throws IOException {
-        ClientPlatform.loadDepthShader(event);
+        ClientPlatform.loadShaders(event);
     }
 
     @SubscribeEvent
@@ -49,6 +58,9 @@ public final class JustifyLasersNeoForgeClient {
         event.register(ModScreenHandlers.LASER_EMITTER, LaserEmitterScreen::new);
         event.register(ModScreenHandlers.POWERED_LASER_EMITTER, PoweredLaserEmitterScreen::new);
         event.register(ModScreenHandlers.LASER_RECEIVER, LaserReceiverScreen::new);
+        event.register(ModScreenHandlers.INDUSTRIAL_MACHINE, net.askcraft.justifylasers.client.screen.IndustrialMachineScreen::new);
+        event.register(ModScreenHandlers.TABLET, net.askcraft.justifylasers.client.screen.TabletScreen::new);
+        event.register(ModScreenHandlers.LASER_TURRET, net.askcraft.justifylasers.client.screen.LaserTurretScreen::new);
     }
 
     @SubscribeEvent

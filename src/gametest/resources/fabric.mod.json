@@ -17,6 +17,16 @@
       "net.askcraft.justifylasers.laser.LaserEnergyGameTests",
       "net.askcraft.justifylasers.laser.PoweredEmitterGameTests",
       "net.askcraft.justifylasers.laser.LaserPartGameTests",
+      "net.askcraft.justifylasers.laser.LaserOpticsGameTests",
+      "net.askcraft.justifylasers.laser.LaserControlGameTests",
+      "net.askcraft.justifylasers.laser.LaserWeaponGameTests",
+      "net.askcraft.justifylasers.laser.LaserSaberGameTests",
+      "net.askcraft.justifylasers.laser.SaberFencingGameTests",
+      "net.askcraft.justifylasers.laser.IndustrialMachineGameTests",
+      "net.askcraft.justifylasers.laser.IndustrialMultiblockGameTests",
+      "net.askcraft.justifylasers.laser.IndustryRefinementGameTests",
+      "net.askcraft.justifylasers.laser.IndustryBalanceGameTests",
+      "net.askcraft.justifylasers.laser.DualWeaponGameTests",
       "net.askcraft.justifylasers.laser.RefocusingCubeGameTests"
     ]
   },

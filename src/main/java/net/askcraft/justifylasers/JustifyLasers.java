@@ -10,6 +10,7 @@ import net.askcraft.justifylasers.registry.ModEntities;
 import net.askcraft.justifylasers.registry.ModItemGroups;
 import net.askcraft.justifylasers.registry.ModLaserParts;
 import net.askcraft.justifylasers.registry.ModScreenHandlers;
+import net.askcraft.justifylasers.registry.ModSounds;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.util.Identifier;
 import org.slf4j.Logger;
@@ -27,20 +28,26 @@ public final class JustifyLasers {
         LaserConfig.initialize();
         Platform.onRegister(RegistryKeys.BLOCK, () -> {
             ModBlocks.initialize();
+            net.askcraft.justifylasers.registry.ModIndustry.initializeBlocks();
             ModLaserParts.initializeBlocks();
         });
         Platform.onRegister(RegistryKeys.ITEM, () -> {
             ModBlocks.initializeItems();
             ModEntities.initializeItems();
             ModLaserParts.initialize();
+            net.askcraft.justifylasers.registry.ModIndustry.initializeItems();
         });
         Platform.onRegister(RegistryKeys.ENTITY_TYPE, ModEntities::initialize);
         Platform.onRegister(RegistryKeys.BLOCK_ENTITY_TYPE, ModBlockEntities::initialize);
         Platform.onRegister(RegistryKeys.SCREEN_HANDLER, ModScreenHandlers::initialize);
+        Platform.onRegister(RegistryKeys.SOUND_EVENT, ModSounds::initialize);
         Platform.onRegister(RegistryKeys.ITEM_GROUP, ModItemGroups::initialize);
         Platform.registerSettingsReceiver();
         Platform.registerEnergy();
+        net.askcraft.justifylasers.industry.IndustryRecipe.initialize();
         LaserBeamNetwork.initialize();
+        Platform.onEndWorldTick(net.askcraft.justifylasers.laser.SaberCombat::tick);
+        Platform.onEndWorldTick(net.askcraft.justifylasers.item.LaserGunItem::tick);
 
         LOGGER.info("JustifyLasers initialized");
     }

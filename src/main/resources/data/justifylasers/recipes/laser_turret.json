@@ -1,0 +1,6 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": ["I I", " R ", "ISI"],
+  "key": {"I": {"item": "minecraft:iron_ingot"}, "R": {"item": "minecraft:redstone_block"}, "S": {"item": "minecraft:smooth_stone"}},
+  "result": {"item": "justifylasers:laser_turret"}
+}

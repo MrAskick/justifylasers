@@ -4,6 +4,7 @@ import net.askcraft.justifylasers.JustifyLasers;
 import net.askcraft.justifylasers.block.entity.LaserEmitterBlockEntity;
 import net.askcraft.justifylasers.block.entity.LaserReceiverBlockEntity;
 import net.askcraft.justifylasers.block.entity.LaserPartBlockEntity;
+import net.askcraft.justifylasers.block.entity.LaserOpticBlockEntity;
 import net.minecraft.block.Block;
 import net.askcraft.justifylasers.platform.Platform;
 import net.minecraft.block.entity.BlockEntityType;
@@ -11,14 +12,23 @@ import net.minecraft.registry.Registries;
 
 public final class ModBlockEntities {
     public static BlockEntityType<LaserEmitterBlockEntity> LASER_EMITTER;
+    public static BlockEntityType<net.askcraft.justifylasers.block.entity.IndustrialMachineBlockEntity> INDUSTRIAL_MACHINE;
 
     public static BlockEntityType<LaserReceiverBlockEntity> LASER_RECEIVER;
     public static BlockEntityType<LaserPartBlockEntity> LASER_PART;
+    public static BlockEntityType<LaserOpticBlockEntity> LASER_OPTIC;
+    public static BlockEntityType<net.askcraft.justifylasers.block.entity.LaserTurretBlockEntity> LASER_TURRET;
 
     private ModBlockEntities() {
     }
 
     public static void initialize() {
+        INDUSTRIAL_MACHINE = Platform.register(Registries.BLOCK_ENTITY_TYPE, JustifyLasers.id("industrial_machine"),
+                Platform.blockEntityType(net.askcraft.justifylasers.block.entity.IndustrialMachineBlockEntity::new, ModIndustry.MACHINES.values().toArray(Block[]::new)));
+        LASER_TURRET = Platform.register(Registries.BLOCK_ENTITY_TYPE, JustifyLasers.id("laser_turret"),
+                Platform.blockEntityType(net.askcraft.justifylasers.block.entity.LaserTurretBlockEntity::new, ModBlocks.LASER_TURRET));
+        LASER_OPTIC = Platform.register(Registries.BLOCK_ENTITY_TYPE, JustifyLasers.id("laser_optic"),
+                Platform.blockEntityType(LaserOpticBlockEntity::new, ModBlocks.LASER_MIRROR, ModBlocks.BEAM_SPLITTER, ModBlocks.ENERGY_RECEIVER));
         LASER_PART = Platform.register(Registries.BLOCK_ENTITY_TYPE, JustifyLasers.id("laser_part"),
                 Platform.blockEntityType(LaserPartBlockEntity::new, ModLaserParts.DECORATIONS.values().toArray(Block[]::new)));
         LASER_EMITTER = Platform.register(

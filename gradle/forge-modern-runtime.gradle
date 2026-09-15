@@ -1,0 +1,76 @@
+// Loom 1.11 gives its merged Minecraft/Forge jar Forge's module name. Forge 52's
+// userdev launcher discovers that jar twice and drops the real Forge module.
+// Split only the development runtime; compilation and shipped mod jars are untouched.
+def mergedMinecraft = providers.provider {
+    def candidate = sourceSets.main.runtimeClasspath.files.find {
+        it.name.startsWith("forge-${minecraft_version}-${forge_version}-minecraft-merged-") && it.name.endsWith('.jar')
+    }
+    if (candidate == null) throw new GradleException('Missing Loom named Minecraft artifact for Forge runtime')
+    candidate
+}
+def forgeResources = configurations.detachedConfiguration(
+        dependencies.create("net.minecraftforge:forge:${minecraft_version}-${forge_version}:universal-srg"))
+forgeResources.transitive = false
+
+def devMinecraft = tasks.register('prepareDevMinecraft', Jar) {
+    inputs.file(mergedMinecraft)
+    archiveFileName = "forge-${minecraft_version}-${forge_version}-dev-minecraft.jar"
+    destinationDirectory = layout.buildDirectory.dir('dev-runtime')
+    from({ zipTree(mergedMinecraft.get()) }) {
+        exclude 'net/minecraftforge/**', 'META-INF/**', 'assets/forge/**', 'data/forge/**', 'coremods/**'
+    }
+    manifest.attributes('Automatic-Module-Name': 'minecraft')
+}
+def devForge = tasks.register('prepareDevForge', Jar) {
+    def classNames = [:]
+    def coremodMappings = providers.provider { loom.mappingConfiguration.tinyMappingsWithSrg.toFile() }
+    inputs.file(mergedMinecraft)
+    inputs.file(coremodMappings)
+    archiveFileName = 'justifylasers-dev-forge.jar'
+    destinationDirectory = layout.buildDirectory.dir('dev-runtime')
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from({ zipTree(mergedMinecraft.get()) }) {
+        include 'net/minecraftforge/**', 'META-INF/**', 'assets/forge/**', 'data/forge/**', 'coremods/**'
+        exclude 'META-INF/MANIFEST.MF'
+        // Loom remaps these class names, but Forge 52 also uses literal Mojang member names.
+        filesMatching('coremods/field_to_method.js') {
+            filter { String line -> line
+                    .replace("'climateSettings'", "'weather'")
+                    .replace("'specialEffects'", "'effects'")
+                    .replace("'effect', 'getEffect'", "'type', 'getEffectType'")
+                    .replace("'content', 'getFluid'", "'fluid', 'getFluid'")
+                    .replace("'potted', 'getPotted'", "'content', 'getContent'") }
+        }
+        filesMatching(['coremods/method_redirector.js', 'coremods/finalize_spawn_targets.json']) {
+            filter { String line -> line.replaceAll(/net\/minecraft\/[A-Za-z0-9_\/$]+/) { name -> classNames.getOrDefault(name, name) } }
+        }
+    }
+    from({ zipTree(forgeResources.singleFile) }) {
+        include 'assets/**', 'data/**', 'pack.mcmeta', 'forge_logo.png'
+    }
+    doFirst {
+        coremodMappings.get().withReader('UTF-8') { reader ->
+            def namespaces = reader.readLine().split('\t').drop(3).toList()
+            int mojang = namespaces.indexOf('mojang') + 1, named = namespaces.indexOf('named') + 1
+            if (mojang == 0 || named == 0) throw new GradleException('Missing Forge coremod mapping namespaces')
+            reader.eachLine { line ->
+                if (line.startsWith('c\t')) {
+                    def columns = line.split('\t')
+                    classNames[columns[mojang]] = columns[named]
+                }
+            }
+        }
+        new java.util.jar.JarFile(mergedMinecraft.get()).withCloseable { source ->
+            manifest.attributes(source.manifest.mainAttributes.collectEntries { key, value -> [(key.toString()): value.toString()] })
+            source.manifest.entries.each { name, attributes ->
+                manifest.attributes(attributes.collectEntries { key, value -> [(key.toString()): value.toString()] }, name)
+            }
+        }
+    }
+}
+tasks.withType(JavaExec).configureEach {
+    dependsOn devMinecraft, devForge
+    def originalClasspath = files(new ArrayList(classpath.from))
+    classpath = files(devMinecraft.flatMap { it.archiveFile }, devForge.flatMap { it.archiveFile }) +
+            originalClasspath.filter { it != mergedMinecraft.get() }
+}

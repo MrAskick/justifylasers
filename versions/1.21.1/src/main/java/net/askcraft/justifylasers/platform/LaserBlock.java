@@ -30,6 +30,7 @@ public abstract class LaserBlock extends BlockWithEntity {
 
     @Override
     public ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, BlockHitResult hit) {
+        if (player.isHolding(net.askcraft.justifylasers.registry.ModBlocks.CONFIGURATOR)) return ActionResult.PASS;
         return useLaser(state, world, pos, player, hit);
     }
 

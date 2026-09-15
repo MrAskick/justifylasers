@@ -3,8 +3,8 @@ if (!project.hasProperty('integrationTests')) return
 def fabric = project.property('loom.platform') == 'fabric'
 def modern = minecraft_version == '1.21.1'
 def checks = sourceSets.create('integrationTest') {
-    java.srcDirs = [rootProject.file('src/integrationTest/java'), file('src/integrationTest/java')]
-    resources.srcDirs = [file('src/integrationTest/resources')]
+    java.srcDirs = [rootProject.file('src/integrationTest/java'), new File(loaderSources, 'src/integrationTest/java')]
+    resources.srcDirs = [new File(loaderSources, 'src/integrationTest/resources')]
     compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
     runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
 }
@@ -42,7 +42,7 @@ loom.runs.create('integrationTest') {
     if (!fabric) environment('gametestserver')
     source(checks)
     runDir('build/run/integrationTest')
-    vmArg fabric ? '-Dfabric-api.gametest' : "-D${modern ? 'neoforge' : 'forge'}.enabledGameTestNamespaces=justifylasers_integration"
+    vmArg fabric ? '-Dfabric-api.gametest' : "-D${project.property('loom.platform')}.enabledGameTestNamespaces=justifylasers_integration"
     if (fabric) vmArg "-Dfabric-api.gametest.report-file=${file('build/integration-results.xml').absolutePath}"
 }
 if (project.hasProperty('integrationModsDir')) {

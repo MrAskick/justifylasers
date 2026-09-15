@@ -62,8 +62,10 @@ class LaserEnergyTest {
     }
 
     @Test
-    void technicalModeRequiresAConfiguredModUnlessExplicitlyEnabled() {
+    void standaloneIndustryEnablesEnergyAndLegacyDetectionRemainsAvailable() {
         LaserConfig config = new LaserConfig();
+        assertTrue(config.enablesEnergy(id -> false));
+        config.industrialProgression = false;
         assertFalse(config.enablesEnergy(id -> false));
         assertTrue(config.enablesEnergy("mekanism"::equals));
         assertFalse(config.enablesEnergy("unrelated_mod"::equals));
@@ -90,5 +92,38 @@ class LaserEnergyTest {
     private static int cost(LaserEnergyCost.Rates rates, boolean mining, int speed, boolean damage,
                             double hitDamage, int rate, double knockback, boolean ignition) {
         return LaserEnergyCost.perTick(rates, mining, speed, damage, hitDamage, rate, knockback, ignition, 0);
+    }
+
+    @Test
+    void transmissionAndAudioLimitsRejectUnsafeConfiguration() {
+        LaserConfig config = new LaserConfig();
+        config.validate();
+        for (double efficiency : new double[]{0, 1, -1, 2, Double.NaN, Double.POSITIVE_INFINITY}) {
+            config.energyTransmissionEfficiency = efficiency;
+            assertThrows(IllegalArgumentException.class, config::validate);
+        }
+        config.energyTransmissionEfficiency = 0.8;
+        config.laserVolume = 0;
+        config.maxLaserSoundSources = 1;
+        config.validate();
+        config.laserVolume = 1.1;
+        assertThrows(IllegalArgumentException.class, config::validate);
+        config.laserVolume = 1;
+        config.maxLaserSoundSources = 0;
+        assertThrows(IllegalArgumentException.class, config::validate);
+        config.maxLaserSoundSources = 65;
+        assertThrows(IllegalArgumentException.class, config::validate);
+    }
+
+    @Test
+    void extractionSimulationAndClampingNeverDuplicateEnergy() {
+        var buffer = new LaserEnergyBuffer(() -> 1000, () -> 100, () -> { });
+        buffer.restore(250);
+        assertEquals(250, buffer.extract(Long.MAX_VALUE, true));
+        assertEquals(250, buffer.stored());
+        assertEquals(0, buffer.extract(-10, false));
+        assertEquals(200, buffer.extract(200, false));
+        assertEquals(50, buffer.extract(Long.MAX_VALUE, false));
+        assertEquals(0, buffer.stored());
     }
 }

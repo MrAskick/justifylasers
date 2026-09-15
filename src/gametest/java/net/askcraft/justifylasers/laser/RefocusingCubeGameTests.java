@@ -26,9 +26,19 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameMode;
 
 import java.util.List;
+import java.lang.reflect.Method;
 
 public class RefocusingCubeGameTests implements FabricGameTest {
     private static final BlockPos CENTER = new BlockPos(4, 4, 4);
+
+    @Override
+    public void invokeTestMethod(TestContext context, Method method) {
+        // GameTest batches reuse the same plots; leftover physical entities can block
+        // placement or carrying even though the structure's blocks have been reset.
+        var plot = new net.minecraft.util.math.Box(context.getAbsolute(Vec3d.ZERO), context.getAbsolute(new Vec3d(8, 8, 8)));
+        context.getWorld().getOtherEntities(null, plot, entity -> !(entity instanceof PlayerEntity)).forEach(net.minecraft.entity.Entity::discard);
+        FabricGameTest.super.invokeTestMethod(context, method);
+    }
 
     @GameTest(templateName = EMPTY_STRUCTURE)
     public void fiveInputsRedirectButOutputFaceOnlyBlocks(TestContext context) {
@@ -325,7 +335,8 @@ public class RefocusingCubeGameTests implements FabricGameTest {
         player.setStackInHand(Hand.MAIN_HAND, item);
         BlockPos support = context.getAbsolutePos(new BlockPos(4, 1, 4));
         var hit = new BlockHitResult(Vec3d.ofCenter(support).add(0, 0.5D, 0), Direction.UP, support, false);
-        context.assertTrue(item.useOnBlock(new ItemUsageContext(player, Hand.MAIN_HAND, hit)).isAccepted(), "Placement succeeds");
+        context.assertTrue(item.useOnBlock(new ItemUsageContext(player, Hand.MAIN_HAND, hit)).isAccepted(),
+                "Placement succeeds; occupants=" + context.getWorld().getOtherEntities(null, new net.minecraft.util.math.Box(support.up())));
         context.assertTrue(item.isEmpty(), "Survival placement consumes one item");
         var cubes = context.getWorld().getEntitiesByClass(RefocusingCubeEntity.class,
                 new net.minecraft.util.math.Box(support.up()).expand(0.2D), cube -> true);
@@ -338,7 +349,7 @@ public class RefocusingCubeGameTests implements FabricGameTest {
         cube.damage(source, 1);
         context.assertTrue(cube.isRemoved(), "Collection removes world entity");
         context.assertTrue(player.getInventory().count(ModEntities.REFOCUSING_CUBE_ITEM) == 1, "Repeated attacks cannot duplicate cube");
-        context.assertTrue(context.getWorld().getRecipeManager().get(new net.minecraft.util.Identifier("justifylasers", "refocusing_cube")).isPresent(), "Crafting recipe loads");
+        context.assertTrue(context.getWorld().getRecipeManager().get(new net.minecraft.util.Identifier("justifylasers", "industry/refocusing_cube")).isPresent(), "Assembly recipe loads");
         player.discard();
         context.complete();
     }
@@ -393,7 +404,9 @@ public class RefocusingCubeGameTests implements FabricGameTest {
         for (int tick = 0; tick < 20; tick++) {
             cube.tick();
         }
-        context.assertTrue(cube.isHeld() && cube.getPitch() == -28, "Held cube follows view without auto-leveling");
+        context.assertTrue(cube.isHeld() && cube.getPitch() == -28, "Held cube follows view without auto-leveling; held="
+                + cube.isHeld() + ", pitch=" + cube.getPitch() + ", player=" + player.getPos() + ", cube=" + cube.getPos()
+                + ", nearby=" + context.getWorld().getOtherEntities(cube, cube.getBoundingBox().expand(3)));
         Vec3d expectedCenter = player.getEyePos().add(player.getRotationVec(1).multiply(1.8D)).add(0, -0.15D, 0);
         context.assertTrue(cube.opticalFrame(1).center().distanceTo(expectedCenter) < 0.0001D, "Carrying targets the center, not the rotating AABB bottom");
         cube.interact(player, Hand.MAIN_HAND);

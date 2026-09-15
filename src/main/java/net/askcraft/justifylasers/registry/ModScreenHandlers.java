@@ -9,14 +9,23 @@ import net.minecraft.screen.ScreenHandlerType;
 
 public final class ModScreenHandlers {
     public static ScreenHandlerType<LaserEmitterScreenHandler> LASER_EMITTER;
+    public static ScreenHandlerType<net.askcraft.justifylasers.screen.IndustrialMachineScreenHandler> INDUSTRIAL_MACHINE;
+    public static ScreenHandlerType<net.askcraft.justifylasers.screen.TabletScreenHandler> TABLET;
     public static ScreenHandlerType<LaserEmitterScreenHandler> POWERED_LASER_EMITTER;
 
     public static ScreenHandlerType<LaserReceiverScreenHandler> LASER_RECEIVER;
+    public static ScreenHandlerType<net.askcraft.justifylasers.screen.LaserTurretScreenHandler> LASER_TURRET;
 
     private ModScreenHandlers() {
     }
 
     public static void initialize() {
+        TABLET = Platform.register(Registries.SCREEN_HANDLER, JustifyLasers.id("tablet"),
+                Platform.screenType(net.askcraft.justifylasers.screen.TabletScreenHandler::new));
+        INDUSTRIAL_MACHINE = Platform.register(Registries.SCREEN_HANDLER, JustifyLasers.id("industrial_machine"),
+                Platform.screenType(net.askcraft.justifylasers.screen.IndustrialMachineScreenHandler::new));
+        LASER_TURRET = Platform.register(Registries.SCREEN_HANDLER, JustifyLasers.id("laser_turret"),
+                Platform.screenType(net.askcraft.justifylasers.screen.LaserTurretScreenHandler::new));
         LASER_EMITTER = Platform.register(
                 Registries.SCREEN_HANDLER,
                 JustifyLasers.id("laser_emitter"),

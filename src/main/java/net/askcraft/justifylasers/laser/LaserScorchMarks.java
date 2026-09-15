@@ -2,6 +2,7 @@ package net.askcraft.justifylasers.laser;
 
 import net.askcraft.justifylasers.block.LaserReceiverBlock;
 import net.askcraft.justifylasers.block.entity.LaserEmitterBlockEntity;
+import net.askcraft.justifylasers.item.LaserGunItem;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
@@ -28,11 +29,18 @@ public final class LaserScorchMarks {
     public static final int MAX_PATCHES = 2_048;
     public static final int MAX_VERTICES = 500_000;
     private final Map<Long, Mark> marks = new LinkedHashMap<>(128, 0.75F, true);
-    private final Map<BlockPos, Contact> contacts = new HashMap<>();
+    private final Map<ContactKey, Contact> contacts = new HashMap<>();
     private World world;
     private long lastTick = Long.MIN_VALUE;
     private long nextId;
     private int vertexCount;
+
+    public record WeaponContact(Object source, int segment, LaserBeamTrace trace, double radius) { }
+
+    public void tick(@Nullable World world, List<WeaponContact> weapons) {
+        if (world == null) clear();
+        else update(world, world.getTime(), weapons);
+    }
 
     public void tick(@Nullable World world) {
         if (world == null) {
@@ -43,6 +51,10 @@ public final class LaserScorchMarks {
     }
 
     void update(World nextWorld, long now) {
+        update(nextWorld, now, List.of());
+    }
+
+    private void update(World nextWorld, long now, List<WeaponContact> weapons) {
         if (world != nextWorld || now < lastTick) {
             clear();
             world = nextWorld;
@@ -57,26 +69,47 @@ public final class LaserScorchMarks {
             ScorchGeometry.Patch patch = mark.patch;
             if (now - mark.touched >= LIFETIME_TICKS || !world.isChunkLoaded(patch.position())
                     || world.getBlockState(patch.position()) != patch.state()
-                    || world.isChunkLoaded(mark.source) && world.getBlockEntity(mark.source) instanceof LaserEmitterBlockEntity emitter
+                    || mark.source instanceof BlockPos source && world.isChunkLoaded(source)
+                    && world.getBlockEntity(source) instanceof LaserEmitterBlockEntity emitter
                     && !emitter.showsScorchMarks()) {
                 vertexCount -= mark.vertexCount;
                 iterator.remove();
             }
         }
-        Set<BlockPos> activeContacts = new HashSet<>();
+        Set<ContactKey> activeContacts = new HashSet<>();
         for (Map.Entry<BlockPos, LaserBeamPath> entry : LaserBeamNetwork.paths(world, 1).entrySet()) {
-            LaserBeamTrace trace = entry.getValue().last();
-            if (!trace.hasBlockHit() || trace.hitSide() == null
-                    || !(world.getBlockEntity(entry.getKey()) instanceof LaserEmitterBlockEntity emitter) || !emitter.showsScorchMarks()) {
-                continue;
+            for (int segment = 0; segment < entry.getValue().segments().size(); segment++) {
+                LaserBeamTrace trace = entry.getValue().segments().get(segment);
+                if (!trace.hasBlockHit() || trace.hitSide() == null
+                        || !(world.getBlockEntity(entry.getKey()) instanceof LaserEmitterBlockEntity emitter) || !emitter.showsScorchMarks()) {
+                    continue;
+                }
+                BlockState target = world.getBlockState(trace.hitBlock());
+                if (target.getBlock() instanceof LaserReceiverBlock && target.get(LaserReceiverBlock.FACING) == trace.hitSide()) {
+                    continue;
+                }
+                if (LaserBeamPath.isOpticalInput(world, target, trace)) continue;
+                ContactKey contactKey = new ContactKey(entry.getKey(), segment);
+                activeContacts.add(contactKey);
+                record(contactKey, trace.end(), trace.hitSide(), ScorchGeometry.radius(emitter.getBeamWidthScale() * (float) Math.sqrt(trace.power())),
+                        emitter.isLightEmissionEnabled(), now);
             }
-            BlockState target = world.getBlockState(trace.hitBlock());
-            if (target.getBlock() instanceof LaserReceiverBlock && target.get(LaserReceiverBlock.FACING) == trace.hitSide()) {
-                continue;
-            }
-            activeContacts.add(entry.getKey());
-            record(entry.getKey(), trace.end(), trace.hitSide(), ScorchGeometry.radius(emitter.getBeamWidthScale()),
-                    emitter.isLightEmissionEnabled(), now);
+        }
+        for (var player : world.getPlayers()) for (var hand : net.minecraft.util.Hand.values()) {
+            if (!LaserGunItem.isFiring(player, hand)) continue;
+            LaserBeamTrace trace = LaserWeapon.trace(world, player.getEyePos(), player.getRotationVec(1),
+                    LaserGunItem.range(player.getStackInHand(hand)), player).beam();
+            if (!trace.hasBlockHit() || trace.hitSide() == null) continue;
+            ContactKey key = new ContactKey(player.getUuid(), hand.ordinal());
+            activeContacts.add(key);
+            record(key, trace.end(), trace.hitSide(), ScorchGeometry.radius(0.8F), true, now);
+        }
+        for (WeaponContact weapon : weapons) {
+            LaserBeamTrace trace = weapon.trace();
+            if (!trace.hasBlockHit() || trace.hitSide() == null) continue;
+            ContactKey key = new ContactKey(weapon.source(), weapon.segment());
+            activeContacts.add(key);
+            record(key, trace.end(), trace.hitSide(), weapon.radius(), true, now);
         }
         contacts.keySet().retainAll(activeContacts);
         iterator = marks.values().iterator();
@@ -86,7 +119,7 @@ public final class LaserScorchMarks {
         }
     }
 
-    private void record(BlockPos source, Vec3d point, Direction face, double radius, boolean emission, long now) {
+    private void record(ContactKey source, Vec3d point, Direction face, double radius, boolean emission, long now) {
         Contact previous = contacts.get(source);
         Vec3d from = point;
         if (previous != null && previous.face == face && previous.tick == now - 1
@@ -113,7 +146,7 @@ public final class LaserScorchMarks {
         }
         List<Long> added = new ArrayList<>();
         for (ScorchGeometry.Patch patch : ScorchGeometry.create(world, from, point, face, radius)) {
-            Mark mark = new Mark(source, patch, now, emission);
+            Mark mark = new Mark(source.source, patch, now, emission);
             long id = nextId++;
             marks.put(id, mark);
             added.add(id);
@@ -121,6 +154,8 @@ public final class LaserScorchMarks {
         }
         contacts.put(source, new Contact(point, face, radius, now, List.copyOf(added)));
     }
+
+    private record ContactKey(Object source, int segment) { }
 
     public boolean belongsTo(World world) {
         return this.world == world;
@@ -149,14 +184,14 @@ public final class LaserScorchMarks {
     }
 
     public static final class Mark {
-        private final BlockPos source;
+        private final Object source;
         private final ScorchGeometry.Patch patch;
         private final int vertexCount;
         private long touched;
         private boolean emission;
 
-        private Mark(BlockPos source, ScorchGeometry.Patch patch, long touched, boolean emission) {
-            this.source = source.toImmutable();
+        private Mark(Object source, ScorchGeometry.Patch patch, long touched, boolean emission) {
+            this.source = source instanceof BlockPos pos ? pos.toImmutable() : source;
             this.patch = patch;
             this.touched = touched;
             this.emission = emission;

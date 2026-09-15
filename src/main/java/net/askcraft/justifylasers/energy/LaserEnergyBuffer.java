@@ -40,6 +40,12 @@ public final class LaserEnergyBuffer {
         return true;
     }
 
+    public int extract(long requested, boolean simulate) {
+        int amount = (int) Math.max(0, Math.min(requested, stored()));
+        if (!simulate) consume(amount);
+        return amount;
+    }
+
     public void restore(long amount) {
         stored = (int) Math.max(0, Math.min(amount, capacity()));
     }

@@ -1,0 +1,253 @@
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+
+def industrialResources = layout.buildDirectory.dir('generated/industry')
+tasks.register('generateIndustryResources') {
+    inputs.file(rootProject.file('gradle/industry-resources.gradle'))
+    inputs.file(rootProject.file('src/main/resources/assets/justifylasers/textures/component/laser_saber/base.json'))
+    inputs.files(['photonite','wolframite'].collect { rootProject.file("src/main/resources/assets/justifylasers/textures/component/${it}/base.json") })
+    inputs.property('minecraftVersion', minecraft_version)
+    outputs.dir(industrialResources)
+    doLast {
+        def root = industrialResources.get().asFile
+        def json = { String path, Object value ->
+            def file = new File(root, path)
+            file.parentFile.mkdirs()
+            file.setText(JsonOutput.prettyPrint(JsonOutput.toJson(value)) + '\n', 'UTF-8')
+        }
+        def recipe = { String id, List pattern, Map key ->
+            json("data/justifylasers/recipes/${id}.json", ['justifylasers:technical': true, type: 'minecraft:crafting_shaped',
+                pattern: pattern, key: key.collectEntries { symbol, item -> [(symbol): [item: item]] }, result: [item: "justifylasers:${id}"]])
+            json("data/justifylasers/advancements/recipes/industry/${id}.json", ['justifylasers:technical': true, parent: 'minecraft:recipes/root',
+                criteria: [materials: [trigger: 'minecraft:inventory_changed', conditions: [items: [[items: ['minecraft:iron_ingot']]]]],
+                           unlocked: [trigger: 'minecraft:recipe_unlocked', conditions: [recipe: "justifylasers:${id}"]]],
+                requirements: [['materials','unlocked']], rewards: [recipes: ["justifylasers:${id}"]]])
+        }
+        def loot = { String id -> [type: 'minecraft:block', pools: [[rolls: 1,
+                entries: [[type: 'minecraft:item', name: "justifylasers:${id}"]], conditions: [[condition: 'minecraft:survives_explosion']]]]] }
+        def display = [gui: [rotation: [25,225,0], translation: [0,0,0], scale: [.58,.58,.58]],
+                ground: [translation: [0,3,0], scale: [.25,.25,.25]],
+                firstperson_righthand: [rotation: [0,45,0], translation: [0,0,0], scale: [.4,.4,.4]],
+                thirdperson_righthand: [rotation: [75,45,0], translation: [0,2.5,0], scale: [.375,.375,.375]]]
+        def machines = ['fuel_generator','electric_smelter','crystal_growth_chamber','assembly_chamber']
+        machines.each { id ->
+            json("assets/justifylasers/blockstates/${id}.json", [variants: ['': [model: "justifylasers:block/${id}"]]])
+            json("assets/justifylasers/models/block/${id}.json", [textures: [particle: 'justifylasers:block/particle/energy_receiver'], elements: []])
+            json("assets/justifylasers/models/item/${id}.json", [parent: 'builtin/entity', display: display, textures: [particle: 'justifylasers:block/particle/energy_receiver']])
+            json("data/justifylasers/loot_tables/blocks/${id}.json", loot(id))
+        }
+        def ores = ['wolframite': [raw: 'raw_wolframite', count: 7, min: -112, max: 48, buried: 4, rarity: 9],
+                    'photonic_crystal': [raw: 'raw_photonic_crystal', count: 6, min: -144, max: 16, buried: 3, rarity: 12]]
+        def mineralUv = { String mineral, String part ->
+            def a = new JsonSlurper().parse(rootProject.file("src/main/resources/assets/justifylasers/textures/component/${mineral}/base.json"))
+            def r = a.regions[part]
+            [r[0]+.5, r[1]+.5, r[0]+r[2]-.5, r[1]+r[3]-.5].collect { it * 16 / a.size }
+        }
+        def mineralBox = { String mineral, List from, List to, String part ->
+            [from:from, to:to, faces:['up','down','north','south','east','west'].collectEntries {
+                [(it):[texture:'#mineral',uv:mineralUv(mineral, part)]]
+            }]
+        }
+        ores.each { ore, spec ->
+            ['', 'deepslate_'].each { prefix ->
+                String id = prefix + ore + '_ore'
+                String mineral = ore == 'wolframite' ? 'wolframite' : 'photonite'
+                def variants = []
+                (0..3).each { variant ->
+                def faces = ['up','down','north','south','east','west']
+                def elements = [[from:[0,0,0],to:[16,16,16],faces:faces.collectEntries { [(it):[texture:'#stone',cullface:it]] }]]
+                String model = id + (variant == 0 ? '' : '_' + variant)
+                variants.add([model:"justifylasers:block/${model}"])
+                json("assets/justifylasers/models/block/${model}.json", [parent:'minecraft:block/block',
+                     textures:[stone:prefix?'minecraft:block/deepslate':'minecraft:block/stone',
+                               mineral:"justifylasers:component/${mineral}/base",particle:'#stone',
+                               ("justifylasers_ore_${variant}"):'#mineral'],elements:elements])
+                }
+                json("assets/justifylasers/blockstates/${id}.json", [variants: ['': variants]])
+                json("assets/justifylasers/models/item/${id}.json", [parent: "justifylasers:block/${id}"])
+                def silk = minecraft_version == '1.21.1' ? [predicates: ['minecraft:enchantments': [[enchantments: 'minecraft:silk_touch', levels: [min: 1]]]]]
+                        : [enchantments: [[enchantment: 'minecraft:silk_touch', levels: [min: 1]]]]
+                json("data/justifylasers/loot_tables/blocks/${id}.json", [type: 'minecraft:block', pools: [[rolls: 1, entries: [[type: 'minecraft:alternatives', children: [
+                        [type: 'minecraft:item', name: "justifylasers:${id}", conditions: [[condition: 'minecraft:match_tool', predicate: silk]]],
+                        [type: 'minecraft:item', name: "justifylasers:${spec.raw}", functions: [[function: 'minecraft:apply_bonus', enchantment: 'minecraft:fortune', formula: 'minecraft:ore_drops'],
+                                                                                          [function: 'minecraft:explosion_decay']]]
+                ]]]]]])
+            }
+            // Match diamond vein sizes and exposed/buried distributions; wolframite's height curve is shifted up 32 blocks.
+            ['', '_buried', '_large'].each { variant ->
+            json("data/justifylasers/worldgen/configured_feature/ore_${ore}${variant}.json", [type: 'minecraft:ore', config: [size: variant == '_large' ? 12 : variant == '_buried' ? 8 : 4,
+                discard_chance_on_air_exposure: variant == '_large' ? .7 : variant == '_buried' ? 1.0 : .5,
+                targets: ['', 'deepslate_'].collect { prefix -> [target: [predicate_type: 'minecraft:tag_match', tag: "minecraft:${prefix ?: 'stone_'}ore_replaceables"],
+                                                              state: [Name: "justifylasers:${prefix}${ore}_ore"]] }]])
+            json("data/justifylasers/worldgen/placed_feature/ore_${ore}${variant}.json", [feature: "justifylasers:ore_${ore}${variant}", placement: [
+                variant == '_large' ? [type: 'minecraft:rarity_filter', chance: spec.rarity]
+                        : [type: 'minecraft:count', count: variant == '_buried' ? spec.buried : spec.count], [type: 'minecraft:in_square'],
+                [type: 'minecraft:height_range', height: [type: 'minecraft:trapezoid', min_inclusive: [absolute: spec.min], max_inclusive: [absolute: spec.max]]],
+                [type: 'minecraft:biome']]])
+            ['forge', 'neoforge'].each { loader ->
+                json("data/justifylasers/${loader}/biome_modifier/ore_${ore}${variant}.json", [type: "${loader}:add_features", biomes: '#minecraft:is_overworld',
+                    features: ["justifylasers:ore_${ore}${variant}"], step: 'underground_ores'])
+            }
+            }
+        }
+        ['fuel_generator','electric_smelter'].each { id ->
+            java.nio.file.Files.deleteIfExists(new File(root,"data/justifylasers/recipes/${id}.json").toPath())
+            java.nio.file.Files.deleteIfExists(new File(root,"data/justifylasers/advancements/recipes/industry/${id}.json").toPath())
+        }
+        recipe('crystal_growth_chamber', ['AGA','GQG','ARA'], [A:'justifylasers:wolframite_ingot',G:'minecraft:glass',Q:'minecraft:quartz',R:'minecraft:redstone'])
+        recipe('assembly_chamber', ['APA','GCG','ARA'], [A:'justifylasers:wolframite_ingot',P:'minecraft:piston',G:'minecraft:glass',C:'justifylasers:control_circuit',R:'minecraft:redstone'])
+        recipe('crystal_mount', ['I I','I I','WWW'], [I:'minecraft:iron_nugget',W:'justifylasers:wolframite_ingot'])
+        recipe('blank_schematic', ['PPP','IRI','PPP'], [P:'minecraft:paper',I:'minecraft:iron_nugget',R:'minecraft:redstone'])
+        json('data/justifylasers/recipes/mounted_crystal.json', [type:'minecraft:crafting_shapeless',
+             ingredients:[[item:'justifylasers:photonite_crystal'],[item:'justifylasers:crystal_mount']],result:[item:'justifylasers:white_crystal']])
+        json('data/justifylasers/recipes/wolframite_ingot.json', [type:'minecraft:smelting',category:'misc',
+             ingredient:[item:'justifylasers:raw_wolframite'],result:minecraft_version=='1.21.1'?[id:'justifylasers:wolframite_ingot']:'justifylasers:wolframite_ingot',
+             experience:1.0,cookingtime:3000])
+
+        def inputs = { List specs -> specs.collect { spec ->
+            def name = spec instanceof List ? spec[0] : spec
+            [ingredient:name.startsWith('#')?[tag:name.substring(1)]:[item:name.contains(':')?name:'justifylasers:'+name],
+             count:spec instanceof List?spec[1]:1]
+        } }
+        def machineRecipe = { String id, String machine, List ingredients, String result, int ticks, int energy, int water ->
+            json("data/justifylasers/recipes/industry/${id}.json", [type:'justifylasers:industrial',key:id,machine:machine,
+                 blueprint:machine=='ASSEMBLY_CHAMBER'?id:'',inputs:inputs(ingredients),
+                 result:[(minecraft_version=='1.21.1'?'id':'item'):'justifylasers:'+result,count:1],ticks:ticks,energy:energy,water:water])
+        }
+        machineRecipe('photonite_crystal','CRYSTAL_GROWER',['raw_photonic_crystal',['minecraft:quartz',2]],'photonite_crystal',0,0,0)
+        machineRecipe('wolframite_smelting','ELECTRIC_SMELTER',['raw_wolframite'],'wolframite_ingot',0,0,0)
+        def assemblies = [
+            reinforced_laser_housing:[['wolframite_ingot',8],['minecraft:iron_ingot',4]],
+            energy_core:[['minecraft:copper_ingot',6],'minecraft:redstone_block',['minecraft:quartz',2],['control_circuit',2]],
+            focusing_lens_assembly:[['minecraft:glass',4],['minecraft:quartz',4],['minecraft:amethyst_shard',2],['wolframite_ingot',2]],
+            beam_controller:[['control_circuit',2],'minecraft:comparator',['minecraft:copper_ingot',2],['minecraft:redstone',4]],
+            optical_resonator:['focusing_lens_assembly',['wolframite_ingot',2],'beam_controller',['minecraft:quartz',4]],
+            powered_laser_emitter:['reinforced_laser_housing','optical_resonator','#justifylasers:laser_crystals','energy_core'],
+            laser_gun:['reinforced_laser_housing','focusing_lens_assembly','#justifylasers:laser_crystals','energy_core'],
+            laser_saber:[['wolframite_ingot',2],'focusing_lens_assembly','#justifylasers:laser_crystals','energy_core'],
+            light_staff:[['wolframite_ingot',4],['focusing_lens_assembly',2],'#justifylasers:laser_crystals',['energy_core',2]],
+            laser_turret:['reinforced_laser_housing',['minecraft:iron_ingot',4],'minecraft:piston','beam_controller'],
+            refocusing_cube:['reinforced_laser_housing',['focusing_lens_assembly',6],'#justifylasers:laser_crystals','optical_resonator'],
+            laser_receiver:['wolframite_ingot','focusing_lens_assembly','minecraft:comparator','control_circuit'],
+            laser_mirror:['wolframite_ingot','focusing_lens_assembly',['minecraft:iron_ingot',2]],
+            beam_splitter:['reinforced_laser_housing',['focusing_lens_assembly',6],'#justifylasers:laser_crystals','beam_controller'],
+            energy_receiver:['reinforced_laser_housing','optical_resonator',['minecraft:copper_ingot',4],'energy_core'],
+            configurator:['wolframite_ingot','minecraft:quartz','minecraft:redstone','control_circuit'],
+            block_destruction_module:['wolframite_ingot','minecraft:diamond_pickaxe','beam_controller'],
+            entity_damage_module:['wolframite_ingot','minecraft:diamond_sword','beam_controller'],
+            block_drops_module:['wolframite_ingot','minecraft:hopper','control_circuit'],
+            silk_touch_module:['wolframite_ingot','minecraft:cobweb','minecraft:diamond','control_circuit'],
+            scorch_marks_module:['wolframite_ingot','minecraft:flint_and_steel','control_circuit'],
+            ignition_module:['wolframite_ingot','minecraft:blaze_powder','control_circuit'],
+            range_module:['focusing_lens_assembly','minecraft:ender_pearl','control_circuit'],
+            advanced_range_module:[['range_module',8],'control_circuit'],
+            thickness_module:['focusing_lens_assembly','minecraft:amethyst_block','control_circuit'],
+            target_filter_module:['wolframite_ingot','minecraft:ender_eye','beam_controller']
+        ]
+        def assemblyCosts = [
+            reinforced_laser_housing:[240,48], focusing_lens_assembly:[320,72], beam_controller:[400,112],
+            energy_core:[560,152], optical_resonator:[640,176], powered_laser_emitter:[1200,320],
+            laser_gun:[1000,256], laser_saber:[800,192], light_staff:[1400,384], laser_turret:[1120,288],
+            refocusing_cube:[1600,448], laser_receiver:[480,120], laser_mirror:[280,56], beam_splitter:[1520,416],
+            energy_receiver:[1360,352], configurator:[180,28], block_destruction_module:[720,200],
+            entity_damage_module:[760,208], block_drops_module:[160,32], silk_touch_module:[840,224],
+            scorch_marks_module:[120,24], ignition_module:[200,40], range_module:[360,80],
+            advanced_range_module:[960,248], thickness_module:[440,104], target_filter_module:[680,184]
+        ]
+        if (assemblyCosts.keySet() != assemblies.keySet()) throw new GradleException('Missing assembly balance entry')
+        assemblies.each { id, ingredients ->
+            machineRecipe(id,'ASSEMBLY_CHAMBER',ingredients,id,assemblyCosts[id][0],assemblyCosts[id][1],0)
+            json("assets/justifylasers/models/item/${id}_blueprint.json",[parent:'justifylasers:item/assembly_blueprint'])
+        }
+        ['optical_resonator','reinforced_laser_housing','energy_core','focusing_lens_assembly','beam_controller'].each { id ->
+            json("assets/justifylasers/models/item/${id}.json", [parent:'builtin/entity',display:display+[gui:[rotation:[20,210,0],scale:[1,1,1]]],
+                 textures:[particle:'justifylasers:block/particle/energy_receiver']])
+        }
+        json('assets/justifylasers/models/item/blank_schematic.json',[parent:'justifylasers:item/assembly_blueprint'])
+        json('assets/justifylasers/models/item/extraterrestrial_tablet.json',[parent:'builtin/entity',display:display+
+             [gui:[rotation:[12,198,0],scale:[.67,.67,.67]]],textures:[particle:'justifylasers:block/particle/control_circuit']])
+        json('assets/justifylasers/models/item/photonite_crystal.json',[parent:'justifylasers:item/crystal',
+             textures:[particle:'justifylasers:block/particle/violet_crystal']])
+        json('assets/justifylasers/models/item/crystal_mount.json',[parent:'justifylasers:item/crystal',textures:[particle:'justifylasers:block/particle/crystal_mount']])
+        json('assets/justifylasers/models/block/crystal_mount.json',[elements:[],textures:[particle:'justifylasers:block/particle/crystal_mount']])
+        json('assets/justifylasers/blockstates/crystal_mount.json',[variants:['':[model:'justifylasers:block/crystal_mount']]])
+        json('data/justifylasers/loot_tables/blocks/crystal_mount.json',loot('crystal_mount'))
+
+        def atlas = new JsonSlurper().parse(rootProject.file('src/main/resources/assets/justifylasers/textures/component/laser_saber/base.json'))
+        def box = { List from, List to, String material ->
+            def rect = atlas.regions[material]
+            def uv = [rect[0]+.5,rect[1]+.5,rect[0]+rect[2]-.5,rect[1]+rect[3]-.5].collect { it * 16 / atlas.size }
+            [from: from, to: to, faces: ['up','down','north','south','east','west'].collectEntries { [(it): [texture:'#metal',uv:uv]] }]
+        }
+        def componentModels = [
+            heat_resistant_alloy: [box([2,4,4],[14,7,12],'steel'),box([3,7.01,4.5],[13,8.5,11.5],'metal')],
+        ]
+        json('assets/justifylasers/models/item/assembly_blueprint.json',[parent:'builtin/entity',display:display+
+             [gui:[rotation:[0,180,0],scale:[1,1,1]]],textures:[particle:'justifylasers:block/particle/control_circuit']])
+        componentModels.each { id, elements -> json("assets/justifylasers/models/item/${id}.json", [parent:'minecraft:block/block',
+                textures:[metal:'justifylasers:component/laser_saber/base',particle:'justifylasers:block/particle/energy_receiver'],elements:elements,
+                display:display + [gui:[rotation:[30,225,0],translation:[0,2,0],scale:[.9,.9,.9]]]]) }
+        [laser_chassis:'reinforced_laser_housing',optical_assembly:'focusing_lens_assembly'].each { oldId, replacement ->
+            json("assets/justifylasers/models/item/${oldId}.json", [parent:"justifylasers:item/${replacement}"])
+            json("data/justifylasers/recipes/migrate_${oldId}.json", [type:'minecraft:crafting_shapeless',
+                 ingredients:[[item:"justifylasers:${oldId}"]],result:[item:"justifylasers:${replacement}"]])
+        }
+        ['raw_wolframite':'wolframite','raw_photonic_crystal':'photonite'].each { id, ore ->
+            def fragments = [[3,4,5,9,10,11],[8,3,4,13,8,9],[6,8,6,11,13,10]].collect { p ->
+                def fragment = mineralBox(ore,p[0..2],p[3..5],'facet')
+                fragment.rotation=[origin:[8,8,8],axis:'z',angle:p[0]==3?22.5:-22.5,rescale:false]
+                fragment
+            }
+            json("assets/justifylasers/models/item/${id}.json", [parent:'minecraft:block/block',textures:[mineral:"justifylasers:component/${ore}/base",particle:'#mineral'],
+                    elements:fragments,display:display + [gui:[rotation:[30,225,0],translation:[0,0,0],scale:[1,1,1]]]])
+        }
+        json('assets/justifylasers/models/item/wolframite_ingot.json',[parent:'minecraft:block/block',
+             textures:[mineral:'justifylasers:component/wolframite/base',particle:'#mineral'],display:display+[gui:[rotation:[30,225,0],scale:[1,1,1]]],
+             elements:[mineralBox('wolframite',[1,4,4],[15,5,12],'edge'),mineralBox('wolframite',[1.5,5,4.5],[14.5,7,11.5],'facet'),
+                       mineralBox('wolframite',[2,7,5],[14,8,11],'tip')]])
+        java.nio.file.Files.deleteIfExists(new File(root,'data/justifylasers/advancements/industry/fuel_generator.json').toPath())
+        def stages = [raw_wolframite:'raw_wolframite',alloy:'wolframite_ingot',crystal:'photonite_crystal',first_laser:'powered_laser_emitter']
+        String previous = null
+        stages.each { stage, item ->
+            json("data/justifylasers/advancements/industry/${stage}.json", ['justifylasers:technical': true, *: (previous == null ? [:] : [parent: "justifylasers:industry/${previous}"]),
+                display:[icon: [(minecraft_version == '1.21.1' ? 'id' : 'item'): "justifylasers:${item}"],
+                         title:[translate:"advancement.justifylasers.industry.${stage}"],description:[translate:"advancement.justifylasers.industry.${stage}.description"],
+                         *:(previous == null ? [background:'minecraft:textures/block/polished_deepslate.png'] : [:]),frame:stage=='first_laser'?'goal':'task',show_toast:true,announce_to_chat:false,hidden:false],
+                criteria:[obtained:[trigger:'minecraft:inventory_changed',conditions:[items:[[items:["justifylasers:${item}"]]]]]]])
+            previous = stage
+        }
+    }
+}
+sourceSets.main.resources.srcDir(tasks.named('generateIndustryResources'))
+sourceSets.main.resources.exclude 'assets/justifylasers/textures/block/industry/*.png'
+tasks.withType(Jar).configureEach { if (name == 'sourcesJar') exclude 'assets/justifylasers/textures/block/industry/*.png' }
+
+processResources.doFirst {
+    ['wolframite_ore','deepslate_wolframite_ore','photonic_crystal_ore','deepslate_photonic_crystal_ore'].each { id ->
+        java.nio.file.Files.deleteIfExists(new File(destinationDir, "assets/justifylasers/textures/block/industry/${id}.png").toPath())
+    }
+    ['recipes','recipe'].each { folder -> java.nio.file.Files.deleteIfExists(new File(destinationDir, "data/justifylasers/${folder}/powered_laser_emitter.json").toPath()) }
+    ['advancements','advancement'].each { folder -> java.nio.file.Files.deleteIfExists(new File(destinationDir, "data/justifylasers/${folder}/recipes/misc/powered_laser_emitter.json").toPath()) }
+}
+
+// Only assembly recipes may produce advanced devices. Remove stale incremental outputs as well.
+def assembledItems = ['powered_laser_emitter','laser_gun','laser_saber','light_staff','laser_turret','refocusing_cube',
+        'laser_receiver','laser_mirror','beam_splitter','energy_receiver','configurator','block_destruction_module',
+        'entity_damage_module','block_drops_module','silk_touch_module','scorch_marks_module','ignition_module',
+        'range_module','advanced_range_module','thickness_module','target_filter_module','fuel_generator','electric_smelter',
+        'laser_chassis','optical_assembly']
+processResources {
+    eachFile { entry ->
+        if (assembledItems.any { id -> entry.path == "data/justifylasers/recipes/${id}.json" || entry.path == "data/justifylasers/recipe/${id}.json" }) entry.exclude()
+        if (entry.path.matches('data/justifylasers/advancements?/recipes?/(misc|redstone|industry)/[^/]+.json')
+                && assembledItems.contains(entry.name.replace('.json',''))) entry.exclude()
+    }
+    doFirst {
+        assembledItems.each { id ->
+            ['recipes','recipe'].each { folder -> java.nio.file.Files.deleteIfExists(new File(destinationDir,"data/justifylasers/${folder}/${id}.json").toPath()) }
+            ['advancements','advancement'].each { folder -> ['misc','redstone','industry'].each { category ->
+                ['recipes','recipe'].each { recipes -> java.nio.file.Files.deleteIfExists(new File(destinationDir,"data/justifylasers/${folder}/${recipes}/${category}/${id}.json").toPath()) }
+            } }
+        }
+    }
+}

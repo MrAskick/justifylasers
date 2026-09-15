@@ -1,0 +1,62 @@
+{
+  "configurator": {
+    "reference": "Configurator",
+    "off": "UV_01.png",
+    "parts": {
+      "metal": {"rect": [855, 165, 65, 89]},
+      "steel": {"rect": [217, 28, 18, 63]},
+      "rubber": {"rect": [20, 460, 30, 143]},
+      "jaw": {"rect": [70, 15, 128, 378], "glow": true},
+      "control": {"rect": [198, 421, 116, 218], "glow": true},
+      "grip": {"rect": [203, 648, 106, 333], "glow": true},
+      "back": {"rect": [427, 451, 101, 250]},
+      "core": {"rect": [205, 154, 99, 107], "glow": true},
+      "tab": {"rect": [228, 123, 55, 24], "glow": true},
+      "collar": {"rect": [184, 309, 147, 61], "glow": true},
+      "side_light": {"rect": [16, 130, 40, 200], "glow": true},
+      "end": {"rect": [155, 1137, 195, 31], "glow": true}
+    }
+  },
+  "refocusing_cube": {
+    "reference": "Cube",
+    "parts": {
+      "metal": {"rect": [304, 805, 45, 30]},
+      "corner": {"rect": [17, 34, 60, 67]},
+      "edge": {"rect": [1030, 99, 210, 57]},
+      "ring": {"rect": [35, 58, 285, 281]},
+      "stud": {"rect": [750, 776, 47, 100]},
+      "light": {"rect": [122, 34, 80, 24], "solidEmission": true}
+    }
+  },
+  "laser_mirror": {
+    "reference": "Mirror",
+    "parts": {
+      "metal": {"rect": [336, 532, 99, 56]},
+      "steel": {"rect": [123, 13, 36, 16]},
+      "corner": {"rect": [14, 744, 63, 67]},
+      "ring": {"rect": [17, 23, 488, 483], "glow": true},
+      "mirror": {"rect": [68, 74, 389, 380], "mirror": true},
+      "back": {"rect": [821, 3, 279, 272], "glow": true},
+      "base": {"rect": [88, 777, 266, 310], "glow": true},
+      "base_side": {"rect": [99, 1151, 322, 92], "glow": true},
+      "hinge": {"rect": [542, 423, 108, 115], "glow": true},
+      "arm": {"rect": [665, 524, 34, 149], "glow": true},
+      "collar": {"rect": [854, 277, 193, 192], "glow": true},
+      "stud": {"rect": [703, 13, 53, 57], "glow": true}
+    }
+  },
+  "beam_splitter": {
+    "reference": "Splitter",
+    "parts": {
+      "metal": {"rect": [947, 170, 46, 175]},
+      "steel": {"rect": [833, 122, 81, 21]},
+      "frame": {"rect": [940, 122, 78, 21]},
+      "arm": {"rect": [213, 574, 70, 212], "glow": true},
+      "ring": {"rect": [1095, 19, 147, 149], "glow": true, "maskRect": [30, 28, 246, 246]},
+      "output": {"rect": [520, 106, 181, 181], "glow": true, "maskRect": [718, 69, 187, 166]},
+      "disabled": {"rect": [553, 418, 145, 89]},
+      "corner": {"rect": [827, 20, 72, 70], "glow": true, "maskRect": [881, 23, 48, 43]},
+      "chevron": {"rect": [138, 988, 137, 238], "glow": true}
+    }
+  }
+}

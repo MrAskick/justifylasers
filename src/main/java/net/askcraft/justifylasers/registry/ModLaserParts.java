@@ -30,6 +30,7 @@ public final class ModLaserParts {
         for (LaserModule module : LaserModule.values()) registerDecoration(module.id());
         registerDecoration("advanced_range_module");
         registerDecoration("control_circuit");
+        registerDecoration("crystal_mount");
     }
 
     private static void registerDecoration(String id) {

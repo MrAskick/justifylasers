@@ -1,0 +1,9 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": ["IRI", "DCD", " II"],
+  "key": {
+    "I": {"item": "minecraft:iron_ingot"}, "R": {"item": "minecraft:redstone_block"},
+    "D": {"item": "minecraft:diamond"}, "C": {"item": "justifylasers:red_crystal"}
+  },
+  "result": {"item": "justifylasers:laser_gun"}
+}

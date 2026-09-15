@@ -4,6 +4,7 @@ import net.askcraft.justifylasers.block.LaserEmitterBlock;
 import net.askcraft.justifylasers.block.LaserReceiverBlock;
 import net.askcraft.justifylasers.config.LaserConfig;
 import net.askcraft.justifylasers.energy.LaserEnergyBuffer;
+import net.askcraft.justifylasers.energy.LaserEnergyHost;
 import net.askcraft.justifylasers.energy.LaserEnergyCost;
 import net.askcraft.justifylasers.energy.LaserModule;
 import net.askcraft.justifylasers.item.LaserCrystalItem;
@@ -15,6 +16,7 @@ import net.askcraft.justifylasers.laser.LaserColor;
 import net.askcraft.justifylasers.laser.LaserDamage;
 import net.askcraft.justifylasers.laser.LaserMining;
 import net.askcraft.justifylasers.laser.LaserRedstoneMode;
+import net.askcraft.justifylasers.laser.LaserTargetFilter;
 import net.askcraft.justifylasers.platform.InventoryNbt;
 import net.askcraft.justifylasers.platform.LaserBlockEntity;
 import net.askcraft.justifylasers.platform.LaserScreenFactory;
@@ -55,11 +57,13 @@ import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserScreenFactory, SidedInventory {
+public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserScreenFactory, SidedInventory, LaserEnergyHost {
     public static final int MIN_RANGE = 1;
     public static final int MAX_RANGE = 512;
     public static final int DEFAULT_RANGE = 64;
@@ -68,8 +72,9 @@ public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserSc
     public static final int DEFAULT_BEAM_WIDTH_STEP = BEAM_WIDTH_STEPS / 2;
     public static final float MIN_BEAM_WIDTH_SCALE = 0.1F;
     public static final float MAX_BEAM_WIDTH_SCALE = 10.0F;
-    public static final int PROPERTY_COUNT = 46;
-    public static final int MODULE_SLOT_COUNT = 9;
+    public static final int PROPERTY_COUNT = 48;
+    public static final int MODULE_SLOT_COUNT = 10;
+    private final LaserTargetFilter targetFilter = new LaserTargetFilter();
 
     private final DefaultedList<ItemStack> modules = DefaultedList.ofSize(MODULE_SLOT_COUNT, ItemStack.EMPTY);
     private final LaserEnergyBuffer energy = new LaserEnergyBuffer(() -> LaserConfig.get().capacity,
@@ -104,10 +109,7 @@ public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserSc
     private boolean active;
 
     private long ticks;
-    @Nullable
-    private BlockPos heatedBlock;
-    private float heat;
-    private int lastBreakStage = -1;
+    private final Map<BlockPos, Heating> heating = new HashMap<>();
     private long lastMinedTick = Long.MIN_VALUE;
 
     private final PropertyDelegate propertyDelegate = new PropertyDelegate() {
@@ -144,6 +146,8 @@ public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserSc
                 case 27 -> crystal() != null ? 1 : 0;
                 case 28 -> privateAccess ? 1 : 0;
                 case 29 -> world != null && world.isReceivingRedstonePower(pos) ? 1 : 0;
+                case 46 -> targetFilter.flags();
+                case 47 -> targetFilter.exclusions().size();
                 default -> index >= 30 && index < 46 && index - 30 < ownerName.length()
                         ? ownerName.charAt(index - 30) : 0;
             };
@@ -212,7 +216,6 @@ public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserSc
         }
 
         LaserBeamPath path = LaserBeamNetwork.path(emitter, 1.0F);
-        LaserBeamTrace trace = path.last();
 
         if (emitter.damagesEntities() && LaserDamage.isHitTick(emitter.ticks - 1L, emitter.hitsPerSecond)) {
             Set<UUID> hitEntities = new HashSet<>();
@@ -221,23 +224,24 @@ public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserSc
             }
         }
 
-        if (trace.hasBlockHit()) {
+        Set<BlockPos> heated = new HashSet<>();
+        for (LaserBeamTrace trace : path.segments()) {
+            if (!trace.hasBlockHit()) continue;
             emitter.spawnImpactEffects(trace);
             BlockState hitState = world.getBlockState(trace.hitBlock());
             boolean receiverInput = hitState.getBlock() instanceof LaserReceiverBlock
                     && hitState.get(LaserReceiverBlock.FACING) == trace.hitSide();
-            if (emitter.breaksBlocks() && !receiverInput) {
-                emitter.heatBlock(trace.hitBlock(), trace.end());
-            } else {
-                emitter.clearHeating();
+            if (emitter.breaksBlocks() && !receiverInput && !LaserBeamPath.isOpticalInput(world, hitState, trace)) {
+                heated.add(trace.hitBlock());
+                emitter.heatBlock(trace.hitBlock(), trace.end(), trace.power());
             }
-        } else {
-            emitter.clearHeating();
         }
+        emitter.heating.keySet().removeIf(target -> {
+            if (heated.contains(target)) return false;
+            world.setBlockBreakingInfo(emitter.breakerId(target), target, -1);
+            return true;
+        });
 
-        if (emitter.ticks % 80L == 0L) {
-            world.playSound(null, pos, SoundEvents.BLOCK_BEACON_AMBIENT, SoundCategory.BLOCKS, 0.42F, 1.72F);
-        }
     }
 
     public static void clientTick(World world, BlockPos pos, BlockState state, LaserEmitterBlockEntity emitter) {
@@ -280,14 +284,6 @@ public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserSc
         }
 
         if (activeChanged) {
-            world.playSound(
-                    null,
-                    pos,
-                    shouldBeActive ? SoundEvents.BLOCK_BEACON_ACTIVATE : SoundEvents.BLOCK_BEACON_DEACTIVATE,
-                    SoundCategory.BLOCKS,
-                    0.7F,
-                    shouldBeActive ? 1.45F : 1.15F
-            );
             world.updateComparators(pos, state.getBlock());
         }
     }
@@ -297,16 +293,17 @@ public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserSc
             return;
         }
 
-        double hitRadius = BEAM_HIT_RADIUS * getBeamWidthScale();
+        double hitRadius = BEAM_HIT_RADIUS * getBeamWidthScale() * Math.sqrt(trace.power());
         Box searchBox = new Box(trace.start(), trace.end()).expand(hitRadius + 0.35D);
         List<LivingEntity> targets = serverWorld.getEntitiesByClass(
                 LivingEntity.class,
                 searchBox,
                 entity -> entity.isAlive() && !entity.isSpectator()
+                        && (!hasModule(LaserModule.TARGET_FILTER) || targetFilter.allows(entity, owner))
         );
         DamageSource damageSource = LaserDamage.source(serverWorld, trace.start());
-        float damage = LaserDamage.damageForStep(damageStep);
-        double knockback = LaserDamage.knockbackForStep(knockbackStep);
+        float damage = (float) (LaserDamage.damageForStep(damageStep) * trace.power());
+        double knockback = LaserDamage.knockbackForStep(knockbackStep) * trace.power();
 
         for (LivingEntity target : targets) {
             Box hitBox = target.getBoundingBox().expand(hitRadius);
@@ -314,7 +311,10 @@ public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserSc
                     && hitEntities.add(target.getUuid())) {
                 if (LaserDamage.hit(target, damageSource, trace.axis(), damage, knockback)
                         && ignitesEntities() && !target.isFireImmune()) {
+                    int previousFire = Math.max(0, target.getFireTicks());
                     target.setOnFireFor(4);
+                    // Keep vanilla Fire Protection, but share new burning time between split branches.
+                    if (trace.power() < 1) target.setFireTicks(Math.max(previousFire, (int) (target.getFireTicks() * trace.power())));
                 }
             }
         }
@@ -328,7 +328,8 @@ public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserSc
         Vec3d axis = trace.axis();
         Vec3d impact = trace.end().subtract(axis.multiply(0.018D));
         serverWorld.spawnParticles(
-                new DustParticleEffect(color.vector(), 1.25F),
+                new DustParticleEffect(new org.joml.Vector3f((trace.rgb() >> 16 & 255) / 255.0F,
+                        (trace.rgb() >> 8 & 255) / 255.0F, (trace.rgb() & 255) / 255.0F), 1.25F),
                 impact.x, impact.y, impact.z,
                 3,
                 0.035D, 0.035D, 0.035D,
@@ -353,7 +354,7 @@ public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserSc
         }
     }
 
-    private void heatBlock(BlockPos targetPos, Vec3d impact) {
+    private void heatBlock(BlockPos targetPos, Vec3d impact, double power) {
         if (!(world instanceof ServerWorld serverWorld) || serverWorld.getTime() == lastMinedTick) {
             return;
         }
@@ -361,29 +362,25 @@ public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserSc
         BlockState targetState = world.getBlockState(targetPos);
         float hardness = targetState.getHardness(world, targetPos);
         if (targetState.isAir() || hardness < 0.0F) {
-            clearHeating();
+            Heating removed = heating.remove(targetPos);
+            if (removed != null) world.setBlockBreakingInfo(breakerId(targetPos), targetPos, -1);
             return;
         }
 
-        if (!targetPos.equals(heatedBlock)) {
-            clearHeating();
-            heatedBlock = targetPos.toImmutable();
-            heat = 0.0F;
-        }
-
-        heat += 1.0F;
+        Heating target = heating.computeIfAbsent(targetPos.toImmutable(), ignored -> new Heating());
+        target.heat += power;
         int requiredHeat = LaserMining.ticksToBreak(hardness, miningSpeedStep);
-        int breakStage = Math.min(9, (int) (heat / requiredHeat * 10.0F));
-        if (breakStage != lastBreakStage) {
-            world.setBlockBreakingInfo(breakerId(), targetPos, breakStage);
-            lastBreakStage = breakStage;
+        int breakStage = Math.min(9, (int) (target.heat / requiredHeat * 10.0));
+        if (breakStage != target.stage) {
+            world.setBlockBreakingInfo(breakerId(targetPos), targetPos, breakStage);
+            target.stage = breakStage;
         }
 
-        if (heat < requiredHeat) {
+        if (target.heat + 1.0E-9 < requiredHeat) {
             return;
         }
 
-        world.setBlockBreakingInfo(breakerId(), targetPos, -1);
+        world.setBlockBreakingInfo(breakerId(targetPos), targetPos, -1);
         boolean broken = LaserMining.breakBlock(serverWorld, targetPos, dropsBlocks(), hasSilkTouch());
         if (broken) {
             lastMinedTick = serverWorld.getTime();
@@ -404,26 +401,32 @@ public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserSc
             );
             world.playSound(null, targetPos, SoundEvents.BLOCK_FIRE_EXTINGUISH, SoundCategory.BLOCKS, 0.55F, 1.65F);
         }
-        heatedBlock = null;
-        heat = 0.0F;
-        lastBreakStage = -1;
+        heating.remove(targetPos);
     }
 
     private void clearHeating() {
-        if (world != null && heatedBlock != null) {
-            world.setBlockBreakingInfo(breakerId(), heatedBlock, -1);
+        if (world != null) {
+            heating.keySet().forEach(target -> world.setBlockBreakingInfo(breakerId(target), target, -1));
         }
-        heatedBlock = null;
-        heat = 0.0F;
-        lastBreakStage = -1;
+        heating.clear();
     }
 
-    private int breakerId() {
-        return -1_000_000 - Math.abs(pos.hashCode());
+    private int breakerId(BlockPos target) {
+        return (31 * pos.hashCode() + target.hashCode()) | Integer.MIN_VALUE;
+    }
+
+    private static final class Heating {
+        double heat;
+        int stage = -1;
     }
 
     public void handleButton(int buttonId) {
         if (!allowsSetting(buttonId)) return;
+        if (buttonId >= LaserEmitterScreenHandler.FILTER_BUTTON_BASE && buttonId < LaserEmitterScreenHandler.FILTER_BUTTON_BASE + 4) {
+            targetFilter.setFlags(targetFilter.flags() ^ (1 << (buttonId - LaserEmitterScreenHandler.FILTER_BUTTON_BASE)));
+            sync();
+            return;
+        }
         if (buttonId >= LaserEmitterScreenHandler.BEAM_WIDTH_BUTTON_BASE
                 && buttonId <= LaserEmitterScreenHandler.BEAM_WIDTH_BUTTON_MAX) {
             beamWidthStep = clampBeamWidthStep(buttonId - LaserEmitterScreenHandler.BEAM_WIDTH_BUTTON_BASE);
@@ -568,6 +571,19 @@ public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserSc
                 LaserDamage.damageForStep(damageStep), hitsPerSecond, LaserDamage.knockbackForStep(knockbackStep), ignitesEntities(), moduleCost);
     }
 
+    public int transferBudget() {
+        return world != null && !world.isClient && isPoweredEmitter() && isBeamActive()
+                && lastEnergyTick == world.getTime() ? paidEnergy : 0;
+    }
+
+    public String status() {
+        if (isPoweredEmitter() && !LaserConfig.technicalMode()) return "disabled";
+        if (!enabled) return "off";
+        if (isPoweredEmitter() && crystal() == null) return "no_crystal";
+        if (world != null && !redstoneMode.allows(world.isReceivingRedstonePower(pos))) return "redstone";
+        return isBeamActive() ? "active" : energy.stored() < energyCost() ? "no_power" : "ready";
+    }
+
     private void payForTick() {
         if (!isPoweredEmitter() || world == null || world.isClient || lastEnergyTick == world.getTime()) return;
         lastEnergyTick = world.getTime();
@@ -619,6 +635,9 @@ public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserSc
 
     public boolean allowsSetting(int id) {
         if (!isPoweredEmitter()) return true;
+        if (id >= LaserEmitterScreenHandler.FILTER_BUTTON_BASE && id <= LaserEmitterScreenHandler.BUTTON_FILTER_PLAYER) {
+            return hasModule(LaserModule.TARGET_FILTER);
+        }
         if (id >= LaserEmitterScreenHandler.BEAM_WIDTH_BUTTON_BASE && id <= LaserEmitterScreenHandler.BEAM_WIDTH_BUTTON_MAX
                 || id >= LaserEmitterScreenHandler.RANGE_BUTTON_MIN && id <= LaserEmitterScreenHandler.RANGE_BUTTON_MAX) return false;
         if (id >= LaserEmitterScreenHandler.DAMAGE_BUTTON_MIN && id <= LaserEmitterScreenHandler.DAMAGE_BUTTON_MAX
@@ -693,7 +712,7 @@ public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserSc
 
     @Override
     public int[] getAvailableSlots(Direction side) {
-        return isPoweredEmitter() && !privateAccess ? new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8} : new int[0];
+        return isPoweredEmitter() && !privateAccess ? java.util.stream.IntStream.range(0, MODULE_SLOT_COUNT).toArray() : new int[0];
     }
 
     @Override
@@ -721,7 +740,7 @@ public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserSc
     }
 
     public void initializeOwner(PlayerEntity player) {
-        if (!isPoweredEmitter() || player.isSpectator()) return;
+        if (player.isSpectator()) return;
         if (owner == null) owner = player.getUuid();
         if (owner.equals(player.getUuid())) {
             ownerName = player.getGameProfile().getName();
@@ -731,6 +750,47 @@ public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserSc
 
     public String ownerName() {
         return ownerName;
+    }
+
+    public LaserTargetFilter targetFilter() { return targetFilter; }
+
+    private static final int[][] COPIED_SETTINGS = {
+            {0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}, {6, 1000}, {7, 5}, {8, 6},
+            {9, 2001}, {10, 3000}, {11, 4001}, {12, 7}, {13, 5001}, {14, 6000}, {15, 9}, {16, 10}, {17, 11}
+    };
+
+    public NbtCompound copySettings() {
+        NbtCompound settings = new NbtCompound();
+        settings.putInt("Version", 1);
+        for (int[] setting : COPIED_SETTINGS) settings.putInt("Setting" + setting[0], propertyDelegate.get(setting[0]));
+        settings.put("TargetFilter", targetFilter.write());
+        return settings;
+    }
+
+    public boolean pasteSettings(PlayerEntity player, NbtCompound settings) {
+        if (!canPlayerUse(player) || !player.canModifyBlocks() || settings.getInt("Version") != 1) return false;
+        // Whitelist controls explicitly. Inventory, energy and ownership never leave the source block.
+        for (int[] setting : COPIED_SETTINGS) {
+            String key = "Setting" + setting[0];
+            if (settings.contains(key) && allowsSetting(setting[1])) propertyDelegate.set(setting[0], settings.getInt(key));
+        }
+        if (hasModule(LaserModule.TARGET_FILTER)) targetFilter.read(settings.getCompound("TargetFilter"));
+        refreshActiveState();
+        sync();
+        return true;
+    }
+
+    public boolean toggleExcludedPlayer(PlayerEntity player, String name) {
+        if (!canPlayerUse(player) || !player.isAlive() || player.isSpectator() || !hasModule(LaserModule.TARGET_FILTER)
+                || !name.matches("[A-Za-z0-9_]{1,16}") || player.getServer() == null) return false;
+        boolean changed = targetFilter.removeName(name);
+        if (!changed) {
+            ServerPlayerEntity target = player.getServer().getPlayerManager().getPlayer(name);
+            if (target != null) changed = targetFilter.exclude(target.getUuid(), target.getGameProfile().getName());
+        }
+        if (changed) sync();
+        else player.sendMessage(Text.translatable("message.justifylasers.filter_player_unavailable", LaserTargetFilter.MAX_EXCLUSIONS), true);
+        return changed;
     }
 
     public boolean isPrivate() {
@@ -810,11 +870,12 @@ public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserSc
         nbt.putInt("BeamRange", beamRange);
         nbt.putBoolean("LightEmission", lightEmission);
         nbt.putBoolean("MinecraftLighting", minecraftLighting);
+        nbt.put("TargetFilter", targetFilter.write());
+        if (owner != null) nbt.putUuid("Owner", owner);
+        nbt.putString("OwnerName", ownerName);
         if (isPoweredEmitter()) {
             nbt.putInt("Energy", energy.stored());
             inventory.write(nbt, modules);
-            if (owner != null) nbt.putUuid("Owner", owner);
-            nbt.putString("OwnerName", ownerName);
             nbt.putBoolean("PrivateAccess", privateAccess);
         }
     }
@@ -823,6 +884,7 @@ public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserSc
     protected void readLaserNbt(NbtCompound nbt, InventoryNbt inventory) {
         LaserBeamNetwork.invalidate(world);
         energy.restore(nbt.getLong("Energy"));
+        targetFilter.read(nbt.getCompound("TargetFilter"));
         modules.clear();
         inventory.read(nbt, modules);
         owner = nbt.containsUuid("Owner") ? nbt.getUuid("Owner") : null;
@@ -878,6 +940,9 @@ public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserSc
         return Text.translatable(isPoweredEmitter() ? "block.justifylasers.powered_laser_emitter"
                 : LaserConfig.technicalMode() ? "block.justifylasers.creative_laser_emitter" : "block.justifylasers.laser_emitter");
     }
+
+    @Override
+    public BlockPos screenPosition() { return getPos(); }
 
     @Nullable
     @Override

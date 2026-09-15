@@ -1,0 +1,35 @@
+{
+  "laser_start": {"subtitle": "subtitles.justifylasers.laser_start", "sounds": ["justifylasers:laser_start"]},
+  "laser_idle": {"subtitle": "subtitles.justifylasers.laser_idle", "sounds": ["justifylasers:laser_idle"]},
+  "laser_stop": {"subtitle": "subtitles.justifylasers.laser_stop", "sounds": ["justifylasers:laser_stop"]},
+  "laser_contact": {"subtitle": "subtitles.justifylasers.laser_contact", "sounds": ["justifylasers:laser_contact"]},
+  "saber_idle": {"subtitle": "subtitles.justifylasers.saber_idle", "sounds": [
+    {"name": "justifylasers:saber/idle_1", "preload": true},
+    {"name": "justifylasers:saber/idle_2", "preload": true},
+    {"name": "justifylasers:saber/idle_3", "preload": true},
+    {"name": "justifylasers:saber/idle_4", "preload": true},
+    {"name": "justifylasers:saber/idle_5", "preload": true}
+  ]},
+  "saber_catch": {"subtitle": "subtitles.justifylasers.saber_catch", "sounds": [{"name": "justifylasers:saber/catch", "preload": true}]},
+  "saber_ignite": {"subtitle": "subtitles.justifylasers.saber_ignite", "sounds": [{"name": "justifylasers:saber/ignite", "preload": true}]},
+  "saber_retract": {"subtitle": "subtitles.justifylasers.saber_retract", "sounds": [{"name": "justifylasers:saber/retract", "preload": true}]},
+  "staff_ignite": {"subtitle": "subtitles.justifylasers.staff_ignite", "sounds": [{"name": "justifylasers:saber/staff_ignite", "preload": true}]},
+  "staff_retract": {"subtitle": "subtitles.justifylasers.staff_retract", "sounds": [{"name": "justifylasers:saber/staff_retract", "preload": true}]},
+  "saber_swing": {"subtitle": "subtitles.justifylasers.saber_swing", "sounds": [
+    {"name": "justifylasers:saber/swing_1", "preload": true},
+    {"name": "justifylasers:saber/swing_2", "preload": true},
+    {"name": "justifylasers:saber/swing_3", "preload": true},
+    {"name": "justifylasers:saber/swing_4", "preload": true},
+    {"name": "justifylasers:saber/swing_5", "preload": true},
+    {"name": "justifylasers:saber/swing_6", "preload": true},
+    {"name": "justifylasers:saber/swing_7", "preload": true},
+    {"name": "justifylasers:saber/swing_8", "preload": true},
+    {"name": "justifylasers:saber/swing_9", "preload": true}
+  ]},
+  "saber_fire": {"subtitle": "subtitles.justifylasers.saber_fire", "sounds": [
+    {"name": "justifylasers:saber/fire_1", "preload": true},
+    {"name": "justifylasers:saber/fire_2", "preload": true},
+    {"name": "justifylasers:saber/fire_3", "preload": true}
+  ]},
+  "saber_clash": {"subtitle": "subtitles.justifylasers.saber_clash", "sounds": ["justifylasers:saber_clash"]}
+}

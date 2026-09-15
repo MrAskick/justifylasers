@@ -4,6 +4,7 @@ import net.askcraft.justifylasers.JustifyLasers;
 import net.askcraft.justifylasers.client.render.LaserPartRenderer;
 import net.askcraft.justifylasers.client.render.LaserRenderFrame;
 import net.askcraft.justifylasers.client.render.LaserScorchRenderer;
+import net.askcraft.justifylasers.client.render.LaserScopeRenderer;
 import net.askcraft.justifylasers.client.render.LaserWorldRenderer;
 import net.askcraft.justifylasers.client.render.RefocusingCubeModel;
 import net.askcraft.justifylasers.client.screen.LaserEmitterScreen;
@@ -17,13 +18,14 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.gui.screen.ingame.HandledScreens;
 import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.VertexFormats;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.item.BuiltinModelItemRenderer;
 import net.minecraft.client.render.model.json.ModelTransformationMode;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.client.event.RegisterShadersEvent;
+import net.minecraftforge.client.event.RenderGuiEvent;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.client.extensions.common.IClientItemExtensions;
 import net.minecraftforge.common.MinecraftForge;
@@ -33,10 +35,19 @@ import java.io.IOException;
 import java.util.function.Consumer;
 
 public final class ClientPlatform {
-    private static Consumer<ShaderProgram> depthShaderLoaded;
+    private record ShaderRegistration(String name, VertexFormat format, Consumer<ShaderProgram> loaded) { }
+    private static final java.util.List<ShaderRegistration> SHADERS = new java.util.ArrayList<>();
 
     public static void initialize() {
+        net.askcraft.justifylasers.network.SaberStatePacket.receiver = net.askcraft.justifylasers.client.SaberFencingClient::receive;
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.player.ItemTooltipEvent event) -> net.askcraft.justifylasers.client.SaberTooltips.append(event.getItemStack(), event.getToolTip()));
         MinecraftForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut event) -> LaserConfig.resetServerMode());
+        // ForgeGui replaces InGameHud.render rather than calling the vanilla method.
+        MinecraftForge.EVENT_BUS.addListener((RenderGuiEvent.Pre event) -> {
+            LaserScopeRenderer.render();
+            net.askcraft.justifylasers.client.render.SaberHandRenderer.render();
+            net.askcraft.justifylasers.client.render.TabletTextRenderer.render();
+        });
         MinecraftForge.EVENT_BUS.addListener((RenderLevelStageEvent event) -> {
             if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_ENTITIES) return;
             MinecraftClient client = MinecraftClient.getInstance();
@@ -47,20 +58,25 @@ public final class ClientPlatform {
             LaserScorchRenderer.prepare(frame);
         });
         MinecraftForge.EVENT_BUS.addListener((TickEvent.ClientTickEvent event) -> {
-            if (event.phase == TickEvent.Phase.END) LaserScorchRenderer.tick(MinecraftClient.getInstance());
+            if (event.phase == TickEvent.Phase.END) net.askcraft.justifylasers.client.JustifyLasersClient.tick(MinecraftClient.getInstance());
         });
         HandledScreens.register(ModScreenHandlers.LASER_EMITTER, LaserEmitterScreen::new);
         HandledScreens.register(ModScreenHandlers.POWERED_LASER_EMITTER, PoweredLaserEmitterScreen::new);
         HandledScreens.register(ModScreenHandlers.LASER_RECEIVER, LaserReceiverScreen::new);
+        HandledScreens.register(ModScreenHandlers.INDUSTRIAL_MACHINE, net.askcraft.justifylasers.client.screen.IndustrialMachineScreen::new);
+        HandledScreens.register(ModScreenHandlers.TABLET, net.askcraft.justifylasers.client.screen.TabletScreen::new);
+        HandledScreens.register(ModScreenHandlers.LASER_TURRET, net.askcraft.justifylasers.client.screen.LaserTurretScreen::new);
     }
 
-    public static void registerDepthShader(Consumer<ShaderProgram> loaded) {
-        depthShaderLoaded = loaded;
+    public static void registerShader(String name, VertexFormat format, Consumer<ShaderProgram> loaded) {
+        SHADERS.add(new ShaderRegistration(name, format, loaded));
     }
 
-    public static void loadDepthShader(RegisterShadersEvent event) throws IOException {
-        event.registerShader(new ShaderProgram(event.getResourceProvider(), JustifyLasers.id("depth_merge"), VertexFormats.POSITION),
-                shader -> depthShaderLoaded.accept(shader));
+    public static void loadShaders(RegisterShadersEvent event) throws IOException {
+        for (var registration : SHADERS) {
+            event.registerShader(new ShaderProgram(event.getResourceProvider(), JustifyLasers.id(registration.name()), registration.format()),
+                    registration.loaded());
+        }
     }
 
     public static void sendSettings(LaserSettingsPacket packet) {
@@ -114,5 +130,13 @@ public final class ClientPlatform {
     }
 
     private ClientPlatform() {
+    }
+
+    public static void sendSaberToggle(net.askcraft.justifylasers.network.SaberTogglePacket packet) {
+        Platform.NETWORK.sendToServer(packet);
+    }
+
+    public static void sendGunControl(net.askcraft.justifylasers.network.LaserGunControlPacket packet) {
+        Platform.NETWORK.sendToServer(packet);
     }
 }

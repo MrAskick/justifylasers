@@ -1,6 +1,8 @@
 package net.askcraft.justifylasers.laser;
 
 import net.askcraft.justifylasers.block.LaserEmitterBlock;
+import net.askcraft.justifylasers.block.LaserOpticBlock;
+import net.askcraft.justifylasers.block.entity.LaserOpticBlockEntity;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.ShapeContext;
 import net.minecraft.util.hit.BlockHitResult;
@@ -19,10 +21,21 @@ public record LaserBeamTrace(
         Vec3d end,
         Direction direction,
         @Nullable BlockPos hitBlock,
-        @Nullable Direction hitSide
+        @Nullable Direction hitSide,
+        int rgb,
+        double power
 ) {
+    public LaserBeamTrace(Vec3d start, Vec3d end, Direction direction, @Nullable BlockPos hitBlock,
+                          @Nullable Direction hitSide) {
+        this(start, end, direction, hitBlock, hitSide, -1, 1);
+    }
+
     public LaserBeamTrace(Vec3d start, Vec3d end, Direction direction, @Nullable BlockPos hitBlock) {
         this(start, end, direction, hitBlock, hitBlock == null ? null : direction.getOpposite());
+    }
+
+    public LaserBeamTrace withOptics(int color, double fraction) {
+        return new LaserBeamTrace(start, end, direction, hitBlock, hitSide, color & 0xFFFFFF, fraction);
     }
 
     public Vec3d axis() {
@@ -51,6 +64,11 @@ public record LaserBeamTrace(
     }
 
     public static LaserBeamTrace traceFrom(World world, Vec3d start, Vec3d directionVector, double maxRange) {
+        return traceFrom(world, start, directionVector, maxRange, null);
+    }
+
+    public static LaserBeamTrace traceFrom(World world, Vec3d start, Vec3d directionVector, double maxRange,
+                                           @Nullable BlockPos transparentBlock) {
         Vec3d axis = directionVector.normalize();
         Direction direction = Direction.getFacing(axis.x, axis.y, axis.z);
         Vec3d maxEnd = start.add(axis.multiply(maxRange));
@@ -66,8 +84,15 @@ public record LaserBeamTrace(
                         return BlockHitResult.createMissed(boundary, direction, currentPos.toImmutable());
                     }
                     BlockState state = view.getBlockState(currentPos);
-                    if (state.isAir()) {
+                    if (state.isAir() || currentPos.equals(transparentBlock)) {
                         return null;
+                    }
+                    if (state.getBlock() instanceof LaserOpticBlock optic && optic.kind() == LaserOpticBlock.Kind.MIRROR
+                            && view.getBlockEntity(currentPos) instanceof LaserOpticBlockEntity mirror) {
+                        BlockHitResult surface = mirror.mirrorHit(start, maxEnd);
+                        BlockHitResult support = mirror.supportShape().raycast(start, maxEnd, currentPos);
+                        return support != null && (surface == null || support.getPos().squaredDistanceTo(start) < surface.getPos().squaredDistanceTo(start))
+                                ? support : surface;
                     }
                     VoxelShape shape = state.getCollisionShape(view, currentPos, ShapeContext.absent());
                     if (shape.isEmpty()) {

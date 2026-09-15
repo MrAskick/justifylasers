@@ -85,7 +85,7 @@ public final class Platform {
 
     private static IEventBus modBus;
     public static final SimpleChannel NETWORK = NetworkRegistry.newSimpleChannel(
-            JustifyLasers.id("main"), () -> "2", "2"::equals, "2"::equals);
+            JustifyLasers.id("main"), () -> "4", "4"::equals, "4"::equals);
 
     public static void initialize(IEventBus bus) {
         modBus = bus;
@@ -109,6 +109,10 @@ public final class Platform {
 
     public static ItemGroup.Builder itemGroupBuilder() {
         return ItemGroup.builder();
+    }
+
+    public static Item tabletItem(Item.Settings settings) {
+        return new PlatformTabletItem(settings);
     }
 
     public static Item cubeItem(Item.Settings settings) {
@@ -148,6 +152,21 @@ public final class Platform {
     }
 
     public static void registerSettingsReceiver() {
+        NETWORK.registerMessage(3, net.askcraft.justifylasers.network.SaberTogglePacket.class, net.askcraft.justifylasers.network.SaberTogglePacket::write, net.askcraft.justifylasers.network.SaberTogglePacket::new,
+                (packet, supplier) -> {
+                    var context = supplier.get();
+                    context.enqueueWork(() -> { if (context.getSender() != null) packet.apply(context.getSender()); });
+                    context.setPacketHandled(true);
+                }, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        NETWORK.registerMessage(4, net.askcraft.justifylasers.network.SaberStatePacket.class, net.askcraft.justifylasers.network.SaberStatePacket::write, net.askcraft.justifylasers.network.SaberStatePacket::new,
+                (packet, supplier) -> { var context = supplier.get(); context.enqueueWork(packet::deliver); context.setPacketHandled(true); }, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        NETWORK.registerMessage(2, net.askcraft.justifylasers.network.LaserGunControlPacket.class,
+                net.askcraft.justifylasers.network.LaserGunControlPacket::write, net.askcraft.justifylasers.network.LaserGunControlPacket::new,
+                (packet, supplier) -> {
+                    var context = supplier.get();
+                    context.enqueueWork(() -> { if (context.getSender() != null) packet.apply(context.getSender()); });
+                    context.setPacketHandled(true);
+                }, Optional.of(NetworkDirection.PLAY_TO_SERVER));
         NETWORK.registerMessage(1, LaserPolicyPacket.class, LaserPolicyPacket::write, LaserPolicyPacket::new,
                 (packet, contextSupplier) -> {
                     var context = contextSupplier.get();
@@ -177,17 +196,46 @@ public final class Platform {
     }
 
     public static void registerEnergy() {
+        MinecraftForge.EVENT_BUS.addGenericListener(BlockEntity.class, (AttachCapabilitiesEvent<BlockEntity> event) -> {
+            if (!(event.getObject() instanceof net.askcraft.justifylasers.block.entity.IndustrialMachineBlockEntity machine)) return;
+            var fluid = LazyOptional.of(() -> new PlatformWaterStorage(machine));
+            var items = new java.util.EnumMap<Direction, LazyOptional<net.minecraftforge.items.IItemHandler>>(Direction.class);
+            for (Direction side : Direction.values()) items.put(side, LazyOptional.of(() -> new net.minecraftforge.items.wrapper.SidedInvWrapper(machine, side)));
+            event.addCapability(JustifyLasers.id("industry_ports"), new ICapabilityProvider() {
+                @Override public <T> LazyOptional<T> getCapability(Capability<T> capability, @Nullable Direction side) {
+                    if (capability == ForgeCapabilities.FLUID_HANDLER && machine.kind() == net.askcraft.justifylasers.industry.MachineKind.CRYSTAL_GROWER) return fluid.cast();
+                    if (capability == ForgeCapabilities.ITEM_HANDLER) return items.get(side == null ? Direction.UP : side).cast();
+                    return LazyOptional.empty();
+                }
+            });
+            event.addListener(() -> { fluid.invalidate(); items.values().forEach(LazyOptional::invalidate); });
+        });
         CraftingHelper.register(new EnergyModeCondition.Serializer());
         MinecraftForge.EVENT_BUS.addGenericListener(BlockEntity.class, (AttachCapabilitiesEvent<BlockEntity> event) -> {
-            if (!(event.getObject() instanceof LaserEmitterBlockEntity emitter) || !emitter.isPoweredEmitter()) return;
-            LazyOptional<PlatformEnergyStorage> energy = LazyOptional.of(emitter::energyPort);
+            BlockEntity entity = event.getObject();
+            if (!(entity instanceof LaserEmitterBlockEntity emitter && emitter.isPoweredEmitter())
+                    && !(entity instanceof net.askcraft.justifylasers.block.entity.LaserOpticBlockEntity receiver
+                        && receiver.kind() == net.askcraft.justifylasers.block.LaserOpticBlock.Kind.ENERGY_RECEIVER)
+                    && !(entity instanceof net.askcraft.justifylasers.block.entity.IndustrialMachineBlockEntity)) return;
+            // Attachment runs before subclass fields initialize; resolve ports lazily.
+            LazyOptional<PlatformEnergyStorage> emitterPort = LazyOptional.of(() -> entity instanceof net.askcraft.justifylasers.block.entity.IndustrialMachineBlockEntity machine
+                    ? machine.energyPort() : ((LaserEmitterBlockEntity) entity).energyPort());
+            var ports = new java.util.EnumMap<Direction, LazyOptional<PlatformEnergyStorage>>(Direction.class);
+            if (entity instanceof net.askcraft.justifylasers.block.entity.LaserOpticBlockEntity receiver)
+                for (Direction side : Direction.values()) ports.put(side, LazyOptional.of(() -> receiver.energyPort(side)));
             event.addCapability(JustifyLasers.id("energy"), new ICapabilityProvider() {
                 @Override
                 public <T> LazyOptional<T> getCapability(Capability<T> capability, @Nullable Direction side) {
-                    return capability == ForgeCapabilities.ENERGY ? energy.cast() : LazyOptional.empty();
+                    if (capability != ForgeCapabilities.ENERGY) return LazyOptional.empty();
+                    if (entity instanceof net.askcraft.justifylasers.block.entity.LaserOpticBlockEntity receiver)
+                        return receiver.isEnergyOutput(side) ? ports.get(side).cast() : LazyOptional.empty();
+                    return emitterPort.cast();
                 }
             });
-            event.addListener(energy::invalidate);
+            event.addListener(() -> {
+                emitterPort.invalidate();
+                ports.values().forEach(LazyOptional::invalidate);
+            });
         });
     }
 
@@ -195,10 +243,57 @@ public final class Platform {
         return ModList.get().isLoaded(id);
     }
 
+    public static void exportEnergy(net.askcraft.justifylasers.block.entity.LaserOpticBlockEntity receiver) {
+        var world = receiver.getWorld();
+        int remaining = Math.min(receiver.energy().stored(), LaserConfig.get().maxInput);
+        if (!receiver.exportsEnergy() || remaining <= 0) return;
+        for (Direction side : Direction.values()) {
+            if (!receiver.isEnergyOutput(side) || remaining <= 0) continue;
+            BlockPos target = receiver.getPos().offset(side);
+            if (!world.isChunkLoaded(target)) continue;
+            BlockEntity entity = world.getBlockEntity(target);
+            if (entity == null) continue;
+            var storage = entity.getCapability(ForgeCapabilities.ENERGY, side.getOpposite()).orElse(null);
+            if (storage == null || !storage.canReceive()) continue;
+            int sent = storage.receiveEnergy(remaining, false);
+            receiver.energy().extract(sent, false);
+            remaining -= sent;
+        }
+    }
+
+    public static void exportEnergy(net.askcraft.justifylasers.block.entity.IndustrialMachineBlockEntity receiver) {
+        var world = receiver.getWorld();
+        int remaining = Math.min(receiver.energy().stored(), LaserConfig.get().machineTransfer);
+        if (!receiver.exportsEnergy() || remaining <= 0) return;
+        for (Direction side : Direction.values()) {
+            if (remaining <= 0) continue;
+            BlockPos target = receiver.getPos().offset(side);
+            if (!world.isChunkLoaded(target)) continue;
+            BlockEntity entity = world.getBlockEntity(target);
+            if (entity == null) continue;
+            var storage = entity.getCapability(ForgeCapabilities.ENERGY, side.getOpposite()).orElse(null);
+            if (storage == null || !storage.canReceive()) continue;
+            int sent = storage.receiveEnergy(remaining, false);
+            receiver.energy().extract(sent, false);
+            remaining -= sent;
+        }
+    }
+
+
+    public static void opticPortsChanged(net.askcraft.justifylasers.block.entity.LaserOpticBlockEntity optic) {
+        var world = optic.getWorld();
+        world.updateNeighborsAlways(optic.getPos(), optic.getCachedState().getBlock());
+        world.updateListeners(optic.getPos(), optic.getCachedState(), optic.getCachedState(), net.minecraft.block.Block.NOTIFY_ALL);
+    }
+
     public static Path configDirectory() {
         return FMLPaths.CONFIGDIR.get();
     }
 
     private Platform() {
+    }
+
+    public static void sendSaberState(ServerPlayerEntity player, net.askcraft.justifylasers.network.SaberStatePacket packet) {
+        NETWORK.send(PacketDistributor.PLAYER.with(() -> player), packet);
     }
 }

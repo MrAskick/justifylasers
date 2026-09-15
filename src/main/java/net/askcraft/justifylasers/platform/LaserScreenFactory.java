@@ -8,7 +8,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.BlockPos;
 
 public interface LaserScreenFactory extends NamedScreenHandlerFactory {
-    BlockPos getPos();
+    BlockPos screenPosition();
     void writeScreenOpeningData(ServerPlayerEntity player, PacketByteBuf buffer);
 
     @FunctionalInterface

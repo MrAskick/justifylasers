@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_crystal": {"trigger": "minecraft:inventory_changed", "conditions": {"items": [{"items": ["justifylasers:red_crystal"]}]}},
+    "has_the_recipe": {"trigger": "minecraft:recipe_unlocked", "conditions": {"recipe": "justifylasers:laser_gun"}}
+  },
+  "requirements": [["has_crystal", "has_the_recipe"]],
+  "rewards": {"recipes": ["justifylasers:laser_gun"]}
+}

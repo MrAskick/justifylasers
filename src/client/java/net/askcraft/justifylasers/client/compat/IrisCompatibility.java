@@ -180,6 +180,8 @@ public final class IrisCompatibility {
         return invokeBoolean(RENDERING_SHADOW_PASS);
     }
 
+    public static void beginFrame() { finalDepthCaptured = false; }
+
     /**
      * Captures world, pre-hand and post-hand depth before the pack's final composition.
      */
@@ -240,7 +242,7 @@ public final class IrisCompatibility {
      */
     public static boolean prepareFinalDepthMask() {
         if (finalDepthCaptured) {
-            finalDepthCaptured = false;
+            // World effects and native hand bloom both resolve this frame's hand-aware depth.
             while (GL11.glGetError() != GL11.GL_NO_ERROR) {
                 // Drain errors so the merge result only reflects this pass.
             }

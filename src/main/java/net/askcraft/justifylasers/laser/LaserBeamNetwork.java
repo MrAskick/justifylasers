@@ -1,6 +1,9 @@
 package net.askcraft.justifylasers.laser;
 
 import net.askcraft.justifylasers.block.entity.LaserEmitterBlockEntity;
+import net.askcraft.justifylasers.block.entity.LaserOpticBlockEntity;
+import net.askcraft.justifylasers.block.LaserOpticBlock;
+import net.askcraft.justifylasers.config.LaserConfig;
 import net.askcraft.justifylasers.entity.RefocusingCubeEntity;
 import net.askcraft.justifylasers.platform.Platform;
 import net.minecraft.util.math.BlockPos;
@@ -26,11 +29,32 @@ public final class LaserBeamNetwork {
         Platform.onEndWorldTick(world -> {
             State state = state(world);
             Snapshot snapshot = snapshot(world, 1.0F);
-            state.cubes.removeIf(id -> !(world.getEntityById(id) instanceof RefocusingCubeEntity));
-            for (int id : state.cubes) {
-                RefocusingCubeEntity cube = (RefocusingCubeEntity) world.getEntityById(id);
-                CubeInput input = snapshot.cubes.get(id);
-                cube.setBeamInput(input);
+            if (state.energyTick != world.getTime()) {
+                state.energyTick = world.getTime();
+                snapshot.paths.forEach((source, path) -> {
+                    if (!(world.getBlockEntity(source) instanceof LaserEmitterBlockEntity emitter)) return;
+                    int budget = emitter.transferBudget();
+                    int remaining = budget;
+                    for (LaserBeamTrace ray : path.segments()) {
+                        if (remaining <= 0 || !ray.hasBlockHit()) continue;
+                        if (world.getBlockEntity(ray.hitBlock()) instanceof LaserOpticBlockEntity receiver
+                                && receiver.kind() == LaserOpticBlock.Kind.ENERGY_RECEIVER && receiver.acceptsLaser(ray.hitSide(), ray.end())) {
+                            int share = (int) Math.min(remaining, Math.floor(budget * ray.power()));
+                            remaining -= share;
+                            receiver.receiveBeam((int) Math.floor(share * LaserConfig.get().energyTransmissionEfficiency), ray.rgb());
+                        }
+                    }
+                });
+            }
+            // Resolving a pending block entity or changing its lit state can register
+            // or remove optics through world callbacks during this same tick.
+            for (BlockPos pos : List.copyOf(state.optics)) {
+                if (world.isChunkLoaded(pos) && world.getBlockEntity(pos) instanceof LaserOpticBlockEntity optic)
+                    optic.setBeamInput(snapshot.optics.get(pos));
+            }
+            for (int id : List.copyOf(state.cubes)) {
+                if (world.getEntityById(id) instanceof RefocusingCubeEntity cube) cube.setBeamInput(snapshot.cubes.get(id));
+                else state.cubes.remove(id);
             }
         });
     }
@@ -50,6 +74,15 @@ public final class LaserBeamNetwork {
         State state = state(world);
         state.emitters.remove(pos);
         state.snapshot = null;
+    }
+
+    public static void registerOptic(World world, BlockPos pos) {
+        if (state(world).optics.add(pos.toImmutable())) invalidate(world);
+    }
+
+    public static void removeOptic(World world, BlockPos pos) {
+        state(world).optics.remove(pos);
+        invalidate(world);
     }
 
     public static void registerCube(World world, int id) {
@@ -97,10 +130,10 @@ public final class LaserBeamNetwork {
     @Nullable
     public static LaserColor receivedColor(World world, BlockPos pos, Direction side) {
         for (Map.Entry<BlockPos, LaserBeamPath> entry : snapshot(world, 1.0F).paths.entrySet()) {
-            LaserBeamTrace trace = entry.getValue().last();
-            if (pos.equals(trace.hitBlock()) && side == trace.hitSide()
-                    && world.getBlockEntity(entry.getKey()) instanceof LaserEmitterBlockEntity emitter) {
-                return emitter.getColor();
+            for (LaserBeamTrace trace : entry.getValue().segments()) {
+                if (pos.equals(trace.hitBlock()) && side == trace.hitSide()) {
+                    return LaserColor.nearest(trace.rgb());
+                }
             }
         }
         return null;
@@ -114,29 +147,35 @@ public final class LaserBeamNetwork {
         Map<BlockPos, LaserBeamPath> paths = new LinkedHashMap<>();
         Map<Integer, BlockPos> owners = new HashMap<>();
         Map<Integer, CubeInput> inputs = new HashMap<>();
+        Map<BlockPos, OpticInput> optics = new HashMap<>();
         for (BlockPos pos : state.emitters.stream().sorted(Comparator.comparingLong(BlockPos::asLong)).toList()) {
             if (world.isChunkLoaded(pos) && world.getBlockEntity(pos) instanceof LaserEmitterBlockEntity emitter
                     && emitter.isBeamActive()) {
-                paths.put(pos, LaserBeamPath.trace(world, emitter, tickDelta, owners, inputs));
+                paths.put(pos, LaserBeamPath.trace(world, emitter, tickDelta, owners, inputs, optics));
             }
         }
         state.time = world.getTime();
         state.tickDelta = tickDelta;
-        state.snapshot = new Snapshot(paths, inputs);
+        state.snapshot = new Snapshot(paths, inputs, optics);
         return state.snapshot;
     }
 
-    public record CubeInput(LaserColor color, boolean emission) {
+    public record CubeInput(LaserColor color, boolean emission, int rgb) {
+        public CubeInput(LaserColor color, boolean emission) { this(color, emission, color.rgb()); }
     }
 
-    private record Snapshot(Map<BlockPos, LaserBeamPath> paths, Map<Integer, CubeInput> cubes) {
+    public record OpticInput(int rgb, boolean emission, double power) { }
+
+    private record Snapshot(Map<BlockPos, LaserBeamPath> paths, Map<Integer, CubeInput> cubes, Map<BlockPos, OpticInput> optics) {
     }
 
     private static final class State {
         private final Set<BlockPos> emitters = new HashSet<>();
+        private final Set<BlockPos> optics = new HashSet<>();
         private final Set<Integer> cubes = new HashSet<>();
         private final Set<BlockPos> tickedEmitters = new HashSet<>();
         private long serverTickTime = Long.MIN_VALUE;
+        private long energyTick = Long.MIN_VALUE;
         private long time;
         private float tickDelta;
         private Snapshot snapshot;

@@ -1,0 +1,72 @@
+import groovy.json.JsonOutput
+
+def opticsOutput = layout.buildDirectory.dir('generated/laserOptics')
+tasks.register('generateLaserOptics') {
+    outputs.dir(opticsOutput)
+    inputs.file(rootProject.file('gradle/laser-optics.gradle'))
+    doLast {
+        def json = { String path, Object value ->
+            def file = new File(opticsOutput.get().asFile, path)
+            file.parentFile.mkdirs()
+            file.setText(JsonOutput.prettyPrint(JsonOutput.toJson(value)) + '\n', 'UTF-8')
+            if (path.startsWith('data/justifylasers/recipes/')) {
+                def recipeId = 'justifylasers:' + file.name.replace('.json', '')
+                def advancement = new File(opticsOutput.get().asFile, path.replace('/recipes/', '/advancements/recipes/misc/'))
+                advancement.parentFile.mkdirs()
+                advancement.setText(JsonOutput.prettyPrint(JsonOutput.toJson([
+                        *: (value.containsKey('justifylasers:technical') ? ['justifylasers:technical': true] : [:]),
+                        parent: 'minecraft:recipes/root',
+                        criteria: [has_component: [trigger: 'minecraft:inventory_changed', conditions: [items: [[items: ['minecraft:quartz']]]]],
+                                   has_recipe: [trigger: 'minecraft:recipe_unlocked', conditions: [recipe: recipeId]]],
+                        requirements: [['has_component', 'has_recipe']], rewards: [recipes: [recipeId]]
+                ])) + '\n', 'UTF-8')
+            }
+        }
+        json('assets/justifylasers/models/item/configurator.json', [parent: 'builtin/entity',
+                textures: [particle: 'justifylasers:item/crystal/frame'],
+                display: [gui: [rotation: [12, -20, -35], translation: [-1.1, -1.5, 0], scale: [0.63, 0.63, 0.63]],
+                        firstperson_righthand: [rotation: [0, -90, 20], translation: [1.5, 1.5, -1], scale: [0.65, 0.65, 0.65]],
+                        firstperson_lefthand: [rotation: [0, 90, -20], translation: [1.5, 1.5, -1], scale: [0.65, 0.65, 0.65]],
+                        thirdperson_righthand: [rotation: [0, -90, 0], translation: [0, 2, 0.5], scale: [0.65, 0.65, 0.65]],
+                        thirdperson_lefthand: [rotation: [0, 90, 0], translation: [0, 2, 0.5], scale: [0.65, 0.65, 0.65]],
+                        ground: [translation: [0, 3, 0], scale: [0.4, 0.4, 0.4]],
+                        fixed: [translation: [0, -2, 0], scale: [0.65, 0.65, 0.65]]]])
+        json('data/justifylasers/recipes/configurator.json', [type: 'minecraft:crafting_shaped', pattern: ['I I', 'IRI', ' Q '],
+                key: [I: [item: 'minecraft:iron_ingot'], R: [item: 'minecraft:redstone'], Q: [item: 'minecraft:quartz']],
+                result: [item: 'justifylasers:configurator']])
+        ['laser_saber', 'light_staff'].each { id ->
+            json("assets/justifylasers/models/item/${id}.json", [parent: 'builtin/entity',
+                    textures: [particle: 'justifylasers:item/crystal/frame'],
+                    display: [ground: [translation: [0, 2, 0], scale: [0.65, 0.65, 0.65]],
+                              fixed: [rotation: [0, 180, 0]],
+                              thirdperson_righthand: [rotation: [0, 0, 0]],
+                              thirdperson_lefthand: [rotation: [0, 0, 0]]]])
+        }
+        json('data/justifylasers/recipes/laser_saber.json', [type: 'minecraft:crafting_shaped', pattern: [' Q ', 'IRI', ' I '],
+                key: [I: [item: 'minecraft:iron_ingot'], R: [item: 'minecraft:redstone'], Q: [item: 'minecraft:quartz']],
+                result: [item: 'justifylasers:laser_saber']])
+        json('data/justifylasers/recipes/light_staff.json', [type: 'minecraft:crafting_shaped', pattern: [' S ', ' I ', ' S '],
+                key: [S: [item: 'justifylasers:laser_saber'], I: [item: 'minecraft:iron_ingot']], result: [item: 'justifylasers:light_staff']])
+        ['laser_mirror', 'beam_splitter', 'energy_receiver'].each { id ->
+            json("assets/justifylasers/blockstates/${id}.json", [variants: ['': [model: "justifylasers:block/${id}"]]])
+            json("assets/justifylasers/models/block/${id}.json", [textures: [particle: "justifylasers:block/particle/${id}"], elements: []])
+            json("assets/justifylasers/models/item/${id}.json", [parent: 'builtin/entity',
+                    textures: [particle: "justifylasers:block/particle/${id}"],
+                    display: [gui: [rotation: [25, 35, 0], scale: [0.63, 0.63, 0.63]],
+                            ground: [translation: [0, 3, 0], scale: [0.35, 0.35, 0.35]],
+                            fixed: [rotation: [0, 180, 0], scale: [0.65, 0.65, 0.65]],
+                            firstperson_righthand: [rotation: [0, 35, 0], scale: [0.55, 0.55, 0.55]],
+                            firstperson_lefthand: [rotation: [0, 225, 0], scale: [0.55, 0.55, 0.55]],
+                            thirdperson_righthand: [rotation: [75, 45, 0], translation: [0, 2.5, 0], scale: [0.5, 0.5, 0.5]],
+                            thirdperson_lefthand: [rotation: [75, 225, 0], translation: [0, 2.5, 0], scale: [0.5, 0.5, 0.5]]]])
+            json("data/justifylasers/loot_tables/blocks/${id}.json", [type: 'minecraft:block', pools: [[rolls: 1,
+                    entries: [[type: 'minecraft:item', name: 'justifylasers:' + id]], conditions: [[condition: 'minecraft:survives_explosion']]]]])
+            def component = id == 'laser_mirror' ? 'minecraft:quartz' : id == 'beam_splitter' ? 'minecraft:diamond' : 'minecraft:redstone_block'
+            def recipe = [type: 'minecraft:crafting_shaped', pattern: ['IGI', 'ICI', 'IRI'], key: [I: [item: 'minecraft:iron_ingot'],
+                    G: [item: 'minecraft:glass'], C: [item: component], R: [item: 'minecraft:redstone']], result: [item: 'justifylasers:' + id]]
+            if (id == 'energy_receiver') recipe['justifylasers:technical'] = true
+            json("data/justifylasers/recipes/${id}.json", recipe)
+        }
+    }
+}
+sourceSets.main.resources.srcDir(tasks.named('generateLaserOptics'))

@@ -1,0 +1,15 @@
+{
+  "metal": {"rect": [1044, 1135, 80, 22]},
+  "frame": {"rect": [969, 875, 108, 35]},
+  "stud": {"rect": [868, 963, 52, 53], "glow": true},
+  "edge": {"rect": [445, 880, 370, 49], "glow": true},
+  "corner_top": {"rect": [30, 882, 102, 103]},
+  "corner_front": {"rect": [151, 882, 92, 103], "glow": true},
+  "corner_side": {"rect": [262, 882, 134, 103], "glow": true},
+  "input": {"rect": [948, 128, 193, 194], "glow": true},
+  "output": {"rect": [543, 564, 171, 167], "glow": true},
+  "disabled": {"rect": [160, 568, 103, 134]},
+  "top": {"rect": [127, 127, 163, 187], "glow": true},
+  "side": {"rect": [984, 574, 128, 131], "glow": true},
+  "bottom": {"rect": [551, 160, 155, 142], "glow": true}
+}

@@ -4,6 +4,8 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.systems.VertexSorter;
 import net.askcraft.justifylasers.client.compat.IrisCompatibility;
 import net.askcraft.justifylasers.platform.RenderVersion;
+import net.askcraft.justifylasers.laser.LaserBeamTrace;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.Camera;
@@ -23,6 +25,16 @@ import java.util.Map;
 public final class LaserBeamLateRenderer {
     private static final Map<BeamKey, QueuedBeam> QUEUED_BEAMS = new LinkedHashMap<>();
     private static final Map<Integer, QueuedCore> QUEUED_CORES = new LinkedHashMap<>();
+    private static final Map<BeamKey, VanillaBeam> VANILLA_BEAMS = new LinkedHashMap<>();
+    private static final Map<BeamKey, VanillaBeam> SABERS = new LinkedHashMap<>();
+
+    static void queueSaber(Object source, int segment, LaserBeamTrace trace, int rgb) {
+        SABERS.put(new BeamKey(source, segment), new VanillaBeam(trace, 0, rgb, SaberBladeRenderer.WIDTH));
+    }
+
+    public static void queueVanilla(Object source, int segment, LaserBeamTrace trace, float time, int rgb, double width) {
+        VANILLA_BEAMS.put(new BeamKey(source, segment), new VanillaBeam(trace, time, rgb, width));
+    }
 
     public static void queueCore(int entityId, Vec3d center, int rgb, float time) {
         QUEUED_CORES.put(entityId, new QueuedCore(center, rgb, time));
@@ -44,7 +56,9 @@ public final class LaserBeamLateRenderer {
                 axis,
                 rgb,
                 intensity,
-                widthScale
+                widthScale,
+                BeamEndpointClip.atMirror(start, axis),
+                BeamEndpointClip.atMirror(end, axis.negate())
         ));
     }
 
@@ -53,7 +67,7 @@ public final class LaserBeamLateRenderer {
             MatrixStack worldMatrices,
             Matrix4f worldProjection
     ) {
-        if (QUEUED_BEAMS.isEmpty() && QUEUED_CORES.isEmpty() && !LaserScorchRenderer.hasVisibleMarks()) {
+        if (QUEUED_BEAMS.isEmpty() && QUEUED_CORES.isEmpty() && VANILLA_BEAMS.isEmpty() && SABERS.isEmpty() && !LaserScorchRenderer.hasVisibleMarks()) {
             return;
         }
 
@@ -70,12 +84,37 @@ public final class LaserBeamLateRenderer {
             RenderVersion.pushModelView(worldMatrices.peek().getPositionMatrix());
 
             try {
+                if (!IrisCompatibility.isShaderPackInUse() && LaserScorchRenderer.hasVisibleMarks()) {
+                    LaserRenderLayers.SHADER_BEAM_HALO.startDrawing();
+                    try {
+                        BufferBuilder soot = RenderVersion.beginQuads(VertexFormats.POSITION_COLOR);
+                        LaserScorchRenderer.renderLate(soot, camera.getPos());
+                        BufferRenderer.drawWithGlobalProgram(soot.end());
+                    } finally {
+                        LaserRenderLayers.SHADER_BEAM_HALO.endDrawing();
+                    }
+                }
+                if (!IrisCompatibility.isShaderPackInUse() && !VANILLA_BEAMS.isEmpty()) {
+                    // Entity buffers can flush additive layers before nearer block-entity models.
+                    // Submit beams only once every opaque model has populated world depth.
+                    var consumers = MinecraftClient.getInstance().getBufferBuilders().getEntityVertexConsumers();
+                    consumers.draw();
+                    MatrixStack beamMatrices = new MatrixStack();
+                    for (var entry : VANILLA_BEAMS.entrySet()) {
+                        VanillaBeam beam = entry.getValue();
+                        LaserBeamRenderer.renderResolved(beam.trace(), camera.getPos(), entry.getKey().source(),
+                                entry.getKey().segment(), beam.time(), beam.rgb(), beam.width(), false, beamMatrices, consumers);
+                    }
+                    consumers.draw();
+                }
+                if (QUEUED_BEAMS.isEmpty() && QUEUED_CORES.isEmpty() && SABERS.isEmpty()
+                        && (!IrisCompatibility.isShaderPackInUse() || !LaserScorchRenderer.hasVisibleMarks())) return;
                 LaserRenderLayers.SHADER_BEAM_HALO.startDrawing();
                 try {
                     BufferBuilder builder = RenderVersion.beginQuads(VertexFormats.POSITION_COLOR);
                     Vec3d cameraPos = camera.getPos();
 
-                    LaserScorchRenderer.renderLate(builder, cameraPos);
+                    if (IrisCompatibility.isShaderPackInUse()) LaserScorchRenderer.renderLate(builder, cameraPos);
                     for (QueuedBeam beam : QUEUED_BEAMS.values()) {
                         Vec3d side = screenSide(beam, cameraPos);
                         renderGradientRibbon(builder, beam, side, cameraPos, false);
@@ -84,6 +123,7 @@ public final class LaserBeamLateRenderer {
                     for (QueuedCore core : QUEUED_CORES.values()) {
                         CubeCoreRenderer.renderLate(builder, core.center(), cameraPos, core.rgb(), core.time());
                     }
+                    for (VanillaBeam saber : SABERS.values()) SaberBladeRenderer.renderLate(builder, saber.trace(), saber.rgb(), cameraPos);
 
                     BufferRenderer.drawWithGlobalProgram(builder.end());
                 } finally {
@@ -96,6 +136,8 @@ public final class LaserBeamLateRenderer {
         } finally {
             QUEUED_BEAMS.clear();
             QUEUED_CORES.clear();
+            VANILLA_BEAMS.clear();
+            SABERS.clear();
             LaserScorchRenderer.endFrame();
         }
     }
@@ -140,10 +182,10 @@ public final class LaserBeamLateRenderer {
             );
             int rgb = core ? 0xFFFFFF : beam.rgb();
 
-            drawBand(buffer, start, end, side,
+            drawBand(buffer, beam, start, end, side,
                     innerRadius, outerRadius, rgb,
                     innerAlpha, outerAlpha, cameraPos);
-            drawBand(buffer, start, end, side,
+            drawBand(buffer, beam, start, end, side,
                     -innerRadius, -outerRadius, rgb,
                     innerAlpha, outerAlpha, cameraPos);
         }
@@ -151,6 +193,7 @@ public final class LaserBeamLateRenderer {
 
     private static void drawBand(
             BufferBuilder buffer,
+            QueuedBeam beam,
             Vec3d start,
             Vec3d end,
             Vec3d side,
@@ -161,11 +204,13 @@ public final class LaserBeamLateRenderer {
             int outerAlpha,
             Vec3d cameraPos
     ) {
-        finalVertex(buffer, start.add(side.multiply(innerOffset)), cameraPos, rgb, innerAlpha);
-        finalVertex(buffer, end.add(side.multiply(innerOffset)), cameraPos, rgb, innerAlpha);
-        finalVertex(buffer, end.add(side.multiply(outerOffset)), cameraPos, rgb, outerAlpha);
-        finalVertex(buffer, start.add(side.multiply(outerOffset)), cameraPos, rgb, outerAlpha);
+        finalVertex(buffer, clipped(start.add(side.multiply(innerOffset)), beam.startClip()), cameraPos, rgb, innerAlpha);
+        finalVertex(buffer, clipped(end.add(side.multiply(innerOffset)), beam.endClip()), cameraPos, rgb, innerAlpha);
+        finalVertex(buffer, clipped(end.add(side.multiply(outerOffset)), beam.endClip()), cameraPos, rgb, outerAlpha);
+        finalVertex(buffer, clipped(start.add(side.multiply(outerOffset)), beam.startClip()), cameraPos, rgb, outerAlpha);
     }
+
+    private static Vec3d clipped(Vec3d point, BeamEndpointClip clip) { return clip == null ? point : clip.clip(point); }
 
     private static void finalVertex(
             BufferBuilder buffer,
@@ -185,7 +230,9 @@ public final class LaserBeamLateRenderer {
             Vec3d axis,
             int rgb,
             float intensity,
-            double widthScale
+            double widthScale,
+            BeamEndpointClip startClip,
+            BeamEndpointClip endClip
     ) {
     }
 
@@ -194,6 +241,8 @@ public final class LaserBeamLateRenderer {
 
     private record QueuedCore(Vec3d center, int rgb, float time) {
     }
+
+    private record VanillaBeam(LaserBeamTrace trace, float time, int rgb, double width) { }
 
     private LaserBeamLateRenderer() {
     }

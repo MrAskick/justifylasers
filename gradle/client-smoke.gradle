@@ -2,8 +2,8 @@ if (!project.hasProperty('clientSmoke')) return
 
 def fabric = project.property('loom.platform') == 'fabric'
 def smoke = sourceSets.create('clientSmoke') {
-    java.srcDirs = [rootProject.file('src/clientSmoke/java'), file('src/clientSmoke/java')]
-    resources.srcDirs = [file('src/clientSmoke/resources')]
+    java.srcDirs = [rootProject.file('src/clientSmoke/java'), new File(loaderSources, 'src/clientSmoke/java')]
+    resources.srcDirs = [new File(loaderSources, 'src/clientSmoke/resources')]
     compileClasspath += sourceSets.main.output + (fabric ? sourceSets.client.output : files()) +
             (fabric ? sourceSets.client.compileClasspath : sourceSets.main.compileClasspath)
     runtimeClasspath += sourceSets.main.output + (fabric ? sourceSets.client.output : files()) +
@@ -24,13 +24,27 @@ loom.runs.create('clientSmoke') {
     if (project.hasProperty('smokeCrystals')) vmArg '-Djustifylasers.smokeCrystals=true'
     if (project.hasProperty('smokeModules')) vmArg '-Djustifylasers.smokeModules=true'
     if (project.hasProperty('smokeDecorations')) vmArg '-Djustifylasers.smokeDecorations=true'
+    if (project.hasProperty('smokeOptics')) vmArg '-Djustifylasers.smokeOptics=true'
+    if (project.hasProperty('smokeCubeLens')) vmArg '-Djustifylasers.smokeCubeLens=true'
+    if (project.hasProperty('smokeSabers')) vmArg '-Djustifylasers.smokeSabers=true'
+    if (project.hasProperty('smokeSaberAudio')) vmArg '-Djustifylasers.smokeSaberAudio=true'
+    if (project.hasProperty('smokeIndustry')) vmArg '-Djustifylasers.smokeIndustry=true'
+    if (project.hasProperty('smokeOres')) vmArg '-Djustifylasers.smokeOres=true'
+    if (project.hasProperty('smokeTablet')) vmArg '-Djustifylasers.smokeTablet=true'
+    if (project.hasProperty('smokeDualWeapons')) vmArg '-Djustifylasers.smokeDualWeapons=true'
+    if (project.hasProperty('smokeWeapons')) vmArg '-Djustifylasers.smokeWeapons=true'
+    if (project.hasProperty('smokeTextures')) vmArg '-Djustifylasers.smokeTextures=true'
+    if (project.hasProperty('smokeReceiver')) vmArg '-Djustifylasers.smokeReceiver=true'
 }
-if (project.hasProperty('shaderModsDir')) {
+if (project.hasProperty('shaderModsDir') && !(project.property('loom.platform') == 'forge' && minecraft_version == '1.21.1')) {
     def names = project.property('loom.platform') == 'forge'
             ? ['oculus-mc1.20.1-1.8.0.jar', 'embeddium-0.3.31+mc1.20.1.jar']
             : ["iris-${project.property('loom.platform')}-1.8.8+mc1.21.1.jar",
                "sodium-${project.property('loom.platform')}-0.6.13+mc1.21.1.jar"]
-    def shaderJars = names.collect { new File(project.property('shaderModsDir').toString(), it) }
+    def shaderDirectory = new File(project.property('shaderModsDir').toString())
+    def platformDirectory = new File(shaderDirectory, project.name)
+    if (platformDirectory.isDirectory()) shaderDirectory = platformDirectory
+    def shaderJars = names.collect { new File(shaderDirectory, it) }
     def nestedDir = layout.buildDirectory.dir('shader-test-libraries').get().asFile
     def nestedLibraries = []
     def nestedMods = []
@@ -54,5 +68,57 @@ if (project.hasProperty('shaderModsDir')) {
         modLocalRuntime files(nestedMods)
         runtimeOnly files(nestedLibraries)
         if (!fabric) forgeRuntimeLibrary files(nestedLibraries)
+    }
+}
+
+if (project.hasProperty('publishedSmoke')) {
+    def pluginClasses = plugins.findPlugin('dev.architectury.loom').class.classLoader
+    def remapType = pluginClasses.loadClass('net.fabricmc.loom.task.RemapJarTask')
+    def productionType = pluginClasses.loadClass('net.fabricmc.loom.task.prod.ClientProductionRunTask')
+    def smokeJar = tasks.register('clientSmokeJar', Jar) {
+        from smoke.output
+        archiveClassifier = 'client-smoke-dev'
+    }
+    def mappedSmoke = tasks.register('remapClientSmokeJar', remapType) {
+        inputFile = smokeJar.flatMap { it.archiveFile }
+        archiveClassifier = 'client-smoke'
+        classpath.from(smoke.compileClasspath)
+        sourceNamespace = 'named'
+        targetNamespace = tasks.named('remapJar').flatMap { it.targetNamespace }
+        addNestedDependencies = false
+    }
+    tasks.register('preparePublishedSmokeJar') {
+        dependsOn mappedSmoke
+        def destination = layout.buildDirectory.file('production-smoke/justifylasers-client-smoke.jar')
+        inputs.file(mappedSmoke.flatMap { it.archiveFile })
+        inputs.file(rootProject.file('gradle/universal-isolation.gradle'))
+        outputs.file(destination)
+        doLast {
+            if (fabric) copy { from mappedSmoke.get().archiveFile; into destination.get().asFile.parentFile; rename { destination.get().asFile.name } }
+            else rootProject.isolateUniversalArchive(project.property('loom.platform').toString(), mappedSmoke.get().archiveFile.get().asFile, destination.get().asFile)
+        }
+    }
+    if (!fabric) return
+    def api = configurations.detachedConfiguration(dependencies.create("net.fabricmc.fabric-api:fabric-api:${fabric_version}"))
+    api.transitive = false
+    tasks.register('runPublishedClientSmoke', productionType) {
+        dependsOn ':mergeJars', mappedSmoke
+        mods.setFrom(rootProject.layout.buildDirectory.file("libs/JustifyLasers-${minecraft_version}-${project.version}-universal.jar"),
+                mappedSmoke.flatMap { it.archiveFile }, api)
+        runDir = layout.buildDirectory.dir('run/publishedClientSmoke')
+        jvmArgs.addAll('-Xmx4G', "-Djustifylasers.${project.hasProperty('smokeWeapons') ? 'smokeWeapons' : 'smokeOptics'}=true", '-Dsodium.checks.issue2561=false')
+        programArgs.addAll('--username', 'LaserSmoke', '--accessToken', '0')
+        doFirst {
+            def fixture = runDir.get().dir('saves/cube-smoke').asFile
+            if (!new File(fixture, 'level.dat').isFile()) {
+                copy {
+                    from layout.buildDirectory.dir('run/clientSmoke/saves/cube-smoke')
+                    into fixture
+                    exclude 'session.lock'
+                }
+            }
+            if (!new File(fixture, 'level.dat').isFile())
+                throw new GradleException('Create the isolated clientSmoke cube-smoke fixture before running the published JAR test.')
+        }
     }
 }

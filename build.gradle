@@ -1,11 +1,120 @@
 plugins {
     id 'base'
     id 'dev.architectury.loom' version '1.11.458' apply false
+    id 'io.github.pacifistmc.forgix' version '2.0.0'
 }
 
 allprojects {
     version = rootProject.mod_version
     group = rootProject.maven_group
+}
+
+// Forgix applies Java to the root; the actual sources belong to the loader projects.
+sourceSets.main { java.setSrcDirs([]); resources.setSrcDirs([]) }
+sourceSets.test { java.setSrcDirs([]); resources.setSrcDirs([]) }
+tasks.named('jar') { enabled = false }
+
+apply from: 'gradle/universal-isolation.gradle'
+// Optional local art tools. Production builds use only the finished, checked-in textures.
+apply from: 'gradle/component-atlases.gradle'
+apply from: 'gradle/crystal-materials.gradle'
+apply from: 'gradle/industry-materials.gradle'
+
+def universalInputs = ['fabric-1.20.1': 'fabric', 'neoforge-1.20.1': 'forge',
+                       'fabric-1.21.1': 'fabric', 'forge-1.21.1': 'forge', 'neoforge-1.21.1': 'neoforge']
+        .collectEntries { target, loader -> [(target): isolatedUniversalInput(loader, target)] }
+
+def mergedJar = { task, String minecraftVersion, Map<String, String> targets ->
+    task.archiveBaseName = "JustifyLasers-${minecraftVersion}"
+    task.archiveVersion = project.version.toString()
+    task.archiveClassifier = 'universal'
+    task.destinationDirectory = layout.buildDirectory.dir('libs')
+    task.silence = true
+    task.jarFileProjectMap = targets.collectEntries { loader, target ->
+        def input = universalInputs[target]
+        task.dependsOn input.task
+        [(input.file): loader]
+    }
+    task.doLast { normalizeUniversalManifest(task.archiveFile.get().asFile) }
+}
+
+def mergeLegacy = tasks.register('mergeLegacyJars', io.github.pacifistmc.forgix.plugin.tasks.MergeJarsTask) {
+    // NeoForge 47 still uses Forge's namespace and loader metadata, so it shares this implementation.
+    mergedJar(delegate, '1.20.1', [fabric: 'fabric-1.20.1', forge: 'neoforge-1.20.1'])
+}
+tasks.named('mergeJars') {
+    mergedJar(delegate, '1.21.1', [fabric: 'fabric-1.21.1', forge: 'forge-1.21.1', neoforge: 'neoforge-1.21.1'])
+    dependsOn mergeLegacy
+}
+
+tasks.register('verifyUniversalJars') {
+    dependsOn 'mergeJars'
+    doLast {
+        ['1.20.1', '1.21.1'].each { minecraftVersion ->
+            def artifact = layout.buildDirectory.file("libs/JustifyLasers-${minecraftVersion}-${project.version}-universal.jar").get().asFile
+            def fabricArtifact = file("platforms/fabric-${minecraftVersion}/build/libs/JustifyLasers-fabric-${minecraftVersion}-${project.version}.jar")
+            new java.util.jar.JarFile(artifact).withCloseable { jar ->
+                def configs = jar.manifest.mainAttributes.getValue('MixinConfigs')
+                if (!configs || !configs.contains('client.mixins_forge.json')) throw new GradleException("Forge render mixins missing from ${artifact.name}")
+            }
+            new java.util.zip.ZipFile(artifact).withCloseable { merged ->
+                def names = merged.entries().collect { it.name }.toSet()
+                def metadata = ['fabric.mod.json', 'META-INF/mods.toml']
+                if (minecraftVersion == '1.21.1') metadata.add('META-INF/neoforge.mods.toml')
+                if (!names.containsAll(metadata)) throw new GradleException("Missing loader metadata in ${artifact.name}")
+                ['justifylasers.mixins_forge.json', 'justifylasers.client.mixins_forge.json'].each { configName ->
+                    def config = merged.getInputStream(merged.getEntry(configName)).withCloseable { new groovy.json.JsonSlurper().parse(it) }
+                    if (config.plugin != 'net.askcraft.justifylasers.loader.forge.compat.LoaderMixinPlugin')
+                        throw new GradleException("Missing cross-loader mixin guard in ${configName}")
+                }
+                def discovery = [:].withDefault { 0 }
+                names.findAll { it.endsWith('.class') && it.startsWith('net/askcraft/') }.each { name ->
+                    byte[] bytes = merged.getInputStream(merged.getEntry(name)).withCloseable { it.bytes }
+                    new org.objectweb.asm.ClassReader(bytes).accept(new org.objectweb.asm.ClassVisitor(org.objectweb.asm.Opcodes.ASM9) {
+                        @Override org.objectweb.asm.AnnotationVisitor visitAnnotation(String descriptor, boolean visible) {
+                            if (descriptor in ['Lmezz/jei/api/JeiPlugin;', 'Lsnownee/jade/api/WailaPlugin;']) {
+                                if (!name.startsWith('net/askcraft/justifylasersbridge/'))
+                                    throw new GradleException("Foreign-loader plugin can be discovered: ${name}")
+                                discovery[descriptor]++
+                            }
+                            return null
+                        }
+                    }, org.objectweb.asm.ClassReader.SKIP_CODE | org.objectweb.asm.ClassReader.SKIP_DEBUG | org.objectweb.asm.ClassReader.SKIP_FRAMES)
+                }
+                if (discovery.size() != 2 || discovery.values().any { it != 1 })
+                    throw new GradleException("Universal JAR needs exactly one discovery bridge per optional UI mod")
+                if (names.any { it =~ /\/(smoke|integration|gametest)\/|justifylasers_client_smoke|justifylasers_test/ })
+                    throw new GradleException("Test fixtures leaked into ${artifact.name}")
+                ['forge', 'neoforge'].each { loader ->
+                    def prefix = "net/askcraft/justifylasers/loader/${loader}/"
+                    names.findAll { it.startsWith(prefix) && it.endsWith('.class') }.each { name ->
+                        def bytecode = merged.getInputStream(merged.getEntry(name)).withCloseable {
+                            new String(it.bytes, java.nio.charset.StandardCharsets.ISO_8859_1)
+                        }
+                        def other = loader == 'forge' ? 'neoforge' : 'forge'
+                        if (bytecode.contains("net/askcraft/justifylasers/loader/${other}/")
+                                || (loader == 'neoforge' && bytecode.contains('net/minecraftforge/'))
+                                || (loader == 'forge' && bytecode.contains('net/neoforged/'))) {
+                            throw new GradleException("Cross-loader dependency in ${artifact.name}: ${name}")
+                        }
+                    }
+                }
+                def isRecipe = { String name -> name.startsWith('data/') && name.endsWith('.json') && name =~ /\/recipes?\// }
+                new java.util.zip.ZipFile(fabricArtifact).withCloseable { fabricJar ->
+                    def recipes = fabricJar.entries().collect { it.name }.findAll(isRecipe).toSet()
+                    if (names.findAll(isRecipe).toSet() != recipes)
+                        throw new GradleException("Universal merging changed recipe IDs in ${artifact.name}")
+                    recipes.each { recipe ->
+                        def expected = fabricJar.getInputStream(fabricJar.getEntry(recipe)).withCloseable { it.bytes }
+                        def actual = merged.getInputStream(merged.getEntry(recipe)).withCloseable { it.bytes }
+                        if (!Arrays.equals(expected, actual))
+                            throw new GradleException("Universal merging changed recipe conditions: ${recipe}")
+                    }
+                }
+            }
+            logger.lifecycle("Verified universal metadata, recipes and fixture isolation: ${artifact.name}")
+        }
+    }
 }
 
 tasks.register('collectJars', Copy) {
@@ -21,8 +130,11 @@ tasks.register('collectJars', Copy) {
 tasks.named('build') {
     dependsOn subprojects.collect { "${it.path}:build" }
     dependsOn 'collectJars'
+    dependsOn 'verifyUniversalJars'
 }
 
-['test', 'runGameTest', 'runClient', 'runServer'].each { taskName ->
+tasks.named('test') { dependsOn ':fabric-1.20.1:test' }
+apply from: 'gradle/asset-audit.gradle'
+['runGameTest', 'runClient', 'runServer'].each { taskName ->
     tasks.register(taskName) { dependsOn ":fabric-1.20.1:${taskName}" }
 }

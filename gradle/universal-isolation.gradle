@@ -1,0 +1,141 @@
+import org.objectweb.asm.ClassReader
+import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.ClassVisitor
+import org.objectweb.asm.AnnotationVisitor
+import org.objectweb.asm.Opcodes
+import org.objectweb.asm.commons.ClassRemapper
+import org.objectweb.asm.commons.Remapper
+
+import java.nio.charset.StandardCharsets
+import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
+import java.util.zip.ZipOutputStream
+import java.util.jar.Manifest
+import java.util.jar.Attributes
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+
+buildscript {
+    repositories { mavenCentral() }
+    dependencies { classpath 'org.ow2.asm:asm-commons:9.8' }
+}
+
+// Equal bytecode can still depend on different loader APIs. Isolate the complete dependency
+// graph before Forgix deduplicates classes; assets and registry identifiers stay shared.
+class LoaderNamespace extends Remapper {
+    static final String SOURCE = 'net/askcraft/justifylasers/'
+    final String destination
+
+    LoaderNamespace(String loader) {
+        destination = loader == 'fabric' ? SOURCE : "net/askcraft/justifylasers/loader/${loader}/"
+    }
+
+    @Override
+    String map(String name) {
+        name.startsWith(SOURCE) ? destination + name.substring(SOURCE.length()) : name
+    }
+
+    String text(String value) {
+        value.replace(SOURCE, destination)
+                .replace(SOURCE.replace('/', '.'), destination.replace('/', '.'))
+    }
+
+    @Override
+    Object mapValue(Object value) {
+        value instanceof String ? text(value) : super.mapValue(value)
+    }
+}
+
+class PluginDiscovery extends ClassVisitor {
+    static final String JEI = 'Lmezz/jei/api/JeiPlugin;'
+    static final String JADE = 'Lsnownee/jade/api/WailaPlugin;'
+    final String bridgeAnnotation
+
+    PluginDiscovery(ClassVisitor next, String entry) {
+        super(Opcodes.ASM9, next)
+        bridgeAnnotation = entry == 'net/askcraft/justifylasersbridge/JeiBridge.class' ? JEI
+                : entry == 'net/askcraft/justifylasersbridge/JadeBridge.class' ? JADE : null
+    }
+    @Override AnnotationVisitor visitAnnotation(String descriptor, boolean visible) {
+        descriptor == JEI || descriptor == JADE ? null : super.visitAnnotation(descriptor, visible)
+    }
+    @Override void visitEnd() {
+        if (bridgeAnnotation != null) super.visitAnnotation(bridgeAnnotation, true).visitEnd()
+        super.visitEnd()
+    }
+}
+
+ext.isolateUniversalArchive = { String loader, File original, File destination ->
+    def namespace = new LoaderNamespace(loader)
+    destination.parentFile.mkdirs()
+    new ZipFile(original).withCloseable { source ->
+        new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(destination))).withCloseable { archive ->
+            source.entries().toList().findAll { !it.directory }.sort { it.name }.each { entry ->
+                byte[] bytes = source.getInputStream(entry).withCloseable { it.bytes }
+                String name = namespace.text(entry.name)
+                if (entry.name.endsWith('.class')) {
+                    def writer = new ClassWriter(0)
+                    new ClassReader(bytes).accept(new ClassRemapper(new PluginDiscovery(writer, entry.name), namespace), 0)
+                    bytes = writer.toByteArray()
+                } else if (entry.name.endsWith('.json') || entry.name.endsWith('.toml') || entry.name.endsWith('.cfg')
+                        || entry.name.startsWith('META-INF/services/')) {
+                    bytes = namespace.text(new String(bytes, StandardCharsets.UTF_8)).getBytes(StandardCharsets.UTF_8)
+                }
+                def relocated = new ZipEntry(name)
+                relocated.time = 0
+                archive.putNextEntry(relocated)
+                archive.write(bytes)
+                archive.closeEntry()
+            }
+        }
+    }
+}
+
+ext.isolatedUniversalInput = { String loader, String target ->
+    def original = file("platforms/${target}/build/libs/JustifyLasers-${target}-${project.version}.jar")
+
+    def output = layout.buildDirectory.file("universal-input/${target}-${project.version}.jar")
+    def isolation = tasks.register("isolate-${target}") {
+        dependsOn ":${target}:remapJar"
+        inputs.file(original)
+        inputs.file(rootProject.file('gradle/universal-isolation.gradle'))
+        inputs.property('loader', loader)
+        outputs.file(output)
+        doLast {
+            isolateUniversalArchive(loader, original, output.get().asFile)
+        }
+    }
+    [file: output.get().asFile, task: isolation]
+}
+
+ext.normalizeUniversalManifest = { File artifact ->
+    def temporary = new File(artifact.parentFile, artifact.name + '.manifest.tmp')
+    new ZipFile(artifact).withCloseable { source ->
+        new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(temporary))).withCloseable { output ->
+            source.entries().toList().findAll { !it.directory }.sort { it.name }.each { entry ->
+                byte[] bytes = source.getInputStream(entry).withCloseable { it.bytes }
+                if (entry.name == 'META-INF/MANIFEST.MF') {
+                    // Forgix writes unwrapped metadata. java.util.jar rejects lines longer than 512
+                    // bytes, which also prevents Forge from discovering MixinConfigs later in the file.
+                    String raw = new String(bytes, StandardCharsets.UTF_8).replaceAll(/\r?\n /, '')
+                    def manifest = new Manifest()
+                    raw.readLines().findAll { !it.isBlank() }.each { line ->
+                        int separator = line.indexOf(': ')
+                        if (separator < 1) throw new GradleException("Invalid manifest line in ${artifact.name}")
+                        manifest.mainAttributes.put(new Attributes.Name(line.substring(0, separator)), line.substring(separator + 2))
+                    }
+                    def serialized = new ByteArrayOutputStream()
+                    manifest.write(serialized)
+                    bytes = serialized.toByteArray()
+                }
+                def normalized = new ZipEntry(entry.name)
+                normalized.time = 0
+                output.putNextEntry(normalized); output.write(bytes); output.closeEntry()
+            }
+        }
+    }
+    Files.move(temporary.toPath(), artifact.toPath(), StandardCopyOption.REPLACE_EXISTING)
+    new java.util.jar.JarFile(artifact).withCloseable { jar ->
+        if (!jar.manifest.mainAttributes.getValue('MixinConfigs')) throw new GradleException("Missing Forge mixin discovery in ${artifact.name}")
+    }
+}

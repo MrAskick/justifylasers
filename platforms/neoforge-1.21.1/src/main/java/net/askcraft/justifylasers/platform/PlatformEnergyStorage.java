@@ -1,42 +1,48 @@
 package net.askcraft.justifylasers.platform;
 
-import net.askcraft.justifylasers.block.entity.LaserEmitterBlockEntity;
+import net.askcraft.justifylasers.energy.LaserEnergyHost;
 import net.neoforged.neoforge.energy.IEnergyStorage;
 
 public final class PlatformEnergyStorage implements IEnergyStorage {
-    private final LaserEmitterBlockEntity emitter;
+    private final LaserEnergyHost host;
+    private final java.util.function.BooleanSupplier available;
 
-    public PlatformEnergyStorage(LaserEmitterBlockEntity emitter) {
-        this.emitter = emitter;
+    public PlatformEnergyStorage(LaserEnergyHost host) {
+        this(host, () -> true);
+    }
+
+    public PlatformEnergyStorage(LaserEnergyHost host, java.util.function.BooleanSupplier available) {
+        this.host = host;
+        this.available = available;
     }
 
     @Override
     public int receiveEnergy(int requested, boolean simulate) {
-        return emitter.acceptsEnergy() ? emitter.energy().receive(requested, simulate) : 0;
+        return available.getAsBoolean() && host.acceptsEnergy() ? host.energy().receive(requested, simulate) : 0;
     }
 
     @Override
     public int extractEnergy(int requested, boolean simulate) {
-        return 0;
+        return available.getAsBoolean() && host.exportsEnergy() ? host.energy().extract(requested, simulate) : 0;
     }
 
     @Override
     public int getEnergyStored() {
-        return emitter.energy().stored();
+        return host.energy().stored();
     }
 
     @Override
     public int getMaxEnergyStored() {
-        return emitter.energy().capacity();
+        return host.energy().capacity();
     }
 
     @Override
     public boolean canExtract() {
-        return false;
+        return available.getAsBoolean() && host.exportsEnergy();
     }
 
     @Override
     public boolean canReceive() {
-        return emitter.acceptsEnergy();
+        return available.getAsBoolean() && host.acceptsEnergy();
     }
 }

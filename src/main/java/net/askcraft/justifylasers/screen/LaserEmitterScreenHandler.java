@@ -40,6 +40,8 @@ public class LaserEmitterScreenHandler extends ScreenHandler {
     public static final int BUTTON_SCORCH_MARKS = 11;
     public static final int BUTTON_RESET_MINING_SETTINGS = 12;
     public static final int BUTTON_SECURITY = 13;
+    public static final int FILTER_BUTTON_BASE = 14;
+    public static final int BUTTON_FILTER_PLAYER = 18;
     public static final int BEAM_WIDTH_BUTTON_BASE = 1_000;
     public static final int BEAM_WIDTH_BUTTON_MAX = BEAM_WIDTH_BUTTON_BASE
             + LaserEmitterBlockEntity.BEAM_WIDTH_STEPS;
@@ -65,8 +67,8 @@ public class LaserEmitterScreenHandler extends ScreenHandler {
     private boolean inventoryVisible;
     private boolean securityEditable;
 
-    private static final int[] MODULE_X = {67, 109, 151, 193, 109, 157, 211, 235, 67};
-    private static final int[] MODULE_Y = {53, 53, 53, 53, 95, 95, 95, 53, 95};
+    private static final int[] MODULE_X = {67, 105, 143, 181, 105, 143, 181, 219, 67, 219};
+    private static final int[] MODULE_Y = {53, 53, 53, 53, 95, 95, 95, 53, 95, 95};
 
     public LaserEmitterScreenHandler(int syncId, PlayerInventory playerInventory, BlockPos pos) {
         this(syncId, playerInventory, pos, false);
@@ -190,7 +192,7 @@ public class LaserEmitterScreenHandler extends ScreenHandler {
             if (changed) sendContentUpdates();
             return changed;
         }
-        boolean regularButton = id >= BUTTON_ENABLED && id <= BUTTON_RESET_MINING_SETTINGS;
+        boolean regularButton = id >= BUTTON_ENABLED && id < BUTTON_FILTER_PLAYER;
         boolean beamWidthButton = id >= BEAM_WIDTH_BUTTON_BASE && id <= BEAM_WIDTH_BUTTON_MAX;
         boolean damageButton = id >= DAMAGE_BUTTON_MIN && id <= DAMAGE_BUTTON_MAX;
         boolean knockbackButton = id >= KNOCKBACK_BUTTON_BASE && id <= KNOCKBACK_BUTTON_MAX;
@@ -203,6 +205,16 @@ public class LaserEmitterScreenHandler extends ScreenHandler {
         blockEntity.handleButton(id);
         sendContentUpdates();
         return true;
+    }
+
+    public int targetFlags() { return properties.get(46); }
+    public int excludedPlayerCount() { return properties.get(47); }
+
+    public boolean toggleExcludedPlayer(PlayerEntity player, String name) {
+        if (blockEntity == null || !canUse(player)) return false;
+        boolean changed = blockEntity.toggleExcludedPlayer(player, name);
+        if (changed) sendContentUpdates();
+        return changed;
     }
 
     @Override

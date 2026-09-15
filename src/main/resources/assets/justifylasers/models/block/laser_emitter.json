@@ -6,7 +6,7 @@
     "dark": "minecraft:block/polished_deepslate",
     "light": "minecraft:block/iron_block",
     "aperture": "minecraft:block/black_concrete",
-    "particle": "minecraft:block/polished_deepslate"
+    "particle": "#panel"
   },
   "elements": [
     {

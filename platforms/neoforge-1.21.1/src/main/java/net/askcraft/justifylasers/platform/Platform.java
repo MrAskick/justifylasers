@@ -96,6 +96,10 @@ public final class Platform {
         return ItemGroup.builder();
     }
 
+    public static Item tabletItem(Item.Settings settings) {
+        return new net.askcraft.justifylasers.item.ExtraterrestrialTabletItem(settings);
+    }
+
     public static Item cubeItem(Item.Settings settings) {
         return new RefocusingCubeItem(settings);
     }
@@ -134,7 +138,13 @@ public final class Platform {
 
     public static void registerSettingsReceiver() {
         modBus.addListener((RegisterPayloadHandlersEvent event) -> {
-            var registrar = event.registrar("2");
+            var registrar = event.registrar("4");
+            registrar.playToServer(net.askcraft.justifylasers.network.SaberTogglePayload.ID, net.askcraft.justifylasers.network.SaberTogglePayload.CODEC,
+                    (payload, context) -> payload.packet().apply((ServerPlayerEntity) context.player()));
+            registrar.playToClient(net.askcraft.justifylasers.network.SaberStatePayload.ID, net.askcraft.justifylasers.network.SaberStatePayload.CODEC,
+                    (payload, context) -> payload.packet().deliver());
+            registrar.playToServer(net.askcraft.justifylasers.network.GunControlPayload.ID, net.askcraft.justifylasers.network.GunControlPayload.CODEC,
+                    (payload, context) -> payload.packet().apply((ServerPlayerEntity) context.player()));
             registrar.playToServer(SettingsPayload.ID, SettingsPayload.CODEC,
                     (payload, context) -> payload.packet().apply((ServerPlayerEntity) context.player()));
             registrar.playToClient(PolicyPayload.ID, PolicyPayload.CODEC,
@@ -150,10 +160,54 @@ public final class Platform {
     public static void registerEnergy() {
         onRegister(NeoForgeRegistries.CONDITION_SERIALIZERS.getKey(), () ->
                 register(NeoForgeRegistries.CONDITION_SERIALIZERS, JustifyLasers.id("energy_mode"), EnergyModeCondition.CODEC));
-        modBus.addListener((RegisterCapabilitiesEvent event) ->
+        modBus.addListener((RegisterCapabilitiesEvent event) -> {
+                event.registerItem(Capabilities.EnergyStorage.ITEM, (stack, context) -> new PlatformTabletEnergy(stack),
+                        net.askcraft.justifylasers.registry.ModIndustry.EXTRATERRESTRIAL_TABLET);
+                event.registerBlockEntity(Capabilities.FluidHandler.BLOCK, ModBlockEntities.INDUSTRIAL_MACHINE, (machine, side) ->
+                        machine.kind() == net.askcraft.justifylasers.industry.MachineKind.CRYSTAL_GROWER ? new PlatformWaterStorage(machine) : null);
+                event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, ModBlockEntities.INDUSTRIAL_MACHINE, (machine, side) ->
+                        new net.neoforged.neoforge.items.wrapper.SidedInvWrapper(machine, side == null ? net.minecraft.util.math.Direction.UP : side));
+                event.registerBlockEntity(Capabilities.EnergyStorage.BLOCK, ModBlockEntities.INDUSTRIAL_MACHINE, (machine, side) -> machine.energyPort());
                 event.registerBlockEntity(Capabilities.EnergyStorage.BLOCK, ModBlockEntities.LASER_EMITTER,
-                        (emitter, side) -> emitter.isPoweredEmitter() ? emitter.energyPort() : null));
+                        (emitter, side) -> emitter.isPoweredEmitter() ? emitter.energyPort() : null);
+                event.registerBlockEntity(Capabilities.EnergyStorage.BLOCK, ModBlockEntities.LASER_OPTIC,
+                        (receiver, side) -> receiver.kind() == net.askcraft.justifylasers.block.LaserOpticBlock.Kind.ENERGY_RECEIVER
+                                && receiver.isEnergyOutput(side) ? receiver.energyPort(side) : null);
+        });
     }
+
+    public static void exportEnergy(net.askcraft.justifylasers.block.entity.LaserOpticBlockEntity receiver) {
+        var world = receiver.getWorld();
+        int remaining = Math.min(receiver.energy().stored(), LaserConfig.get().maxInput);
+        if (!receiver.exportsEnergy() || remaining <= 0) return;
+        for (var side : net.minecraft.util.math.Direction.values()) {
+            if (!receiver.isEnergyOutput(side) || remaining <= 0) continue;
+            BlockPos target = receiver.getPos().offset(side);
+            if (!world.isChunkLoaded(target)) continue;
+            var storage = world.getCapability(Capabilities.EnergyStorage.BLOCK, target, side.getOpposite());
+            if (storage == null || !storage.canReceive()) continue;
+            int sent = storage.receiveEnergy(remaining, false);
+            receiver.energy().extract(sent, false);
+            remaining -= sent;
+        }
+    }
+
+    public static void exportEnergy(net.askcraft.justifylasers.block.entity.IndustrialMachineBlockEntity receiver) {
+        var world = receiver.getWorld();
+        int remaining = Math.min(receiver.energy().stored(), LaserConfig.get().machineTransfer);
+        if (!receiver.exportsEnergy() || remaining <= 0) return;
+        for (var side : net.minecraft.util.math.Direction.values()) {
+            if (remaining <= 0) continue;
+            BlockPos target = receiver.getPos().offset(side);
+            if (!world.isChunkLoaded(target)) continue;
+            var storage = world.getCapability(Capabilities.EnergyStorage.BLOCK, target, side.getOpposite());
+            if (storage == null || !storage.canReceive()) continue;
+            int sent = storage.receiveEnergy(remaining, false);
+            receiver.energy().extract(sent, false);
+            remaining -= sent;
+        }
+    }
+
 
     public static void onEndWorldTick(Consumer<ServerWorld> callback) {
         NeoForge.EVENT_BUS.addListener((LevelTickEvent.Post event) -> {
@@ -165,10 +219,21 @@ public final class Platform {
         return ModList.get().isLoaded(id);
     }
 
+    public static void opticPortsChanged(net.askcraft.justifylasers.block.entity.LaserOpticBlockEntity optic) {
+        var world = optic.getWorld();
+        world.invalidateCapabilities(optic.getPos());
+        world.updateNeighborsAlways(optic.getPos(), optic.getCachedState().getBlock());
+        world.updateListeners(optic.getPos(), optic.getCachedState(), optic.getCachedState(), net.minecraft.block.Block.NOTIFY_ALL);
+    }
+
     public static Path configDirectory() {
         return FMLPaths.CONFIGDIR.get();
     }
 
     private Platform() {
+    }
+
+    public static void sendSaberState(ServerPlayerEntity player, net.askcraft.justifylasers.network.SaberStatePacket packet) {
+        PacketDistributor.sendToPlayer(player, new net.askcraft.justifylasers.network.SaberStatePayload(packet));
     }
 }

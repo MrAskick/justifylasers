@@ -23,7 +23,7 @@ import net.minecraft.world.GameMode;
 
 public class LaserPartGameTests implements FabricGameTest {
     @GameTest(templateName = EMPTY_STRUCTURE)
-    public void allNineteenPartsPlaceAndReturnExactlyOneUsableItem(TestContext context) {
+    public void allPartsPlaceAndReturnExactlyOneUsableItem(TestContext context) {
         var world = context.getWorld();
         var player = context.createMockCreativeServerPlayerInWorld();
         player.changeGameMode(GameMode.SURVIVAL);
@@ -54,7 +54,7 @@ public class LaserPartGameTests implements FabricGameTest {
             drops.forEach(ItemEntity::discard);
             tested++;
         }
-        context.assertTrue(tested == 19, "Every decoration covered");
+        context.assertTrue(tested == 21, "Every decoration, including the crystal mount, covered");
         player.discard();
         context.complete();
     }

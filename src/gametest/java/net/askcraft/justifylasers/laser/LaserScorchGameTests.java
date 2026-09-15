@@ -18,6 +18,31 @@ import java.util.List;
 
 public class LaserScorchGameTests implements FabricGameTest {
     @GameTest(templateName = EMPTY_STRUCTURE)
+    public void gunScorchesTheHitSurfaceButNotTheWallBehindAnEntity(TestContext context) {
+        var player = context.createMockCreativeServerPlayerInWorld();
+        player.setPosition(context.getAbsolute(new Vec3d(4.5, 1.8, 1.5)));
+        player.setYaw(0); player.setPitch(0);
+        player.setStackInHand(net.minecraft.util.Hand.MAIN_HAND, new net.minecraft.item.ItemStack(ModBlocks.LASER_GUN));
+        net.askcraft.justifylasers.item.LaserGunItem.startFiring(player, net.minecraft.util.Hand.MAIN_HAND);
+        context.setBlockState(4, 3, 4, Blocks.IRON_BLOCK);
+        BlockPos target = context.getAbsolutePos(new BlockPos(4, 3, 4));
+        var marks = new LaserScorchMarks();
+        marks.update(context.getWorld(), 0);
+        context.assertTrue(marks.marks().stream().anyMatch(mark -> mark.patch().position().equals(target)), "Gun contact creates emitter-style scorch geometry");
+        player.stopUsingItem();
+        marks.update(context.getWorld(), 60);
+        context.assertTrue(marks.marks().stream().filter(mark -> mark.patch().position().equals(target))
+                .allMatch(mark -> LaserScorchMarks.heat(mark.age(60)) == 0), "Released gun marks cool without disappearing immediately");
+        net.askcraft.justifylasers.item.LaserGunItem.startFiring(player, net.minecraft.util.Hand.MAIN_HAND);
+        context.spawnMob(net.minecraft.entity.EntityType.VILLAGER, new Vec3d(4.5, 2, 3));
+        marks.clear(); marks.update(context.getWorld(), 61);
+        context.assertTrue(marks.marks().stream().noneMatch(mark -> mark.patch().position().equals(target)), "A living target prevents a scorch behind it");
+        context.assertTrue(context.getBlockState(new BlockPos(4, 3, 4)).isOf(Blocks.IRON_BLOCK), "Weapon scorch never mines blocks");
+        player.discard(); marks.clear();
+        context.complete();
+    }
+
+    @GameTest(templateName = EMPTY_STRUCTURE)
     public void geometryFitsAllSixFacesWithOutwardWindingAndSoftEdges(TestContext context) {
         BlockPos relative = new BlockPos(4, 4, 4);
         context.setBlockState(relative, Blocks.IRON_BLOCK);

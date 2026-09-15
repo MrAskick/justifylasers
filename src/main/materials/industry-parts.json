@@ -1,0 +1,1201 @@
+{
+  "photonite": {
+    "sheet": "Ores/photonite_ore_uv.png",
+    "size": 128,
+    "mineral": true,
+    "parts": {
+      "facet": {
+        "rect": [
+          173,
+          562,
+          104,
+          166
+        ],
+        "size": [
+          24,
+          40
+        ]
+      },
+      "edge": {
+        "rect": [
+          371,
+          524,
+          79,
+          135
+        ],
+        "size": [
+          16,
+          32
+        ]
+      },
+      "tip": {
+        "rect": [
+          663,
+          620,
+          83,
+          112
+        ],
+        "size": [
+          24,
+          32
+        ]
+      }
+    }
+  },
+  "wolframite": {
+    "sheet": "Ores/wolframite_ore_uv.png",
+    "size": 128,
+    "mineral": true,
+    "parts": {
+      "facet": {
+        "rect": [
+          174,
+          576,
+          91,
+          143
+        ],
+        "size": [
+          24,
+          40
+        ]
+      },
+      "edge": {
+        "rect": [
+          363,
+          504,
+          66,
+          108
+        ],
+        "size": [
+          16,
+          32
+        ]
+      },
+      "tip": {
+        "rect": [
+          729,
+          661,
+          53,
+          78
+        ],
+        "size": [
+          24,
+          32
+        ]
+      }
+    }
+  },
+  "crystal_chamber": {
+    "sheet": "crystal_chamber/crystal_growth_chamber_UV.png",
+    "mask": "crystal_chamber/crystal_growth_chamber_GLOW.png",
+    "size": 512,
+    "parts": {
+      "armor": {
+        "rect": [
+          964,
+          35,
+          106,
+          290
+        ],
+        "size": [
+          24,
+          64
+        ]
+      },
+      "beam": {
+        "rect": [
+          34,
+          1039,
+          368,
+          75
+        ],
+        "size": [
+          96,
+          20
+        ],
+        "glow": true
+      },
+      "column": {
+        "rect": [
+          1109,
+          363,
+          106,
+          290
+        ],
+        "size": [
+          24,
+          64
+        ],
+        "glow": true
+      },
+      "dark": {
+        "rect": [
+          1074,
+          1301,
+          66,
+          59
+        ],
+        "size": [
+          32,
+          32
+        ]
+      },
+      "joint": {
+        "rect": [
+          848,
+          1301,
+          89,
+          59
+        ],
+        "size": [
+          32,
+          24
+        ],
+        "glow": true
+      },
+      "grill": {
+        "sheet": "crystal_chamber_once/once_UV.png",
+        "rect": [
+          414,
+          641,
+          116,
+          68
+        ],
+        "size": [
+          64,
+          32
+        ]
+      },
+      "core": {
+        "sheet": "crystal_chamber_once/once_UV.png",
+        "rect": [
+          266,
+          386,
+          83,
+          81
+        ],
+        "size": [
+          48,
+          48
+        ],
+        "glow": true
+      },
+      "light": {
+        "rect": [
+          1157,
+          400,
+          8,
+          200
+        ],
+        "size": [
+          8,
+          32
+        ],
+        "solidEmission": true
+      }
+    }
+  },
+  "assembly_chamber": {
+    "sheet": "assembling_chamber/assembly_chamber_UV.png",
+    "mask": "assembling_chamber/assembly_chamber_UV_GLOW.png",
+    "size": 512,
+    "parts": {
+      "armor": {
+        "rect": [
+          618,
+          28,
+          33,
+          55
+        ],
+        "size": [
+          32,
+          48
+        ]
+      },
+      "beam": {
+        "rect": [
+          358,
+          31,
+          185,
+          94
+        ],
+        "size": [
+          96,
+          48
+        ],
+        "glow": true
+      },
+      "column": {
+        "rect": [
+          390,
+          332,
+          67,
+          245
+        ],
+        "size": [
+          24,
+          96
+        ],
+        "glow": true
+      },
+      "dark": {
+        "rect": [
+          510,
+          35,
+          22,
+          11
+        ],
+        "size": [
+          32,
+          16
+        ]
+      },
+      "joint": {
+        "rect": [
+          748,
+          22,
+          123,
+          110
+        ],
+        "size": [
+          48,
+          48
+        ],
+        "glow": true
+      },
+      "grill": {
+        "rect": [
+          1002,
+          21,
+          120,
+          124
+        ],
+        "size": [
+          64,
+          64
+        ]
+      },
+      "core": {
+        "rect": [
+          545,
+          411,
+          102,
+          105
+        ],
+        "size": [
+          64,
+          64
+        ],
+        "glow": true
+      },
+      "light": {
+        "rect": [
+          405,
+          387,
+          31,
+          71
+        ],
+        "size": [
+          16,
+          32
+        ],
+        "solidEmission": true
+      }
+    }
+  },
+  "crystal_chamber_casing": {
+    "sheet": "crystal_chamber_once/once_UV.png",
+    "size": 512,
+    "parts": {
+      "armor": {
+        "rect": [
+          118,
+          164,
+          69,
+          48
+        ],
+        "size": [
+          48,
+          32
+        ]
+      },
+      "beam": {
+        "rect": [
+          210,
+          778,
+          200,
+          98
+        ],
+        "size": [
+          96,
+          48
+        ],
+        "glow": true
+      },
+      "column": {
+        "rect": [
+          110,
+          297,
+          66,
+          269
+        ],
+        "size": [
+          24,
+          96
+        ],
+        "glow": true
+      },
+      "dark": {
+        "rect": [
+          272,
+          239,
+          96,
+          37
+        ],
+        "size": [
+          48,
+          24
+        ]
+      },
+      "joint": {
+        "rect": [
+          32,
+          153,
+          73,
+          74
+        ],
+        "size": [
+          48,
+          48
+        ],
+        "glow": true
+      },
+      "grill": {
+        "rect": [
+          414,
+          641,
+          116,
+          68
+        ],
+        "size": [
+          64,
+          32
+        ]
+      },
+      "core": {
+        "rect": [
+          262,
+          381,
+          88,
+          91
+        ],
+        "size": [
+          48,
+          48
+        ],
+        "glow": true
+      },
+      "light": {
+        "rect": [
+          138,
+          344,
+          9,
+          166
+        ],
+        "size": [
+          8,
+          32
+        ],
+        "solidEmission": true
+      }
+    }
+  },
+  "assembly_chamber_casing": {
+    "sheet": "assembling_chamber_once/once_UV.png",
+    "size": 512,
+    "parts": {
+      "armor": {
+        "rect": [
+          202,
+          386,
+          55,
+          35
+        ],
+        "size": [
+          48,
+          32
+        ]
+      },
+      "beam": {
+        "rect": [
+          142,
+          61,
+          214,
+          53
+        ],
+        "size": [
+          96,
+          24
+        ],
+        "glow": true
+      },
+      "column": {
+        "rect": [
+          1020,
+          540,
+          74,
+          335
+        ],
+        "size": [
+          24,
+          96
+        ],
+        "glow": true
+      },
+      "dark": {
+        "rect": [
+          901,
+          398,
+          88,
+          28
+        ],
+        "size": [
+          48,
+          16
+        ]
+      },
+      "joint": {
+        "rect": [
+          42,
+          45,
+          86,
+          82
+        ],
+        "size": [
+          48,
+          48
+        ]
+      },
+      "grill": {
+        "rect": [
+          575,
+          375,
+          200,
+          52
+        ],
+        "size": [
+          96,
+          24
+        ]
+      },
+      "core": {
+        "rect": [
+          206,
+          210,
+          80,
+          80
+        ],
+        "size": [
+          48,
+          48
+        ],
+        "glow": true
+      },
+      "light": {
+        "rect": [
+          1044,
+          594,
+          10,
+          144
+        ],
+        "size": [
+          8,
+          32
+        ],
+        "solidEmission": true
+      }
+    }
+  },
+  "optical_resonator": {
+    "root": "ref/parts",
+    "sheet": "Optical_Resonator_UV.png",
+    "size": 256,
+    "neutralAccents": true,
+    "parts": {
+      "metal": {
+        "rect": [
+          267,
+          36,
+          210,
+          89
+        ],
+        "size": [
+          48,
+          48
+        ]
+      },
+      "armor": {
+        "rect": [
+          872,
+          187,
+          24,
+          135
+        ],
+        "size": [
+          48,
+          48
+        ]
+      },
+      "dark": {
+        "rect": [
+          275,
+          57,
+          45,
+          35
+        ],
+        "size": [
+          48,
+          48
+        ]
+      },
+      "beam": {
+        "rect": [
+          237,
+          180,
+          293,
+          69
+        ],
+        "size": [
+          64,
+          16
+        ]
+      },
+      "column": {
+        "rect": [
+          40,
+          473,
+          58,
+          318
+        ],
+        "size": [
+          16,
+          64
+        ]
+      },
+      "joint": {
+        "rect": [
+          1134,
+          66,
+          94,
+          98
+        ],
+        "size": [
+          48,
+          48
+        ]
+      },
+      "core": {
+        "rect": [
+          908,
+          207,
+          87,
+          94
+        ],
+        "size": [
+          48,
+          48
+        ]
+      }
+    }
+  },
+  "reinforced_laser_housing": {
+    "root": "ref/parts",
+    "sheet": "Reinforced_Laser_Housing_UV.png",
+    "size": 256,
+    "neutralAccents": true,
+    "parts": {
+      "metal": {
+        "rect": [
+          511,
+          945,
+          281,
+          25
+        ],
+        "size": [
+          48,
+          48
+        ]
+      },
+      "armor": {
+        "rect": [
+          463,
+          357,
+          246,
+          27
+        ],
+        "size": [
+          48,
+          48
+        ]
+      },
+      "dark": {
+        "rect": [
+          79,
+          351,
+          79,
+          51
+        ],
+        "size": [
+          48,
+          48
+        ]
+      },
+      "beam": {
+        "rect": [
+          359,
+          51,
+          267,
+          65
+        ],
+        "size": [
+          64,
+          16
+        ]
+      },
+      "column": {
+        "rect": [
+          88,
+          431,
+          71,
+          262
+        ],
+        "size": [
+          16,
+          64
+        ]
+      },
+      "joint": {
+        "rect": [
+          148,
+          33,
+          86,
+          91
+        ],
+        "size": [
+          48,
+          48
+        ]
+      },
+      "core": {
+        "rect": [
+          162,
+          958,
+          128,
+          138
+        ],
+        "size": [
+          48,
+          48
+        ]
+      }
+    }
+  },
+  "energy_core": {
+    "root": "ref/parts",
+    "sheet": "Energy_Core_UV.png",
+    "size": 256,
+    "neutralAccents": true,
+    "parts": {
+      "metal": {
+        "rect": [
+          350,
+          256,
+          166,
+          38
+        ],
+        "size": [
+          48,
+          48
+        ]
+      },
+      "armor": {
+        "rect": [
+          948,
+          165,
+          25,
+          157
+        ],
+        "size": [
+          48,
+          48
+        ]
+      },
+      "dark": {
+        "rect": [
+          352,
+          267,
+          110,
+          17
+        ],
+        "size": [
+          48,
+          48
+        ]
+      },
+      "beam": {
+        "rect": [
+          348,
+          322,
+          166,
+          62
+        ],
+        "size": [
+          64,
+          16
+        ]
+      },
+      "column": {
+        "rect": [
+          1012,
+          115,
+          70,
+          258
+        ],
+        "size": [
+          16,
+          64
+        ]
+      },
+      "joint": {
+        "rect": [
+          668,
+          897,
+          88,
+          57
+        ],
+        "size": [
+          48,
+          48
+        ]
+      },
+      "core": {
+        "rect": [
+          337,
+          444,
+          194,
+          177
+        ],
+        "size": [
+          48,
+          48
+        ]
+      }
+    }
+  },
+  "focusing_lens_assembly": {
+    "root": "ref/parts",
+    "sheet": "Focusing_Lens_Assembly_UV.png",
+    "size": 256,
+    "neutralAccents": true,
+    "parts": {
+      "metal": {
+        "rect": [
+          951,
+          1000,
+          47,
+          56
+        ],
+        "size": [
+          48,
+          48
+        ]
+      },
+      "armor": {
+        "rect": [
+          461,
+          559,
+          327,
+          35
+        ],
+        "size": [
+          48,
+          48
+        ]
+      },
+      "dark": {
+        "rect": [
+          123,
+          770,
+          92,
+          13
+        ],
+        "size": [
+          48,
+          48
+        ]
+      },
+      "beam": {
+        "rect": [
+          508,
+          953,
+          239,
+          58
+        ],
+        "size": [
+          64,
+          16
+        ]
+      },
+      "column": {
+        "rect": [
+          913,
+          362,
+          56,
+          211
+        ],
+        "size": [
+          16,
+          64
+        ]
+      },
+      "joint": {
+        "rect": [
+          913,
+          647,
+          116,
+          111
+        ],
+        "size": [
+          48,
+          48
+        ]
+      },
+      "core": {
+        "rect": [
+          1009,
+          127,
+          104,
+          126
+        ],
+        "size": [
+          48,
+          48
+        ]
+      }
+    }
+  },
+  "beam_controller": {
+    "root": "ref/parts",
+    "sheet": "Beam_Controller_UV.png",
+    "size": 256,
+    "neutralAccents": true,
+    "parts": {
+      "metal": {
+        "rect": [
+          770,
+          95,
+          255,
+          43
+        ],
+        "size": [
+          48,
+          48
+        ]
+      },
+      "armor": {
+        "rect": [
+          289,
+          183,
+          215,
+          27
+        ],
+        "size": [
+          48,
+          48
+        ]
+      },
+      "dark": {
+        "rect": [
+          812,
+          807,
+          38,
+          172
+        ],
+        "size": [
+          48,
+          48
+        ]
+      },
+      "beam": {
+        "rect": [
+          299,
+          103,
+          199,
+          48
+        ],
+        "size": [
+          64,
+          16
+        ]
+      },
+      "column": {
+        "rect": [
+          99,
+          277,
+          60,
+          231
+        ],
+        "size": [
+          16,
+          64
+        ]
+      },
+      "joint": {
+        "rect": [
+          71,
+          45,
+          114,
+          103
+        ],
+        "size": [
+          48,
+          48
+        ]
+      },
+      "core": {
+        "rect": [
+          806,
+          365,
+          208,
+          155
+        ],
+        "size": [
+          48,
+          48
+        ]
+      }
+    }
+  },
+  "extraterrestrial_tablet": {
+    "root": "ref/Tablet",
+    "sheet": "tablet_OFF_ref_face_UV.png",
+    "size": 512,
+    "parts": {
+      "metal": {
+        "rect": [
+          438,
+          638,
+          118,
+          17
+        ],
+        "size": [
+          96,
+          14
+        ]
+      },
+      "armor": {
+        "rect": [
+          982,
+          850,
+          59,
+          29
+        ],
+        "size": [
+          48,
+          24
+        ]
+      },
+      "dark": {
+        "rect": [
+          995,
+          715,
+          45,
+          34
+        ],
+        "size": [
+          48,
+          36
+        ]
+      },
+      "bezel": {
+        "rect": [
+          1048,
+          1086,
+          47,
+          35
+        ],
+        "size": [
+          32,
+          24
+        ]
+      },
+      "grill": {
+        "rect": [
+          816,
+          706,
+          129,
+          58
+        ],
+        "size": [
+          80,
+          36
+        ]
+      },
+      "beam": {
+        "rect": [
+          302,
+          700,
+          194,
+          69
+        ],
+        "size": [
+          96,
+          34
+        ],
+        "glow": true
+      },
+      "joint": {
+        "rect": [
+          58,
+          720,
+          62,
+          39
+        ],
+        "size": [
+          48,
+          30
+        ],
+        "glow": true
+      },
+      "square_light": {
+        "rect": [
+          80,
+          1043,
+          24,
+          33
+        ],
+        "size": [
+          24,
+          32
+        ],
+        "solidEmission": true
+      },
+      "side_vent": {
+        "rect": [
+          154,
+          962,
+          38,
+          160
+        ],
+        "size": [
+          20,
+          80
+        ]
+      },
+      "side_armor": {
+        "rect": [
+          22,
+          875,
+          94,
+          318
+        ],
+        "size": [
+          36,
+          120
+        ]
+      },
+      "corner": {
+        "rect": [
+          243,
+          872,
+          151,
+          150
+        ],
+        "size": [
+          96,
+          96
+        ],
+        "glow": true
+      },
+      "screen": {
+        "rect": [
+          344,
+          292,
+          165,
+          159
+        ],
+        "size": [
+          48,
+          48
+        ]
+      },
+      "back": {
+        "rect": [
+          850,
+          257,
+          279,
+          216
+        ],
+        "size": [
+          128,
+          100
+        ]
+      }
+    }
+  },
+  "assembly_blueprint": {
+    "root": "ref/blueprints",
+    "sheet": "Blueprint_UV.png",
+    "size": 512,
+    "parts": {
+      "front": {
+        "rect": [
+          119,
+          168,
+          511,
+          508
+        ],
+        "size": [
+          240,
+          240
+        ]
+      },
+      "back": {
+        "rect": [
+          644,
+          170,
+          489,
+          504
+        ],
+        "size": [
+          224,
+          232
+        ]
+      },
+      "metal": {
+        "rect": [
+          40,
+          1161,
+          236,
+          45
+        ],
+        "size": [
+          96,
+          20
+        ]
+      },
+      "dark": {
+        "rect": [
+          40,
+          1161,
+          236,
+          45
+        ],
+        "size": [
+          96,
+          20
+        ]
+      }
+    }
+  }
+}

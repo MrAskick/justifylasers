@@ -21,16 +21,17 @@ public class RefocusingCubeRenderer extends EntityRenderer<RefocusingCubeEntity>
     public void render(RefocusingCubeEntity cube, float yaw, float tickDelta, MatrixStack matrices,
                        VertexConsumerProvider consumers, int light) {
         CubeOptics.Frame frame = cube.opticalFrame(tickDelta);
+        CubeLensRenderer.queue(cube.getId(), frame);
         Vec3d origin = cube.getLerpedPos(tickDelta);
         Vec3d localCenter = frame.center().subtract(origin);
         matrices.push();
         matrices.translate(localCenter.x, localCenter.y, localCenter.z);
         matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-MathHelper.lerpAngleDegrees(tickDelta, cube.prevYaw, cube.getYaw())));
         matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(MathHelper.lerp(tickDelta, cube.prevPitch, cube.getPitch())));
-        RefocusingCubeModel.render(matrices, consumers, light, cube.getColor().rgb(), cube.isLit(), cube.emitsLight());
+        RefocusingCubeModel.render(matrices, consumers, light, cube.beamRgb(), cube.isLit(), cube.emitsLight());
         matrices.pop();
         if (cube.isLit()) {
-            CubeCoreRenderer.render(cube.getId(), frame.center(), origin, cube.getColor().rgb(), cube.emitsLight(),
+            CubeCoreRenderer.render(cube.getId(), frame.center(), origin, cube.beamRgb(), cube.emitsLight(),
                     cube.age + tickDelta, matrices, consumers);
         }
         super.render(cube, yaw, tickDelta, matrices, consumers, light);

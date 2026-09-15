@@ -170,6 +170,9 @@ public class LaserReceiverBlockEntity extends LaserBlockEntity implements LaserS
     }
 
     @Override
+    public BlockPos screenPosition() { return getPos(); }
+
+    @Override
     public ScreenHandler createMenu(int syncId, PlayerInventory inventory, PlayerEntity player) {
         return new LaserReceiverScreenHandler(syncId, inventory, this);
     }

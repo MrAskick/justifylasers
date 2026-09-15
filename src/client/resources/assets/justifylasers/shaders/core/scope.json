@@ -1,0 +1,8 @@
+{
+  "blend": {"func": "add", "srcrgb": "srcalpha", "dstrgb": "1-srcalpha"},
+  "vertex": "justifylasers:scope",
+  "fragment": "justifylasers:scope",
+  "attributes": ["Position", "UV0", "Color"],
+  "samplers": [{"name": "Scene"}],
+  "uniforms": [{"name": "Textured", "type": "int", "count": 1, "values": [1]}]
+}

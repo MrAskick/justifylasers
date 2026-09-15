@@ -14,6 +14,10 @@ import org.joml.Vector3f;
 public final class RenderVersion {
     public static final boolean SCREEN_RENDERS_BACKGROUND = true;
 
+    public static net.minecraft.client.render.VertexConsumerProvider.Immediate immediateBuffer() {
+        return net.minecraft.client.render.VertexConsumerProvider.immediate(new net.minecraft.client.util.BufferAllocator(4096));
+    }
+
     public static BufferBuilder beginQuads(VertexFormat format) {
         return Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, format);
     }

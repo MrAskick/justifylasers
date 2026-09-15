@@ -1,0 +1,317 @@
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import java.awt.image.BufferedImage
+import javax.imageio.ImageIO
+
+def atlasOutput = layout.buildDirectory.dir('generated/componentAtlases')
+tasks.register('generateSaberMaterials') {
+    def references = rootProject.file('ref/modules/LightSaber/new')
+    inputs.files(['Once_LightSaber_UV.png', 'Double_LightSaber_UV.png', 'Once_LightSaber_UV_GLOW.png', 'Double_LightSaber_UV_GLOW.png'].collect { new File(references, it) })
+    inputs.file(rootProject.file('src/main/materials/saber-parts.json'))
+    inputs.file(rootProject.file('gradle/component-atlases.gradle'))
+    def destination = layout.buildDirectory.dir('generated/saberMaterials')
+    outputs.dir(destination)
+    doLast {
+        new JsonSlurper().parse(rootProject.file('src/main/materials/saber-parts.json')).each { name, plan ->
+            def output = new File(destination.get().asFile, name)
+            output.mkdirs()
+            def sheet = ImageIO.read(new File(references, plan.sheet))
+            def mask = ImageIO.read(new File(references, plan.mask))
+            def patches = plan.regions.collectEntries { part, spec -> [(part): ComponentAtlasBaker.extract(sheet, spec)] }
+            int size = 512
+            def packed = ComponentAtlasBaker.pack(patches, size)
+            if (packed == null) throw new GradleException('Hilt atlas exceeds its 512px budget')
+            def images = ['base', 'base_n', 'base_s', 'glow', 'glow_n', 'glow_s', 'indicator', 'indicator_n', 'indicator_s']
+                    .collectEntries { [(it): new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB)] }
+            packed.each { part, rect ->
+                def spec = plan.regions[part]
+                def crop = patches[part]
+                for (int y = -4; y < rect[3] + 4; y++) for (int x = -4; x < rect[2] + 4; x++) {
+                    int u = Math.max(0, Math.min(rect[2] - 1, x)), v = Math.max(0, Math.min(rect[3] - 1, y))
+                    int pixel = crop.getRGB(u, v) | (int) 0xFF000000L
+                    int strength = 0
+                    if (spec.glow) {
+                        def r = spec.maskRect
+                        int guide = mask.getRGB(r[0] + (int)(u * (r[2]-1d) / Math.max(1,rect[2]-1)), r[1] + (int)(v * (r[3]-1d) / Math.max(1,rect[3]-1)))
+                        strength = (guide & 255) * (guide >>> 24) / 255
+                    }
+                    int dx = rect[0] + x, dy = rect[1] + y
+                    images.base.setRGB(dx, dy, spec.glow ? (int) 0xFF32383CL : pixel)
+                    images.base_s.setRGB(dx, dy, (int) (part == 'steel' ? 0xFF82D000L : 0xFF552000L))
+                    images.glow.setRGB(dx, dy, (strength << 24) | (pixel & 0xFFFFFF))
+                    images.indicator.setRGB(dx, dy, (strength << 24) | (pixel & 0xFFFFFF))
+                    images.glow_s.setRGB(dx, dy, ((int)(strength * 0.88) << 24) | 0x602000)
+                    images.indicator_s.setRGB(dx, dy, (int) 0xFF602000L)
+                    ['base_n','glow_n','indicator_n'].each { images[it].setRGB(dx, dy, (int) 0xFF7F7FFFL) }
+                }
+            }
+            images.each { imageName, image -> ImageIO.write(image, 'png', new File(output, imageName + '.png')) }
+            new File(output, 'base.json').setText(JsonOutput.toJson([size: size, regions: packed]), 'UTF-8')
+        }
+    }
+}
+
+tasks.register('generateComponentAtlases') {
+    inputs.dir(rootProject.file('ref/private_material_sources'))
+    inputs.files(rootProject.file('src/main/materials/component-parts.json'), rootProject.file('src/main/materials/turret-parts.json'))
+    inputs.file(rootProject.file('gradle/component-atlases.gradle'))
+    outputs.dir(atlasOutput)
+    doLast {
+        def sources = rootProject.file('ref/private_material_sources')
+        def plans = new JsonSlurper().parse(rootProject.file('src/main/materials/component-parts.json'))
+        plans.putAll(new JsonSlurper().parse(rootProject.file('src/main/materials/turret-parts.json')))
+        plans.each { kind, plan ->
+            def variants = plan.variants instanceof Map ? plan.variants : (plan.variants ?: ['default']).collectEntries { [(it): [:]] }
+            variants.each { name, variant ->
+                def regions = variant.regions ?: plan.regions
+                def source = variant.sheet ?: plan.sheet ?: "${kind}/${name}.png"
+                def output = new File(atlasOutput.get().asFile, "assets/justifylasers/textures/component/${kind}")
+                output.mkdirs()
+                ComponentAtlasBaker.bake(sources, source, output, name, regions)
+            }
+        }
+    }
+}
+
+tasks.register('generateEnergyReceiverMaterials') {
+    def references = rootProject.file('ref/modules/Reciever')
+    inputs.files(['UV_01.png', 'UV_OFF.png', 'UV_01_glow.png'].collect { new File(references, it) })
+    inputs.file(rootProject.file('src/main/materials/receiver-parts.json'))
+    inputs.file(rootProject.file('gradle/component-atlases.gradle'))
+    def destination = layout.buildDirectory.dir('generated/energyReceiverMaterials')
+    outputs.dir(destination)
+    doLast {
+        def plan = new JsonSlurper().parse(rootProject.file('src/main/materials/receiver-parts.json'))
+        def off = ImageIO.read(new File(references, 'UV_OFF.png'))
+        def on = ImageIO.read(new File(references, 'UV_01.png'))
+        def mask = ImageIO.read(new File(references, 'UV_01_glow.png'))
+        def patches = plan.collectEntries { name, part -> [(name): ComponentAtlasBaker.extract(off, part)] }
+        int size = 512
+        Map packed
+        while ((packed = ComponentAtlasBaker.pack(patches, size)) == null) size *= 2
+        def images = ['base', 'base_n', 'base_s', 'glow', 'glow_n', 'glow_s', 'indicator', 'indicator_n', 'indicator_s']
+                .collectEntries { [(it): new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB)] }
+        packed.each { name, rect ->
+            def part = plan[name]
+            for (int y = -4; y < rect[3] + 4; y++) for (int x = -4; x < rect[2] + 4; x++) {
+                int sx = part.rect[0] + Math.max(0, Math.min(rect[2] - 1, x))
+                int sy = part.rect[1] + Math.max(0, Math.min(rect[3] - 1, y))
+                int base = off.getRGB(sx, sy) | (int) 0xFF000000L
+                int glow = mask.getRGB(sx, sy)
+                int sample = on.getRGB(sx, sy)
+                double strength = part.glow ? Math.max(0, ((glow & 255) - 96) / 159d) * (glow >>> 24) / 255d : 0
+                int alpha = (int) Math.round(strength * 255)
+                int value = Math.max(128, Math.max(sample >> 16 & 255, Math.max(sample >> 8 & 255, sample & 255)))
+                int lit = alpha << 24 | value << 16 | value << 8 | value
+                int dx = rect[0] + x, dy = rect[1] + y
+                images.base.setRGB(dx, dy, base)
+                images.base_n.setRGB(dx, dy, (int) 0xFF7F7FFFL)
+                images.base_s.setRGB(dx, dy, (int) ((base & 255) > 105 ? 0xFF78D000L : 0xFF502000L))
+                images.glow.setRGB(dx, dy, lit)
+                images.indicator.setRGB(dx, dy, lit)
+                images.glow_n.setRGB(dx, dy, (int) 0xFF7F7FFFL)
+                images.indicator_n.setRGB(dx, dy, (int) 0xFF7F7FFFL)
+                images.glow_s.setRGB(dx, dy, ((int) Math.round(strength * 225) << 24) | 0x602000)
+                images.indicator_s.setRGB(dx, dy, (int) 0xFF602000L)
+            }
+        }
+        def output = destination.get().asFile
+        output.mkdirs()
+        images.each { name, image -> ImageIO.write(image, 'png', new File(output, name + '.png')) }
+        new File(output, 'base.json').setText(JsonOutput.toJson([size: size, regions: packed]), 'UTF-8')
+    }
+}
+
+tasks.register('generateOpticalComponentMaterials') {
+    def references = rootProject.file('ref/modules')
+    inputs.files(['Cube', 'Mirror', 'Splitter', 'Configurator'].collectMany { name ->
+        (name == 'Configurator' ? ['UV_01.png', 'UV_01_glow.png'] : ['UV_01.png', 'UV_OFF.png', 'UV_01_glow.png'])
+                .collect { new File(references, "${name}/${it}") }
+    })
+    inputs.file(rootProject.file('src/main/materials/optical-parts.json'))
+    inputs.file(rootProject.file('gradle/component-atlases.gradle'))
+    def destination = layout.buildDirectory.dir('generated/opticalComponentMaterials')
+    outputs.dir(destination)
+    doLast {
+        def plans = new JsonSlurper().parse(rootProject.file('src/main/materials/optical-parts.json'))
+        plans.each { name, definition ->
+            def off = ImageIO.read(new File(references, "${definition.reference}/${definition.off ?: 'UV_OFF.png'}"))
+            def on = ImageIO.read(new File(references, "${definition.reference}/UV_01.png"))
+            def mask = ImageIO.read(new File(references, "${definition.reference}/UV_01_glow.png"))
+            def patches = definition.parts.collectEntries { part, spec -> [(part): ComponentAtlasBaker.extract(off, spec)] }
+            int size = 512
+            Map packed
+            while ((packed = ComponentAtlasBaker.pack(patches, size)) == null) size *= 2
+            def images = ['base', 'base_n', 'base_s', 'glow', 'glow_n', 'glow_s', 'indicator', 'indicator_n', 'indicator_s']
+                    .collectEntries { [(it): new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB)] }
+            packed.each { part, rect ->
+                def spec = definition.parts[part]
+                def maskRect = spec.maskRect ?: spec.rect
+                for (int y = -4; y < rect[3] + 4; y++) for (int x = -4; x < rect[2] + 4; x++) {
+                    int u = Math.max(0, Math.min(rect[2] - 1, x)), v = Math.max(0, Math.min(rect[3] - 1, y))
+                    int sx = spec.rect[0] + u, sy = spec.rect[1] + v
+                    int base = off.getRGB(sx, sy) | (int) 0xFF000000L
+                    int sample = on.getRGB(sx, sy)
+                    int mx = maskRect[0] + (int) (u * (maskRect[2] - 1d) / Math.max(1, rect[2] - 1))
+                    int my = maskRect[1] + (int) (v * (maskRect[3] - 1d) / Math.max(1, rect[3] - 1))
+                    int white = mask.getRGB(mx, my)
+                    double guide = Math.max(0, ((white & 255) - 80) / 175d) * (white >>> 24) / 255d
+                    // The supplied masks rearrange some pieces. The on/off pair pins emission to the actual inserts.
+                    double chroma = Math.max(0, Math.min(sample & 255, sample >> 8 & 255) - (sample >> 16 & 255) - 20) / 120d
+                    double delta = Math.max(0, Math.max(sample & 255, sample >> 8 & 255) - Math.max(base & 255, base >> 8 & 255) - 20) / 120d
+                    double strength = spec.glow ? Math.min(1, Math.max(chroma, Math.min(guide, delta))) : 0
+                    // The cube's channels are modeled explicitly. Their mask must be continuous, not a noisy image difference.
+                    if (spec.solidEmission) {
+                        strength = 1;
+                        base = (int) 0xFF34383CL;
+                    }
+                    int alpha = (int) Math.round(strength * 255)
+                    int value = spec.solidEmission ? 238 : Math.max(128, Math.max(sample >> 16 & 255, Math.max(sample >> 8 & 255, sample & 255)))
+                    int lit = alpha << 24 | value << 16 | value << 8 | value
+                    int dx = rect[0] + x, dy = rect[1] + y
+                    images.base.setRGB(dx, dy, base)
+                    images.base_n.setRGB(dx, dy, (int) 0xFF7F7FFFL)
+                    images.base_s.setRGB(dx, dy, (int) (spec.mirror ? 0xFFF7E800L : spec.glass ? 0xFFEB0800L : (base & 255) > 110 ? 0xFF70B000L : 0xFF452000L))
+                    images.glow.setRGB(dx, dy, lit)
+                    images.indicator.setRGB(dx, dy, lit)
+                    images.glow_n.setRGB(dx, dy, (int) 0xFF7F7FFFL)
+                    images.indicator_n.setRGB(dx, dy, (int) 0xFF7F7FFFL)
+                    images.glow_s.setRGB(dx, dy, ((int) Math.round(strength * 225) << 24) | 0x602000)
+                    images.indicator_s.setRGB(dx, dy, (int) 0xFF602000L)
+                }
+            }
+            def output = new File(destination.get().asFile, name)
+            output.mkdirs()
+            images.each { imageName, image -> ImageIO.write(image, 'png', new File(output, imageName + '.png')) }
+            new File(output, 'base.json').setText(JsonOutput.toJson([size: size, regions: packed]), 'UTF-8')
+        }
+    }
+}
+
+tasks.register('generateParticleTextures') {
+    def textures = rootProject.file('src/main/resources/assets/justifylasers/textures/component')
+    inputs.dir(textures)
+    inputs.file(rootProject.file('gradle/component-atlases.gradle'))
+    def destination = layout.buildDirectory.dir('generated/particleTextures')
+    outputs.dir(destination)
+    doLast {
+        def parts = [
+                block_destruction_module: 'drill_cap', block_drops_module: 'intake', control_circuit: 'top',
+                entity_damage_module: 'core', ignition_module: 'chamber_0', scorch_marks_module: 'chamber_0',
+                range_module: 'front', advanced_range_module: 'front', silk_touch_module: 'cube',
+                thickness_module: 'ring', target_filter_module: 'sensor'
+        ].collectEntries { id, region -> [(id): ["module/${id}", 'default', region]] }
+        ['red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'violet', 'magenta', 'white'].each { color ->
+            parts[color + '_crystal'] = ['crystal', color, 'front']
+        }
+        parts.putAll([laser_turret: ['turret', 'red', 'base_top'], laser_mirror: ['laser_mirror', 'base', 'ring'],
+                      beam_splitter: ['beam_splitter', 'base', 'output'], energy_receiver: ['energy_receiver', 'base', 'input'],
+                      refocusing_cube: ['refocusing_cube', 'base', 'corner'], crystal_mount: ['crystal', 'white', 'metal']])
+        def output = destination.get().asFile
+        output.mkdirs()
+        parts.each { id, source ->
+            def atlas = new JsonSlurper().parse(new File(textures, "${source[0]}/${source[1]}.json"))
+            def rect = atlas.regions[source[2]]
+            if (rect == null) throw new GradleException("Missing particle component: ${id} / ${source[2]}")
+            def image = ImageIO.read(new File(textures, "${source[0]}/${source[1]}.png"))
+            def sprite = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB)
+            for (int y=0; y<64; y++) for (int x=0; x<64; x++) {
+                int sx=rect[0]+(int)((x+0.5)*rect[2]/64), sy=rect[1]+(int)((y+0.5)*rect[3]/64)
+                sprite.setRGB(x,y,image.getRGB(sx,sy) | (int)0xFF000000L)
+            }
+            ImageIO.write(sprite, 'png', new File(output, id + '.png'))
+        }
+    }
+}
+
+final class ComponentAtlasBaker {
+    static final int PADDING = 4
+
+    static void bake(File sources, String source, File output, String name, Map regions) {
+        def images = [:]
+        def patches = regions.collectEntries { key, part ->
+            String path = part.sheet ?: source
+            BufferedImage sheet = images.computeIfAbsent(path) { ImageIO.read(new File(sources, path)) }
+            if (sheet == null) throw new GradleException("Unreadable component sheet: ${path}")
+            def rect = part.rect
+            if (rect[0] < 0 || rect[1] < 0 || rect[2] <= 0 || rect[3] <= 0 || rect[0] + rect[2] > sheet.width || rect[1] + rect[3] > sheet.height)
+                throw new GradleException("Invalid component crop ${path}: ${key} ${rect}")
+            [(key): extract(sheet, part)]
+        }
+        int size = 512
+        Map packed
+        while ((packed = pack(patches, size)) == null) {
+            size *= 2
+            if (size > 4096) throw new GradleException("Component atlas too large: ${source}")
+        }
+        BufferedImage albedo = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB)
+        BufferedImage specular = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB)
+        BufferedImage normal = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB)
+        packed.each { key, rect ->
+            BufferedImage patch = patches[key]
+            String emission = regions[key].emission
+            for (int y = -PADDING; y < patch.height + PADDING; y++) for (int x = -PADDING; x < patch.width + PADDING; x++) {
+                int pixel = patch.getRGB(Math.max(0, Math.min(patch.width - 1, x)), Math.max(0, Math.min(patch.height - 1, y))) | (int) 0xFF000000L
+                int r = pixel >> 16 & 255, g = pixel >> 8 & 255, b = pixel & 255
+                int high = Math.max(r, Math.max(g, b)), low = Math.min(r, Math.min(g, b))
+                // LabPBR emission belongs to designated lights, not to the surrounding metal.
+                boolean emitting = emission == 'light' || emission == 'crystal' || emission == 'color' && high > 110 && high - low > 42
+                int glow = emitting ? (emission == 'crystal' ? 64 : 190) : 255
+                boolean steel = key == 'steel' || key == 'trim' || key == 'rim'
+                int dx = rect[0] + x, dy = rect[1] + y
+                albedo.setRGB(dx, dy, pixel)
+                specular.setRGB(dx, dy, (glow << 24) | ((steel ? 135 : 80) << 16) | ((emitting ? 30 : steel ? 230 : 35) << 8))
+                normal.setRGB(dx, dy, (int) 0xFF7F7FFFL)
+            }
+        }
+        ImageIO.write(albedo, 'png', new File(output, name + '.png'))
+        ImageIO.write(specular, 'png', new File(output, name + '_s.png'))
+        ImageIO.write(normal, 'png', new File(output, name + '_n.png'))
+        new File(output, name + '.json').text = JsonOutput.toJson([size: size, regions: packed])
+    }
+
+    static Map pack(Map patches, int size) {
+        int x = PADDING, y = PADDING, row = 0
+        Map result = new LinkedHashMap()
+        for (def entry : patches.entrySet().sort { a, b -> b.value.height <=> a.value.height ?: a.key <=> b.key }) {
+            BufferedImage patch = entry.value
+            if (patch.width + PADDING * 2 > size) return null
+            if (x + patch.width + PADDING > size) { x = PADDING; y += row + PADDING * 2; row = 0 }
+            if (y + patch.height + PADDING > size) return null
+            result[entry.key] = [x, y, patch.width, patch.height]
+            x += patch.width + PADDING * 2
+            row = Math.max(row, patch.height)
+        }
+        return result
+    }
+
+    static BufferedImage extract(BufferedImage sheet, Map part) {
+        def rect = part.rect
+        if (!part.quad && !part.triangle && !part.size) return sheet.getSubimage((int) rect[0], (int) rect[1], (int) rect[2], (int) rect[3])
+        int width = part.size[0], height = part.size[1]
+        BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
+        for (int y = 0; y < height; y++) for (int x = 0; x < width; x++) {
+            double u = (x + 0.5d) / width, v = (y + 0.5d) / height
+            double sx, sy
+            if (part.quad) {
+                def p = part.quad
+                sx = (1-u)*(1-v)*p[0][0] + u*(1-v)*p[1][0] + u*v*p[2][0] + (1-u)*v*p[3][0]
+                sy = (1-u)*(1-v)*p[0][1] + u*(1-v)*p[1][1] + u*v*p[2][1] + (1-u)*v*p[3][1]
+            } else if (part.triangle) {
+                // Join four pyramid faces from the labeled triangular piece, excluding its background.
+                double dx = u - 0.5d, dy = v - 0.5d
+                double radius = Math.max(Math.abs(dx), Math.abs(dy)) * 2
+                double across = Math.abs(dx) > Math.abs(dy) ? dy : dx
+                double a = Math.max(0d, radius * 0.5d - across), c = Math.max(0d, radius * 0.5d + across)
+                def p = part.triangle
+                sx = a*p[0][0] + (1-radius)*p[1][0] + c*p[2][0]
+                sy = a*p[0][1] + (1-radius)*p[1][1] + c*p[2][1]
+            } else {
+                sx = rect[0] + u * (rect[2] - 1)
+                sy = rect[1] + v * (rect[3] - 1)
+            }
+            result.setRGB(x, y, sheet.getRGB((int) Math.round(sx), (int) Math.round(sy)))
+        }
+        return result
+    }
+}

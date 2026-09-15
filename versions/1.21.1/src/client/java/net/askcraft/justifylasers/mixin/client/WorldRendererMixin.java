@@ -33,5 +33,6 @@ public abstract class WorldRendererMixin {
         MatrixStack matrices = new MatrixStack();
         matrices.multiplyPositionMatrix(viewMatrix);
         LaserBeamLateRenderer.render(camera, matrices, projectionMatrix);
+        net.askcraft.justifylasers.client.render.CubeLensRenderer.render(camera, matrices, projectionMatrix);
     }
 }

@@ -20,7 +20,7 @@ public final class LaserDepthMerger {
     private static ShaderProgram program;
 
     public static void initialize() {
-        ClientPlatform.registerDepthShader(loadedProgram -> program = loadedProgram);
+        ClientPlatform.registerShader("depth_merge", VertexFormats.POSITION, loadedProgram -> program = loadedProgram);
     }
 
     /**
