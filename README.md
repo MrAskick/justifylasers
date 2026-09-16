@@ -1,10 +1,10 @@
 # Justify Lasers
 
-Configurable laser emitters, optical components, portable refocusing cubes, laser guns, automated turrets and laser blades, with an ore-to-laser industrial progression and native energy integration for technical modpacks.
+Configurable laser emitters, optical components, portable refocusing cubes, laser guns, automated turrets and laser blades, with an ore-to-laser industrial progression and standalone FE and photon-powered progression; native energy integration with technical modpacks remains optional.
 
 Author: Mr.Askick.
 
-[Changes since alpha.6](docs/releases/2.0.0-alpha.21.md) · [Подробное руководство на русском](docs/guide.ru.md) · [Build and verification](docs/verification.md)
+[Changes since alpha.21](docs/releases/2.0.0-alpha.26.md) · [Подробное руководство на русском](docs/guide.ru.md) · [Build and verification](docs/verification.md)
 
 ## Installation
 
@@ -23,7 +23,33 @@ Minecraft 1.20.1 targets Java 17; 1.21.1 targets Java 21. Architectury API is no
 
 NeoForge 1.20.1 is a legacy target and shares the Forge implementation. Prefer Forge for a new 1.20.1 modpack; contemporary NeoForge support is on 1.21.1. A universal JAR does not bundle a loader, Fabric API, shaders or technical mods, and it cannot make incompatible third-party mods run together.
 
-**2.0.0-alpha.21 is a prerelease. Back up worlds before upgrading or changing loaders.** Registry IDs and saved settings are preserved, but this does not make another mod's world data portable between loaders. Minecraft worlds cannot safely be downgraded from 1.21.1 to 1.20.1.
+**2.0.0-alpha.26 is a prerelease. Back up worlds before upgrading or changing loaders. Empty Electric Smelters before upgrading: that machine is removed. Rebuild large solar collectors using the new layout.** Other registry IDs and saved settings are preserved, but this does not make another mod's world data portable between loaders. Minecraft worlds cannot safely be downgraded from 1.21.1 to 1.20.1.
+
+## Beam Combiner and recipe navigation
+
+The **Beam Combiner** merges up to five incident beams into one output, retaining **95% of their total luminous flux** per combiner. The Energy Receiver converts that combined flux with its usual efficiency. The Configurator cycles each face through input, output and disabled; selecting another output returns the previous output to input. Incoming range is not renewed, and loops cannot repeat a source's energy budget. Output color is flux-weighted; mirrors, splitters, crystals and refocusing cubes remain compatible. `beamCombinerEfficiency` controls the loss (default `0.95`). The combiner requires its Assembly Chamber schematic.
+
+With **JEI** installed, click a machine's processing arrow to open all its recipes. The smaller **Help** button below the grower's water tank opens **Multiblock Construction**, which shows both 2×2×2 chambers and the 3×3×3 + 4 Solar Concentrator, with a 3D preview, selectable layers, top views and exact component counts. Find it through the machine's recipes/usages or the construction button in chamber/concentrator screens. JEI remains optional.
+
+## Solar progression
+
+All content is available without installing another technical mod. The early route is ores → workbench Fuel Generator and Assembly Chamber → looted/traded Tablet Schematic → assembled and charged tablet → Small Solar Concentrator → LM-powered crystal growth → laser devices and large solar installation. Diamonds, quartz and an Eye of Ender are needed along the way; raw photonite must be grown and mounted before emitter assembly.
+
+The new **Small Solar Concentrator** fits one block, tracks the sun and supplies up to **16 klm**, with a 32-block beam. Its tablet schematic assembles three Solar Absorbers, one Electric Motor and three Iron Ingots, costing 56,320 FE over 44 working seconds. The motor has a temporary model and uses a workbench recipe: `ICI / CRC / ICI` (iron, copper, redstone). Each absorber still costs 26,400 FE to assemble.
+
+**Crystal Growth Chambers consume only light**, not FE. Aim at either lower lens on any horizontal face. A batch requires 12 klm continuously for 600 working ticks, plus raw photonite, two quartz and 1000 mB water. Inputs from multiple beams sum; excess light is not stored or used to accelerate the recipe. Night or insufficient light pauses progress. The generator is not a substitute for an optical input.
+
+The **large 3×3×3 + 4 collector** now has a dish model. Its bottom is nine small concentrators, its middle has four housings, four controllers and an energy core, and its top is eight small concentrators around absorbing glass. Attach one outward-facing Optical Resonator to the center of each of the four **bottom-layer** sides. The dish tracks the sun in world coordinates and uses a continuous panel grid; leave clearance above the body for its moving rim. Incorporated small collectors stop generating individually. Break the structure and they can work separately again. A structure cannot absorb another owner's private small collector.
+
+Use the Configurator's Rotate mode on an exterior horizontal bottom face to choose the single laser output. Both sizes have emitter-style GUIs with live luminous flux, status, power, redstone and privacy. The large collector peaks at **480 klm**, 30× one small collector and about 1.76× the combined flux of its 17 small components. It retains a 256-block beam, 3× width and up to 0.5 HP/tick damage with armor/resistance support. Small beam damage is proportionally weaker.
+
+Sun height smoothly controls output; shading, night and weather matter. A default Energy Receiver converts a small source to up to **12 FE/tick**, a large one to **384 FE/tick**. The large collector exceeds a base emitter (80 klm), but not a maximally upgraded one (656 klm). FE conversion is a gameplay ratio, not a physical equivalence. Mirrors, crystals, cubes, splitters and combiners remain compatible; an optical share cannot be consumed twice. Creative beams have no spendable FE or LM.
+
+**Laser-Absorbing Glass returns to the workbench**, with the same four glass, two Wolframite Ingots and one grown Photonite Crystal; it no longer has a schematic. It passes sunlight but stops lasers and cannot be laser-mined. Soft incoming sunlight shafts can be disabled under J → Effects without stopping generation.
+
+Alpha.26 makes generator output thermal: lava reaches 1200 °C / 95% and a net 128 FE/tick; sticks cap at 300 °C. Heating takes 0.2 °C/tick, cooling is three times faster. The detailed casing has live instruments. Fuel type, residual heat and fractional FE survive reload. Stock alpha.25 output migrates from 32 to a 128 FE/tick peak, with a `justifylasers.pre-alpha26.json.bak` backup; custom rates remain. Add the three missing lower resonators to old alpha.25 collectors. Earlier layouts additionally need 17 small collectors instead of absorbers. The Electric Smelter remains removed.
+
+[Recipes, layer diagrams, balance and migration details (Russian)](docs/solar-concentrator.ru.md).
 
 ## Client settings
 
@@ -99,40 +125,41 @@ Armor, armor toughness, Protection enchantments, Resistance, absorption and shie
 
 Industrial progression is enabled by default without requiring Mekanism. **Wolframite Ore** uses diamond-sized veins with a height distribution shifted up 32 blocks: it occurs from the bottom of the Overworld up to Y 48, with its height curve peaking at Y -32. **Photonite Ore** uses the deeper diamond height curve, reaching Y 16, with fewer vein attempts. Wolframite is somewhat more common than diamonds; Photonite is slightly rarer. Both have deepslate variants, require an iron-tier pickaxe and support Fortune/Silk Touch. Ore blocks use the current resource pack's stone/deepslate with protruding 3D mineral inclusions and LabPBR emission maps. New ores appear only in newly generated chunks.
 
-A normal furnace smelts one Raw Wolframite into one **Wolframite Ingot** in **150 seconds** (3,000 ticks at 20 TPS). New component recipes use this ingot; legacy Heat-Resistant Alloy items remain registered. Fuel Generators and Electric Smelters remain usable but are marked **WIP** and have no crafting recipes. Supply power with a compatible external source or Creative equipment for now.
+A normal furnace smelts one Raw Wolframite into one **Wolframite Ingot** in **150 seconds** (3,000 ticks at 20 TPS). New component recipes use this ingot; legacy Heat-Resistant Alloy items remain registered. The Fuel Generator now has a workbench recipe: a Blast Furnace above an Electric Motor, with Wolframite Ingots to its left, right and below. Place it against a formed Assembly Chamber for cable-free power. Electric Smelters are removed.
 
 | Machine | Inputs and result | Default energy / time |
 | --- | --- | --- |
-| Fuel Generator (WIP) | Furnace fuel; returns containers such as empty buckets | Produces 128 units/tick; vanilla fuel duration |
-| Electric Smelter (WIP) | Raw Wolframite → Wolframite Ingot | 32/tick for 200 ticks (6,400 total) |
-| Crystal Growth Chamber | Raw Photonite + 2 quartz + 1,000 mB water → Photonite Crystal | 64/tick for 600 ticks (38,400 total) |
-| Assembly Chamber | Reusable schematic + its materials → selected device/module | Per schematic: 24–448/tick for 120–1600 ticks |
+| Fuel Generator | Furnace fuel; charging slot for tablet; returns empty fuel containers | Produces 32 units/tick; vanilla fuel duration |
+| Crystal Growth Chamber | Raw Photonite + 2 quartz + 1,000 mB water → Photonite Crystal | Continuous 12 klm for 600 working ticks; no FE |
+| Assembly Chamber | Reusable schematic + its materials → selected device/module | Per schematic: 24–464/tick for 120–1680 ticks |
 
 Build each chamber from **eight matching casings in a solid 2×2×2 arrangement**. The last placed casing forms the multiblock; right-click can also form an existing arrangement. Every member opens the controller's inventory. The grower's shared tank holds **8,000 mB** by default, accepts water buckets or native fluid pipes and consumes water progressively. Its visible water level follows the tank. Removing a casing stops processing; controller contents remain owned by that controller rather than being duplicated across members.
 
 The grower produces a bare **Photonite Crystal**, not a laser-ready item. Craft a **Crystal Mount**, then combine it with the grown crystal to obtain a **White Laser Crystal**. The mount can also be placed as decoration. Dye the mounted crystal as before; emitter assembly accepts any of the nine colors and installs the supplied crystal in the finished emitter.
 
-Connect cables and pipes to any formed casing, on any face. Machines share a 100,000-unit buffer by default. Items can be inserted and results extracted from all six sides; fluid ports accept water only. Native Fabric Transfer and Forge/NeoForge item/fluid/energy interfaces allow automation without a hard dependency on an automation mod. The right-hand tabs control privacy and redstone: ignore (default), require power, or require no power. A signal on any casing controls the whole structure. Private chambers restrict access and breaking to the owner/admin and disable item/fluid automation. Full output, missing power or a disabled redstone condition pauses processing. Inventory, water, energy, ownership and progress persist across saves. Unloaded structures do not force-load missing chunks.
+Connect cables and pipes to any formed casing, on any face. Assembly chambers share a 100,000-unit FE buffer by default; growers reject FE and need light instead. Items can be inserted and results extracted from all six sides; fluid ports accept water only. Native Fabric Transfer and Forge/NeoForge item/fluid/energy interfaces allow automation without a hard dependency on an automation mod. The right-hand tabs control privacy and redstone: ignore (default), require power, or require no power. A signal on any casing controls the whole structure. Private chambers restrict access and breaking to the owner/admin and disable item/fluid automation. Full output, missing power or a disabled redstone condition pauses processing. Inventory, water, energy, ownership and progress persist across saves. Unloaded structures do not force-load missing chunks.
 
 The grower enlarges and rotates its crystal amid brief violet/blue electrical arcs. The assembly chamber moves two articulated manipulators around the selected output, with active emissive details. Completing a powered emitter produces a brief calibration beam; this beam is visual only and cannot damage entities or blocks.
 
-Insert a matching **Assembly Schematic** before loading its ingredients. Schematics are reusable and show a cached, flat 2D thumbnail of the resulting item on their card. Empty ingredient slots display dimmed previews, cycling through allowed alternatives such as crystal colors; previews are not real items. The chamber has **26 assembly recipes**, including five foundational components: **Optical Resonator**, **Reinforced Laser Housing**, **Energy Core**, **Focusing Lens Assembly** and **Beam Controller**. These have their own schematics and distinct recipes, and are used in appropriate combinations by emitters, weapons, optics and modules. Casings, mounts and basic electronics still use workbench recipes. The obsolete Laser Chassis and Optical Assembly are replaced by Reinforced Laser Housing and Focusing Lens Assembly; old stacks convert on entering a player's inventory, retaining quantity and custom data. **JEI** shows machine recipes, ingredient counts, schematics, water, duration and energy. Processing recipes use the data-pack type `justifylasers:industrial`; global costs, buffers, water requirements and timings are configurable. Every assembly schematic has its own duration and power draw. See [assembly costs](docs/assembly-costs.md) for the defaults and global scaling.
+Insert a matching **Assembly Schematic** before loading its ingredients. Schematics are reusable and show a cached, flat 2D thumbnail of the resulting item on their card. Empty ingredient slots display dimmed previews, cycling through allowed alternatives such as crystal colors; previews are not real items. The chamber has **30 assembly recipes**, including five foundational components: **Optical Resonator**, **Reinforced Laser Housing**, **Energy Core**, **Focusing Lens Assembly** and **Beam Controller**. These have their own schematics and distinct recipes, and are used in appropriate combinations by emitters, weapons, optics and modules. Casings, mounts and basic electronics still use workbench recipes. The obsolete Laser Chassis and Optical Assembly are replaced by Reinforced Laser Housing and Focusing Lens Assembly; old stacks convert on entering a player's inventory, retaining quantity and custom data. **JEI** shows machine recipes, ingredient counts, schematics, water, duration and energy. Processing recipes use the data-pack type `justifylasers:industrial`; global costs, buffers, water requirements and timings are configurable. Every assembly schematic has its own duration and power draw. See [assembly costs](docs/assembly-costs.md) for the defaults and global scaling.
 
 ### Extraterrestrial Tablet
 
 Use the tablet to interact directly with its handheld display. Choose a design on the left; drag the actual 3D item preview on the right to rotate it. Mouse wheel/page buttons browse the catalog; Enter records the selected schematic. The display shows world time and actual battery percentage. Escape or the inventory key closes it; F1 hides the tablet with the hand view.
 
-New tablets are discharged. Their capacity is **50,000 energy units**, accepting up to **256 per transfer** in a compatible item charger. Alternatively, sneak-use a powered machine to transfer its stored energy into the tablet. Its open interface uses **1 unit per tick** (20/second), with no screen drain after closing; recording costs **1,000 units** and consumes one **Blank Schematic** from the inventory. Craft blank cards with `PPP / IRI / PPP` (paper, iron nuggets and redstone). Recording is validated on the server and does not consume resources when the card, charge, recipe or inventory space is missing.
+New tablets are discharged. Their capacity is **50,000 energy units**, accepting up to **256 per transfer** in a compatible item charger. The Fuel Generator has a dedicated charging slot, taking priority over adjacent consumers. Alternatively, sneak-use a powered machine to transfer its stored energy into the tablet. Its open interface uses **1 unit per tick** (20/second), with no screen drain after closing; recording costs **1,000 units** and consumes one **Blank Schematic** from the inventory. Craft blank cards with `PPP / IRL / PPP`: paper, an iron ingot, redstone and lapis lazuli. Recording is validated on the server and does not consume resources when the card, charge, recipe or inventory space is missing. Both blank and recorded cards face the player when held in either hand.
 
-The discovery structure is reserved for a later update: the tablet currently has no survival loot source or crafting recipe. Use Creative to test it. Fuel Generator/Electric Smelter recipes also remain WIP; this update does not claim a complete survival progression.
+Find the **Tablet Schematic** in dungeon (20%), shipwreck treasure (25%), mineshaft (15%), desert pyramid (15%), jungle temple (20%), stronghold library (35%) or ancient city (25%) chests. These are independent chances per newly generated chest loot, not replacements for vanilla treasure. Assemble a tablet with one each of **Control Circuit, Eye of Ender, Wolframite Ingot and Gold Ingot**: 30 seconds at 144 energy/tick, 86,400 total. The schematic is reusable and can also be recorded by a charged tablet, allowing copies to be traded on finite multiplayer worlds. A first tablet/schematic still has to survive somewhere; there is no recovery recipe if every copy is destroyed.
+
+Control Circuits now require diamonds instead of gold nuggets; Crystal Mounts require iron ingots instead of nuggets. The Fuel Generator is craftable; the Electric Smelter is removed.
 
 When upgrading an existing workshop, empty the old grower/assembler before forming its larger casing structure. Registry IDs are retained; old single-block chambers cannot process until formed.
 
 ## Energy-powered lasers
 
-By default, the built-in industrial progression enables technical mode. Setting `industrialProgression` to `false` restores automatic detection of the configured external technical mods. `energyMode: "OFF"` explicitly selects the legacy, non-powered mode. The server's mode controls recipes and is synchronized to clients.
+All machines, parts and recipes are available regardless of installed technical mods. Legacy `energyMode`, `industrialProgression` and `technicalMods` settings no longer control availability. External mods may still provide compatible FE power and automation.
 
-In technical mode, the original block becomes **Creative Laser Emitter** and is no longer craftable. Previously placed emitters are not removed or converted. Their unlimited operation remains available for creative builds. The separate **Powered Laser Emitter** is made in the Assembly Chamber and appears in the Justify Lasers tab together with its parts and machines.
+The original block is always **Creative Laser Emitter** and is no longer craftable. Previously placed emitters are not removed or converted. Their unlimited operation remains available for creative builds. The separate **Powered Laser Emitter** is made in the Assembly Chamber and appears in the Justify Lasers tab together with its parts and machines.
 
 1. Place the powered emitter and supply energy through any face. With Mekanism, connect a Universal Cable to an energy cube's configured output. The powered emitter does not use redstone as its power source.
 2. Open **Modules** to inspect or replace the installed color crystal. Emitters made in the Assembly Chamber already contain the crystal used to build them; other emitters need one in the first slot. No crystal means no beam, even with a full buffer. Switching crystals changes the beam and model color. Crystals are not consumed during operation.
@@ -164,21 +191,21 @@ Upgrading from alpha.1 preserves the crystal, the four original module slots, en
 
 The menu shows stored energy, capacity, cost per tick, and why the beam is stopped. Energy is charged once per server tick for the enabled settings, even if the beam currently hits no entity or mineable block. Faster mining and higher damage, hit rate, or knockback cost more. Ignition adds a cost only with its module and switch enabled. Each Range I or Thickness module adds 1 energy unit/tick; each Range II module adds 8. The two slots' costs add together, including the last Range II module at the 512-block cap. Shortening the beam with an obstacle does not reduce the installed-module cost. Color and lighting do not change consumption. Cubes share their source emitter's power budget; they do not charge again for each segment. A disabled emitter, one blocked by redstone, or one without a crystal consumes nothing. Insufficient energy stops the beam, mining, damage, and receiver activation.
 
-Energy and installed parts survive world saves and chunk reloads. Breaking the emitter returns installed parts as items; stored energy is lost. When technical mode is disabled, existing powered emitters and parts stay registered but their recipes are hidden and the emitters stop operating.
+Energy and installed parts survive world saves and chunk reloads. Breaking the emitter returns installed parts as items; stored energy is lost. Powered emitters and their recipes are available without external technical mods.
 
 All nine crystals have a 3D crystal-and-metal housing, visible in menus, either hand, item frames, and as dropped items. The colored crystal and indicator inserts have emissive shader materials; the housing remains metallic. They do not place light blocks or change the emitter's power cost. Existing crystal items keep their IDs, colors and single-item stack limit, and work without being regrown.
 
-Modules and the Control Circuit also have individual 3D models. Right-click a block with a laser crystal, module or Control Circuit to place it; sneak-right-click when placing against a block that opens a menu. Mining a decoration in survival returns the same reusable part without Silk Touch. Creative removal produces no drop. Modules remain decorations; placed crystals also act as optical color filters. Crystal tips face away from their mounting surface, including walls and ceilings. The five assembly components are inventory items, not placeable blocks.
+Modules and the Control Circuit also have individual 3D models. Right-click a block with a laser crystal, module or Control Circuit to place it; sneak-right-click when placing against a block that opens a menu. Mining a decoration in survival returns the same reusable part without Silk Touch. Creative removal produces no drop. Modules remain decorations; placed crystals also act as optical color filters. Crystal tips face away from their mounting surface, including walls and ceilings. All five assembly components are also placeable blocks and retain their assembly uses.
 
-Placed crystals have translucent colored facets and retain their shader emission; their metal frame remains opaque. Kappa with Iris/Oculus can show bloom and colored surface lighting from their materials; the result depends on the shader pack and its settings. This does not add ordinary Minecraft block light. Crystal recipes and creative-tab entries are available without technical mods; powered emitters, energy receivers and upgrade modules other than Target Filter still follow technical mode.
+Placed crystals have translucent colored facets and retain their shader emission; their metal frame remains opaque. Kappa with Iris/Oculus can show bloom and colored surface lighting from their materials; the result depends on the shader pack and its settings. This does not add ordinary Minecraft block light. Crystals, powered emitters, energy receivers and all upgrade modules are available without technical mods.
 
 ### Recipes
 
-The powered emitter has no workbench recipe: use the Assembly Chamber and a grown crystal. A grown crystal plus a matching dye produces the chosen color; violet uses purple dye. In legacy non-powered mode only, crystals retain their old quartz/dye/amethyst workbench recipe.
+The powered emitter has no workbench recipe: use the Assembly Chamber and a grown, mounted crystal. Combine a grown Photonite Crystal with a Crystal Mount to make a white laser crystal; dye it for the chosen color. Violet uses purple dye.
 
 Modules require their Assembly Schematics. Their ingredients reflect their purpose: lenses for range/thickness, Beam Controllers for targeting/mining/damage, and specialized materials for Silk Touch, drops, scorch marks and ignition. See JEI for the exact ingredient counts and current data-pack recipes; the old workbench module recipes are no longer used.
 
-Craft a Control Circuit using `RGR / GQG / RGR`: four redstone dust, four gold nuggets, and central quartz. The Advanced Range schematic combines eight Range I modules with one Control Circuit in the Assembly Chamber.
+Craft a Control Circuit using `RDR / DQD / RDR`: four redstone dust, four diamonds, and central quartz. The Advanced Range schematic combines eight Range I modules with one Control Circuit in the Assembly Chamber.
 
 ### Server configuration
 
@@ -186,18 +213,17 @@ The first launch creates `config/justifylasers.json`. Edit it with the game/serv
 
 ```json
 {
-  "energyMode": "AUTO",
-  "industrialProgression": true,
   "machineCapacity": 100000,
   "machineTransfer": 512,
   "generatorPerTick": 128,
-  "smelterPerTick": 32,
-  "crystalGrowerPerTick": 64,
+  "generatorHeatPerTick": 2,
+  "smallSolarPeakFlux": 16000,
+  "smallSolarBeamRange": 32,
+  "solarPeakFlux": 480000,
+  "crystalGrowthFlux": 12000,
   "assemblyPerTick": 160,
-  "alloySmeltingTicks": 200,
   "crystalGrowthTicks": 600,
   "laserAssemblyTicks": 400,
-  "technicalMods": ["mekanism", "techreborn", "modern_industrialization", "powah", "thermal", "oritech"],
   "capacity": 2000000,
   "maxInput": 100000,
   "basePerTick": 80,
@@ -217,7 +243,7 @@ The first launch creates `config/justifylasers.json`. Edit it with the game/serv
 }
 ```
 
-`AUTO` enables the built-in progression when `industrialProgression` is true; otherwise it detects the configured mod IDs. `ON` enables technical mode explicitly, including with an unlisted energy mod; `OFF` restores legacy non-powered recipes and stops industrial machines/powered emitters. Adding an ID only changes detection: that mod must still supply the platform's energy interface. Mekanism cable transfer has been tested on Forge 1.20.1 and NeoForge 1.21.1; the other listed mods have not each been integration-tested. New configuration keys use defaults when absent; existing files are not overwritten.
+Other mods must implement the platform's energy interface for power transfer; no direct Mekanism dependency is required. Alpha.26 migrates the former stock generator/solar values once, making a config backup first. Missing new keys use defaults; explicit nonstock values are retained.
 
 Weapon limits: range 1–512 blocks, damage 0–100 HP, 1–20 hits/s and 0–10× knockback. Turrets use the same damage settings with their separate range of 1–128 blocks. Missing weapon keys in an existing config use the defaults above; the existing file is not rewritten. Add the keys to change these values. Weapon and emitter sounds share the configured voice/volume budget.
 
@@ -239,7 +265,7 @@ With defaults and no range/thickness upgrades, a visual-only beam uses 80 units/
 - **Crystals:** a beam passing through a placed crystal changes color only after the crystal. Right-click switches replacement/additive mixing; red plus blue gives magenta. The mode is saved in the placed block.
 - **Laser Mirror:** mount on a floor, wall or ceiling. Right-click rotates yaw by 15°; sneak-right-click changes tilt. The actual mirror normal determines reflection. Use the configurator for precise point-to-point aiming.
 - **Beam Splitter:** a six-armed cross with a port on every face, including top and bottom. Each port can be an input, output or disabled. New splitters have one input and five outputs. Incoming power is shared equally among enabled outputs: five outputs each receive 1/5, three receive 1/3, and a single output receives the full branch. With no outputs the beam stops. Damage, knockback, new burning time, mining progress and transferable energy are divided, not duplicated. Branches keep their remaining range; the emitter still mines at most one block per world tick.
-- **Laser Energy Receiver:** each face can accept a laser, export energy, or be disabled. Aim a powered beam into an input lens. It recovers 80% of that branch's share of the emitter's actual paid cost, rounded down. Only energy-output faces connect to energy extraction; changing a connected face immediately closes its old output. Obstacles or an inactive source stop new transfer; the buffer remains available through enabled outputs. Creative beams color the receiver but produce no energy. `energyTransmissionEfficiency` must be strictly between 0 and 1. Automatic output is capped at `maxInput` per tick across all output faces.
+- **Laser Energy Receiver:** each face can accept a laser, export energy, or be disabled. Aim a powered or solar beam into an input lens. It converts the branch's luminous flux using `floor(lm / lumensPerEnergyUnit × energyTransmissionEfficiency)`; default efficiency is 80%. Emitter mining/damage costs do not increase that flux. Right-click displays incoming lumens and actual energy input. Only energy-output faces connect to extraction; changing a connected face immediately closes its old output. Obstacles or an inactive source stop new transfer; the buffer remains available through enabled outputs. Creative beams color the receiver but produce no energy. Efficiency must be strictly between 0 and 1. Automatic output is capped at `maxInput` per tick across all output faces.
 
 Use the configurator's **Rotate / configure ports** mode on a face to cycle **Input → Output → Disabled**; sneak-right-click cycles backwards. Inputs show a lens, splitter outputs show outward markings, receiver outputs show energy contacts, and disabled faces have a shutter. Port settings survive saves and synchronize to clients. Existing alpha.7 splitters retain their previous three-output layout on first load; enable their other faces explicitly if desired.
 

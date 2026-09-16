@@ -62,17 +62,17 @@ class LaserEnergyTest {
     }
 
     @Test
-    void standaloneIndustryEnablesEnergyAndLegacyDetectionRemainsAvailable() {
+    void standaloneIndustryIgnoresLegacyModDetectionAndModeFlags() {
         LaserConfig config = new LaserConfig();
         assertTrue(config.enablesEnergy(id -> false));
         config.industrialProgression = false;
-        assertFalse(config.enablesEnergy(id -> false));
+        assertTrue(config.enablesEnergy(id -> false));
         assertTrue(config.enablesEnergy("mekanism"::equals));
-        assertFalse(config.enablesEnergy("unrelated_mod"::equals));
+        assertTrue(config.enablesEnergy("unrelated_mod"::equals));
         config.energyMode = LaserConfig.EnergyMode.ON;
         assertTrue(config.enablesEnergy(id -> false));
         config.energyMode = LaserConfig.EnergyMode.OFF;
-        assertFalse(config.enablesEnergy(id -> true));
+        assertTrue(config.enablesEnergy(id -> true));
     }
 
     @Test

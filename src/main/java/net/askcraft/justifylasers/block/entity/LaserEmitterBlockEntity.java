@@ -17,6 +17,7 @@ import net.askcraft.justifylasers.laser.LaserDamage;
 import net.askcraft.justifylasers.laser.LaserMining;
 import net.askcraft.justifylasers.laser.LaserRedstoneMode;
 import net.askcraft.justifylasers.laser.LaserTargetFilter;
+import net.askcraft.justifylasers.laser.LuminousFlux;
 import net.askcraft.justifylasers.platform.InventoryNbt;
 import net.askcraft.justifylasers.platform.LaserBlockEntity;
 import net.askcraft.justifylasers.platform.LaserScreenFactory;
@@ -63,7 +64,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserScreenFactory, SidedInventory, LaserEnergyHost {
+public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserScreenFactory, SidedInventory, LaserEnergyHost,
+        net.askcraft.justifylasers.laser.LaserBeamSource {
     public static final int MIN_RANGE = 1;
     public static final int MAX_RANGE = 512;
     public static final int DEFAULT_RANGE = 64;
@@ -72,7 +74,7 @@ public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserSc
     public static final int DEFAULT_BEAM_WIDTH_STEP = BEAM_WIDTH_STEPS / 2;
     public static final float MIN_BEAM_WIDTH_SCALE = 0.1F;
     public static final float MAX_BEAM_WIDTH_SCALE = 10.0F;
-    public static final int PROPERTY_COUNT = 48;
+    public static final int PROPERTY_COUNT = 52;
     public static final int MODULE_SLOT_COUNT = 10;
     private final LaserTargetFilter targetFilter = new LaserTargetFilter();
 
@@ -148,6 +150,7 @@ public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserSc
                 case 29 -> world != null && world.isReceivingRedstonePower(pos) ? 1 : 0;
                 case 46 -> targetFilter.flags();
                 case 47 -> targetFilter.exclusions().size();
+                case 48, 49, 50, 51 -> (int) (luminousFlux() >>> ((index - 48) * 16)) & 0xFFFF;
                 default -> index >= 30 && index < 46 && index - 30 < ownerName.length()
                         ? ownerName.charAt(index - 30) : 0;
             };
@@ -361,7 +364,7 @@ public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserSc
 
         BlockState targetState = world.getBlockState(targetPos);
         float hardness = targetState.getHardness(world, targetPos);
-        if (targetState.isAir() || hardness < 0.0F) {
+        if (targetState.isAir() || hardness < 0.0F || targetState.isIn(ModBlocks.LASER_PROOF)) {
             Heating removed = heating.remove(targetPos);
             if (removed != null) world.setBlockBreakingInfo(breakerId(targetPos), targetPos, -1);
             return;
@@ -514,6 +517,12 @@ public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserSc
         return color;
     }
 
+    @Override public World beamWorld() { return world; }
+    @Override public BlockPos beamPosition() { return pos; }
+    @Override public int beamRgb() { return color.rgb(); }
+    @Override public Vec3d beamDirection() { return Vec3d.of(getCachedState().get(LaserEmitterBlock.FACING).getVector()); }
+    @Override public Vec3d beamOrigin() { return Vec3d.ofCenter(pos).add(beamDirection().multiply(LaserEmitterBlock.BEAM_ORIGIN_OFFSET)); }
+
     public float getBeamWidthScale() {
         return beamWidthScale(getBeamWidthStep());
     }
@@ -561,19 +570,35 @@ public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserSc
 
     public int energyCost() {
         if (!isPoweredEmitter()) return 0;
+        return LaserEnergyCost.perTick(LaserConfig.get().rates(), breaksBlocks(), miningSpeedStep, damagesEntities(),
+                LaserDamage.damageForStep(damageStep), hitsPerSecond, LaserDamage.knockbackForStep(knockbackStep), ignitesEntities(), opticalModuleCost());
+    }
+
+    private long opticalModuleCost() {
         long moduleCost = hasModule(LaserModule.THICKNESS) ? modules.get(LaserModule.THICKNESS.slot()).getCount() : 0;
         ItemStack range = modules.get(LaserModule.RANGE.slot());
         if (range.getItem() instanceof LaserModuleItem item && item.module() == LaserModule.RANGE) {
             // Charge installed upgrades, including the last tier-II module at the range cap.
             moduleCost += (long) range.getCount() * item.rangePerItem();
         }
-        return LaserEnergyCost.perTick(LaserConfig.get().rates(), breaksBlocks(), miningSpeedStep, damagesEntities(),
-                LaserDamage.damageForStep(damageStep), hitsPerSecond, LaserDamage.knockbackForStep(knockbackStep), ignitesEntities(), moduleCost);
+        return moduleCost;
+    }
+
+    public int opticalEnergyRate() {
+        return isPoweredEmitter() ? (int) Math.min(Integer.MAX_VALUE, LaserConfig.get().basePerTick + opticalModuleCost()) : 0;
+    }
+
+    @Override public long luminousFlux() {
+        return isBeamActive() ? LuminousFlux.fromEnergyRate(opticalEnergyRate(), LaserConfig.get().lumensPerEnergyUnit) : 0;
+    }
+
+    @Override public long opticalBudget() {
+        return LuminousFlux.fromEnergyRate(transferBudget(), LaserConfig.get().lumensPerEnergyUnit);
     }
 
     public int transferBudget() {
         return world != null && !world.isClient && isPoweredEmitter() && isBeamActive()
-                && lastEnergyTick == world.getTime() ? paidEnergy : 0;
+                && lastEnergyTick == world.getTime() ? Math.min(paidEnergy, opticalEnergyRate()) : 0;
     }
 
     public String status() {

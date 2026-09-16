@@ -51,16 +51,39 @@ public final class LaserConfiguratorItem extends Item {
         if (world.isClient) return ActionResult.SUCCESS;
         var entity = world.getBlockEntity(pos);
         if (entity instanceof LaserEmitterBlockEntity emitter && !emitter.canAccess(player)) return fail(player, "access_denied");
+        if (entity instanceof net.askcraft.justifylasers.block.entity.LaserComponentBlockEntity component && !component.canAccess(player))
+            return fail(player, "access_denied");
         ItemStack stack = context.getStack();
         NbtCompound data = GameVersion.itemData(stack);
         switch (mode(stack)) {
             case 0 -> {
+                if (entity instanceof net.askcraft.justifylasers.block.entity.LaserComponentBlockEntity part) {
+                    var solar = part instanceof net.askcraft.justifylasers.block.entity.SolarConcentratorBlockEntity small && small.small() && !small.formed()
+                            ? small : part.controller();
+                    if (solar != null && context.getSide().getAxis().isHorizontal()
+                            && (solar.small() || pos.getY() == net.askcraft.justifylasers.industry.SolarStructure.origin(solar).getY())) {
+                        if (!solar.canAccess(player)) return fail(player, "access_denied");
+                        solar.selectOutput(context.getSide());
+                        player.sendMessage(Text.translatable("message.justifylasers.solar_output", Text.translatable("direction.justifylasers." + context.getSide().getName())), true);
+                        return ActionResult.SUCCESS;
+                    }
+                    if (solar != null) return ActionResult.PASS;
+                }
                 if (entity instanceof LaserOpticBlockEntity optic && optic.hasConfigurablePorts()) {
                     optic.cyclePort(context.getSide(), player);
                     return ActionResult.SUCCESS;
                 }
                 var state = world.getBlockState(pos);
                 Direction direction = player.isSneaking() ? context.getSide().getOpposite() : context.getSide();
+                if (state.getBlock() instanceof net.askcraft.justifylasers.block.LaserComponentBlock) {
+                    if (!direction.getAxis().isHorizontal()) direction = state.get(net.askcraft.justifylasers.block.LaserComponentBlock.FACING).rotateYClockwise();
+                    if (entity instanceof net.askcraft.justifylasers.block.entity.LaserComponentBlockEntity part)
+                        net.askcraft.justifylasers.industry.SolarStructure.dismantle(part);
+                    world.setBlockState(pos, state.with(net.askcraft.justifylasers.block.LaserComponentBlock.FORMED, false)
+                            .with(net.askcraft.justifylasers.block.LaserComponentBlock.FACING, direction), Block.NOTIFY_ALL);
+                    net.askcraft.justifylasers.industry.SolarStructure.formNearby(world, pos);
+                    return ActionResult.SUCCESS;
+                }
                 if (state.getBlock() instanceof LaserEmitterBlock || state.getBlock() instanceof LaserReceiverBlock
                         || state.getBlock() instanceof LaserOpticBlock) {
                     world.setBlockState(pos, state.with(LaserEmitterBlock.FACING, direction), Block.NOTIFY_ALL);

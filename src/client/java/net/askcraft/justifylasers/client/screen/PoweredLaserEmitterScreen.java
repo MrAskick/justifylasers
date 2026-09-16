@@ -278,7 +278,7 @@ public final class PoweredLaserEmitterScreen extends HandledScreen<LaserEmitterS
             text(context, label("consumption"), 154, 42, 100, MUTED, false, 0.8F);
             text(context, Text.literal(compact(handler.getEnergyCost()) + " " + Platform.ENERGY_UNIT + "/t"), 154, 53, 100, ACCENT, false, 1);
             text(context, Text.literal(compact(handler.getEnergy()) + " / " + compact(handler.getEnergyCapacity()) + " " + Platform.ENERGY_UNIT), 154, 71, 100, TEXT, false, 0.75F);
-            text(context, label("status"), 154, 96, 100, MUTED, false, 0.8F);
+            text(context, Text.literal(net.askcraft.justifylasers.laser.LuminousFlux.format(handler.luminousFlux())), 154, 96, 100, ACCENT, false, 0.8F);
             text(context, label("status." + status()), 154, 108, 100, handler.isActive() ? ACCENT : TEXT, false, 0.8F);
             return;
         }

@@ -15,7 +15,8 @@ public final class SaberTooltips {
             lines.add(Text.translatable("tooltip.justifylasers.dual_weapons").formatted(Formatting.AQUA));
         if (stack.getItem() instanceof net.askcraft.justifylasers.item.AssemblyBlueprintItem blueprint) {
             lines.add(Text.translatable("gui.justifylasers.industry.blueprint_reusable").formatted(Formatting.AQUA));
-            lines.add(Text.translatable("tooltip.justifylasers.blueprint_tablet").formatted(Formatting.GRAY));
+            lines.add(Text.translatable(blueprint.recipe().equals("extraterrestrial_tablet")
+                    ? "tooltip.justifylasers.tablet_schematic" : "tooltip.justifylasers.blueprint_tablet").formatted(Formatting.GRAY));
         }
         if (stack.isOf(net.askcraft.justifylasers.registry.ModIndustry.MACHINES.get(net.askcraft.justifylasers.industry.MachineKind.CRYSTAL_GROWER).asItem())
                 || stack.isOf(net.askcraft.justifylasers.registry.ModIndustry.MACHINES.get(net.askcraft.justifylasers.industry.MachineKind.ASSEMBLY_CHAMBER).asItem()))

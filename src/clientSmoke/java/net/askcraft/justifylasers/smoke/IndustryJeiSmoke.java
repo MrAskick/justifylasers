@@ -13,11 +13,11 @@ final class IndustryJeiSmoke {
     static void tick(MinecraftClient client, int tick) {
         if (tick == 835) show("crystal_growth_chamber", 1);
         if (tick == 842) capture(client, "grower");
-        if (tick == 846) show("assembly_chamber", 26);
+        if (tick == 846) show("assembly_chamber", 30);
         if (tick == 855) capture(client, "assembly");
         if (tick == 860) {
             client.setScreen(null);
-            LoggerFactory.getLogger("justifylasers-client-smoke").info("INDUSTRY_JEI_SMOKE_PASSED growth=1 assembly=26 visibleCategories=true");
+            LoggerFactory.getLogger("justifylasers-client-smoke").info("INDUSTRY_JEI_SMOKE_PASSED growth=1 assembly=30 visibleCategories=true");
         }
     }
 

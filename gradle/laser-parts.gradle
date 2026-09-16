@@ -73,7 +73,7 @@ tasks.register('generateLaserParts') {
                            ground: [translation: [0, 3, 0], scale: [0.5, 0.5, 0.5]]]])
         json('data/justifylasers/recipes/control_circuit.json',
                 ['justifylasers:technical': true, type: 'minecraft:crafting_shaped', category: 'misc',
-                 pattern: ['RGR', 'GQG', 'RGR'], key: [R: [item: 'minecraft:redstone'], G: [item: 'minecraft:gold_nugget'], Q: [item: 'minecraft:quartz']],
+                 pattern: ['RGR', 'GQG', 'RGR'], key: [R: [item: 'minecraft:redstone'], G: [item: 'minecraft:diamond'], Q: [item: 'minecraft:quartz']],
                  result: [item: 'justifylasers:control_circuit']])
         json('assets/justifylasers/models/item/advanced_range_module.json',
                 [parent: 'justifylasers:item/module', textures: [particle: 'justifylasers:block/particle/advanced_range_module']])

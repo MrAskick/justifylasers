@@ -1,0 +1,81 @@
+import groovy.json.JsonOutput
+import java.awt.image.BufferedImage
+import javax.imageio.ImageIO
+
+// Authoring only: extract individual UV islands, never package a reference sheet.
+tasks.register('generateSolarUpgradeMaterials') {
+    def destination = layout.buildDirectory.dir('generated/solarUpgradeMaterials')
+    outputs.dir(destination)
+    inputs.file(rootProject.file('gradle/solar-upgrade-materials.gradle'))
+    def specs = [
+        small_solar_concentrator: [root:'ref/Blocks/sun_concentrator/small_concentrator', file:'mini_sun_concentrator', parts:[
+            metal:[r:[345,17,58,57],s:[64,64]], armor:[r:[281,16,52,56],s:[64,64]],
+            panel:[r:[269,99,91,104],s:[96,112]], mirror:[r:[238,216,119,85],s:[128,96]],
+            casing:[r:[320,815,142,89],s:[128,80]], vent:[r:[99,1016,111,111],s:[96,96]],
+            light:[r:[35,35,45,45],m:[833,509,40,42],s:[32,32]],
+            strip:[r:[812,145,13,93],m:[849,597,15,69],s:[16,96]],
+            lens:[r:[147,842,24,28],m:[922,519,23,26],s:[32,32]]]],
+        solar_concentrator: [root:'ref/Blocks/sun_concentrator/3x3x3_model/new',file:'Sun_concentrator', parts:[
+            metal:[r:[569,14,30,64],s:[48,80]],armor:[r:[606,105,70,29],s:[96,40]],
+            panel:[r:[350,87,68,91],s:[80,112]],mirror:[r:[170,187,56,74],s:[80,96]],
+            casing:[r:[941,377,49,24],s:[96,48]],vent:[r:[478,725,55,31],s:[96,56]],
+            light:[r:[638,185,31,31],m:[721,34,43,47],s:[32,32]],
+            strip:[r:[841,22,17,47],m:[1070,263,17,105],s:[24,112]],
+            lens:[r:[831,204,34,30],m:[728,40,31,33],s:[32,32]],
+            grid:[r:[350,75,22,22],s:[256,256],grid:true]]],
+        fuel_generator:[root:'ref/Blocks/Fuel_Generator',file:'Fuel_Generator',parts:[
+            metal:[r:[220,20,38,28],s:[48,48]],armor:[r:[309,105,90,16],s:[128,32]],
+            vent:[r:[793,19,71,68],s:[96,96]],grille:[r:[763,140,141,39],s:[128,40]],
+            screen:[r:[752,305,38,13],s:[96,48]],
+            light:[r:[49,65,28,28],m:[612,43,38,33],s:[32,32]],
+            heat:[r:[317,293,99,211],m:[195,183,161,300],s:[96,192]],
+            strip:[r:[288,1208,211,14],m:[117,880,306,19],s:[128,16]],
+            badge:[r:[232,123,279,73],s:[192,48]]]]
+    ]
+    specs.values().each { spec -> inputs.files(rootProject.file(spec.root+'/'+spec.file+'_UV.png'),rootProject.file(spec.root+'/'+spec.file+'_UV_GLOW.png')) }
+    doLast {
+        specs.each { kind,spec ->
+            def sheet=ImageIO.read(rootProject.file(spec.root+'/'+spec.file+'_UV.png'))
+            def mask=ImageIO.read(rootProject.file(spec.root+'/'+spec.file+'_UV_GLOW.png'))
+            int size=512, x0=4, y0=4, row=0
+            def layers=['base','base_n','base_s','glow','glow_n','glow_s','indicator','indicator_n','indicator_s']
+                    .collectEntries { [(it):new BufferedImage(size,size,BufferedImage.TYPE_INT_ARGB)] }
+            def regions=[:]
+            spec.parts.each { name,part ->
+                int width=part.s[0],height=part.s[1]
+                if(x0+width+4>size){x0=4;y0+=row+8;row=0}
+                if(y0+height+4>size)throw new GradleException('Collector atlas overflow: '+kind)
+                regions[name]=[x0,y0,width,height]
+                for(int y=-4;y<height+4;y++)for(int x=-4;x<width+4;x++){
+                    double u=(Math.max(0,Math.min(width-1,x))+.5)/width
+                    double v=(Math.max(0,Math.min(height-1,y))+.5)/height
+                    def r=part.r
+                    double sampleU=part.grid ? (Math.floorMod(x,32)+.5)/32 : u
+                    double sampleV=part.grid ? (Math.floorMod(y,32)+.5)/32 : v
+                    int pixel=sheet.getRGB(r[0]+(int)(sampleU*r[2]),r[1]+(int)(sampleV*r[3]))
+                    int red=pixel>>16&255,green=pixel>>8&255,blue=pixel&255,emission=0
+                    if(part.grid && (Math.floorMod(x,32)==0 || Math.floorMod(y,32)==0)){red=93;green=137;blue=195}
+                    if(part.m){
+                        def m=part.m
+                        int p=mask.getRGB(m[0]+(int)(u*m[2]),m[1]+(int)(v*m[3]))
+                        int brightness=(int)(red*0.2126+green*0.7152+blue*0.0722)
+                        emission=(int)(Math.min(p>>16&255,Math.min(p>>8&255,p&255))*brightness/255d)
+                        red=27;green=31;blue=36
+                    }
+                    int px=x0+x,py=y0+y
+                    layers.base.setRGB(px,py,(int)0xFF000000L|red<<16|green<<8|blue)
+                    layers.base_n.setRGB(px,py,(int)0xFF7F7FFFL)
+                    layers.base_s.setRGB(px,py,(int)(name=='mirror'?0xFFC8DB00L:name in ['panel','grid']?0xFF902000L:0xFF785000L))
+                    ['glow','indicator'].each { layers[it].setRGB(px,py,emission<<24|emission<<16|emission<<8|emission) }
+                    ['glow_n','indicator_n'].each { layers[it].setRGB(px,py,(int)0xFF7F7FFFL) }
+                    layers.glow_s.setRGB(px,py,((int)(emission*0.88)<<24)|0x602000)
+                    layers.indicator_s.setRGB(px,py,(int)0xFF602000L)
+                }
+                x0+=width+8;row=Math.max(row,height)
+            }
+            def folder=new File(destination.get().asFile,'component/'+kind);folder.mkdirs()
+            layers.each { name,img -> ImageIO.write(img,'png',new File(folder,name+'.png')) }
+            new File(folder,'base.json').setText(JsonOutput.toJson([size:size,regions:regions])+'\n','UTF-8')
+        }
+    }
+}

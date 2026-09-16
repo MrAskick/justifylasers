@@ -29,11 +29,12 @@ tasks.register('generateIndustryResources') {
                 ground: [translation: [0,3,0], scale: [.25,.25,.25]],
                 firstperson_righthand: [rotation: [0,45,0], translation: [0,0,0], scale: [.4,.4,.4]],
                 thirdperson_righthand: [rotation: [75,45,0], translation: [0,2.5,0], scale: [.375,.375,.375]]]
-        def machines = ['fuel_generator','electric_smelter','crystal_growth_chamber','assembly_chamber']
+        def machines = ['fuel_generator','crystal_growth_chamber','assembly_chamber']
         machines.each { id ->
+            def particle = 'justifylasers:block/particle/' + (id == 'fuel_generator' ? id : 'energy_receiver')
             json("assets/justifylasers/blockstates/${id}.json", [variants: ['': [model: "justifylasers:block/${id}"]]])
-            json("assets/justifylasers/models/block/${id}.json", [textures: [particle: 'justifylasers:block/particle/energy_receiver'], elements: []])
-            json("assets/justifylasers/models/item/${id}.json", [parent: 'builtin/entity', display: display, textures: [particle: 'justifylasers:block/particle/energy_receiver']])
+            json("assets/justifylasers/models/block/${id}.json", [textures: [particle: particle], elements: []])
+            json("assets/justifylasers/models/item/${id}.json", [parent: 'builtin/entity', display: display, textures: [particle: particle]])
             json("data/justifylasers/loot_tables/blocks/${id}.json", loot(id))
         }
         def ores = ['wolframite': [raw: 'raw_wolframite', count: 7, min: -112, max: 48, buried: 4, rarity: 9],
@@ -96,8 +97,11 @@ tasks.register('generateIndustryResources') {
         }
         recipe('crystal_growth_chamber', ['AGA','GQG','ARA'], [A:'justifylasers:wolframite_ingot',G:'minecraft:glass',Q:'minecraft:quartz',R:'minecraft:redstone'])
         recipe('assembly_chamber', ['APA','GCG','ARA'], [A:'justifylasers:wolframite_ingot',P:'minecraft:piston',G:'minecraft:glass',C:'justifylasers:control_circuit',R:'minecraft:redstone'])
-        recipe('crystal_mount', ['I I','I I','WWW'], [I:'minecraft:iron_nugget',W:'justifylasers:wolframite_ingot'])
-        recipe('blank_schematic', ['PPP','IRI','PPP'], [P:'minecraft:paper',I:'minecraft:iron_nugget',R:'minecraft:redstone'])
+        recipe('electric_motor', ['ICI','CRC','ICI'], [I:'minecraft:iron_ingot',C:'minecraft:copper_ingot',R:'minecraft:redstone'])
+        recipe('fuel_generator', [' X ','YZY',' Y '], [X:'minecraft:blast_furnace',Y:'justifylasers:wolframite_ingot',Z:'justifylasers:electric_motor'])
+        recipe('laser_absorbing_glass', [' G ','GPG','WGW'], [G:'minecraft:glass',P:'justifylasers:photonite_crystal',W:'justifylasers:wolframite_ingot'])
+        recipe('crystal_mount', ['I I','I I','WWW'], [I:'minecraft:iron_ingot',W:'justifylasers:wolframite_ingot'])
+        recipe('blank_schematic', ['PPP','IRL','PPP'], [P:'minecraft:paper',I:'minecraft:iron_ingot',R:'minecraft:redstone',L:'minecraft:lapis_lazuli'])
         json('data/justifylasers/recipes/mounted_crystal.json', [type:'minecraft:crafting_shapeless',
              ingredients:[[item:'justifylasers:photonite_crystal'],[item:'justifylasers:crystal_mount']],result:[item:'justifylasers:white_crystal']])
         json('data/justifylasers/recipes/wolframite_ingot.json', [type:'minecraft:smelting',category:'misc',
@@ -115,8 +119,14 @@ tasks.register('generateIndustryResources') {
                  result:[(minecraft_version=='1.21.1'?'id':'item'):'justifylasers:'+result,count:1],ticks:ticks,energy:energy,water:water])
         }
         machineRecipe('photonite_crystal','CRYSTAL_GROWER',['raw_photonic_crystal',['minecraft:quartz',2]],'photonite_crystal',0,0,0)
-        machineRecipe('wolframite_smelting','ELECTRIC_SMELTER',['raw_wolframite'],'wolframite_ingot',0,0,0)
+        ['industry/wolframite_smelting','industry/laser_absorbing_glass'].each { id ->
+            java.nio.file.Files.deleteIfExists(new File(root,"data/justifylasers/recipes/${id}.json").toPath())
+        }
         def assemblies = [
+            extraterrestrial_tablet:['control_circuit','minecraft:ender_eye','wolframite_ingot','minecraft:gold_ingot'],
+            beam_combiner:['reinforced_laser_housing',['focusing_lens_assembly',5],'optical_resonator','beam_controller'],
+            solar_absorber:[['wolframite_ingot',2],['minecraft:lapis_lazuli',4],['minecraft:glass',2],'control_circuit'],
+            small_solar_concentrator:[['solar_absorber',3],'electric_motor',['minecraft:iron_ingot',3]],
             reinforced_laser_housing:[['wolframite_ingot',8],['minecraft:iron_ingot',4]],
             energy_core:[['minecraft:copper_ingot',6],'minecraft:redstone_block',['minecraft:quartz',2],['control_circuit',2]],
             focusing_lens_assembly:[['minecraft:glass',4],['minecraft:quartz',4],['minecraft:amethyst_shard',2],['wolframite_ingot',2]],
@@ -145,6 +155,8 @@ tasks.register('generateIndustryResources') {
             target_filter_module:['wolframite_ingot','minecraft:ender_eye','beam_controller']
         ]
         def assemblyCosts = [
+            extraterrestrial_tablet:[600,144], beam_combiner:[1680,464],
+            solar_absorber:[300,88], small_solar_concentrator:[880,64],
             reinforced_laser_housing:[240,48], focusing_lens_assembly:[320,72], beam_controller:[400,112],
             energy_core:[560,152], optical_resonator:[640,176], powered_laser_emitter:[1200,320],
             laser_gun:[1000,256], laser_saber:[800,192], light_staff:[1400,384], laser_turret:[1120,288],
@@ -179,11 +191,22 @@ tasks.register('generateIndustryResources') {
             def uv = [rect[0]+.5,rect[1]+.5,rect[0]+rect[2]-.5,rect[1]+rect[3]-.5].collect { it * 16 / atlas.size }
             [from: from, to: to, faces: ['up','down','north','south','east','west'].collectEntries { [(it): [texture:'#metal',uv:uv]] }]
         }
+        json('assets/justifylasers/models/item/electric_motor.json',[parent:'minecraft:block/block',display:display,
+             textures:[metal:'minecraft:block/iron_block',coil:'minecraft:block/copper_block',dark:'minecraft:block/deepslate_tiles',particle:'minecraft:block/iron_block'],
+             elements:[[from:[3,4,4],to:[13,12,12],faces:['up','down','north','south','east','west'].collectEntries { [(it):[texture:'#coil']] }],
+                       [from:[1,3,3],to:[3,13,13],faces:['up','down','north','south','east','west'].collectEntries { [(it):[texture:'#metal']] }],
+                       [from:[13,3,3],to:[15,13,13],faces:['up','down','north','south','east','west'].collectEntries { [(it):[texture:'#metal']] }],
+                       [from:[0,7,7],to:[1,9,9],faces:['up','down','north','south','east','west'].collectEntries { [(it):[texture:'#dark']] }]]])
         def componentModels = [
             heat_resistant_alloy: [box([2,4,4],[14,7,12],'steel'),box([3,7.01,4.5],[13,8.5,11.5],'metal')],
         ]
         json('assets/justifylasers/models/item/assembly_blueprint.json',[parent:'builtin/entity',display:display+
-             [gui:[rotation:[0,180,0],scale:[1,1,1]]],textures:[particle:'justifylasers:block/particle/control_circuit']])
+             [gui:[rotation:[0,180,0],scale:[1,1,1]],
+              firstperson_righthand:[rotation:[0,180,-8],translation:[-1,4,0],scale:[.5,.5,.5]],
+              firstperson_lefthand:[rotation:[0,180,8],translation:[-1,4,0],scale:[.5,.5,.5]],
+              thirdperson_righthand:[rotation:[0,180,0],translation:[0,3,1],scale:[.6,.6,.6]],
+              thirdperson_lefthand:[rotation:[0,180,0],translation:[0,3,1],scale:[.6,.6,.6]]],
+             textures:[particle:'justifylasers:block/particle/control_circuit']])
         componentModels.each { id, elements -> json("assets/justifylasers/models/item/${id}.json", [parent:'minecraft:block/block',
                 textures:[metal:'justifylasers:component/laser_saber/base',particle:'justifylasers:block/particle/energy_receiver'],elements:elements,
                 display:display + [gui:[rotation:[30,225,0],translation:[0,2,0],scale:[.9,.9,.9]]]]) }
@@ -220,9 +243,12 @@ tasks.register('generateIndustryResources') {
 }
 sourceSets.main.resources.srcDir(tasks.named('generateIndustryResources'))
 sourceSets.main.resources.exclude 'assets/justifylasers/textures/block/industry/*.png'
+sourceSets.main.resources.exclude '**/electric_smelter.json', '**/wolframite_smelting.json', '**/laser_absorbing_glass_blueprint.json'
 tasks.withType(Jar).configureEach { if (name == 'sourcesJar') exclude 'assets/justifylasers/textures/block/industry/*.png' }
 
 processResources.doFirst {
+    fileTree(destinationDir).matching { include '**/electric_smelter.json', '**/wolframite_smelting.json', '**/laser_absorbing_glass_blueprint.json' }
+            .each { java.nio.file.Files.deleteIfExists(it.toPath()) }
     ['wolframite_ore','deepslate_wolframite_ore','photonic_crystal_ore','deepslate_photonic_crystal_ore'].each { id ->
         java.nio.file.Files.deleteIfExists(new File(destinationDir, "assets/justifylasers/textures/block/industry/${id}.png").toPath())
     }
@@ -234,8 +260,8 @@ processResources.doFirst {
 def assembledItems = ['powered_laser_emitter','laser_gun','laser_saber','light_staff','laser_turret','refocusing_cube',
         'laser_receiver','laser_mirror','beam_splitter','energy_receiver','configurator','block_destruction_module',
         'entity_damage_module','block_drops_module','silk_touch_module','scorch_marks_module','ignition_module',
-        'range_module','advanced_range_module','thickness_module','target_filter_module','fuel_generator','electric_smelter',
-        'laser_chassis','optical_assembly']
+        'range_module','advanced_range_module','thickness_module','target_filter_module','electric_smelter',
+        'laser_chassis','optical_assembly','solar_absorber','extraterrestrial_tablet','beam_combiner','small_solar_concentrator']
 processResources {
     eachFile { entry ->
         if (assembledItems.any { id -> entry.path == "data/justifylasers/recipes/${id}.json" || entry.path == "data/justifylasers/recipe/${id}.json" }) entry.exclude()

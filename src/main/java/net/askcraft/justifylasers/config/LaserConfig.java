@@ -19,10 +19,11 @@ public final class LaserConfig {
 
     private static final Gson JSON = new GsonBuilder().setPrettyPrinting().create();
     private static LaserConfig current = new LaserConfig();
-    private static boolean technicalMode;
+    private static boolean technicalMode = true;
 
-    public EnergyMode energyMode = EnergyMode.AUTO;
-    public List<String> technicalMods = List.of("mekanism", "techreborn", "modern_industrialization", "powah", "thermal", "oritech");
+    @Deprecated public transient EnergyMode energyMode = EnergyMode.AUTO;
+    public int solarIndustryRevision = 26;
+    @Deprecated public transient List<String> technicalMods = List.of("mekanism", "techreborn", "modern_industrialization", "powah", "thermal", "oritech");
     public int capacity = 2_000_000;
     public int maxInput = 100_000;
     public int basePerTick = 80;
@@ -32,6 +33,15 @@ public final class LaserConfig {
     public double knockbackPerHit = 8;
     public double ignitionPerHit = 10;
     public double energyTransmissionEfficiency = 0.8;
+    public double beamCombinerEfficiency = 0.95;
+    public int lumensPerEnergyUnit = 1000;
+    public long solarPeakFlux = 480_000;
+    public long smallSolarPeakFlux = 16_000;
+    public int smallSolarBeamRange = 32;
+    public int crystalGrowthFlux = 12_000;
+    public float solarDamagePerTick = 0.5F;
+    public int solarBeamRange = 256;
+    public float solarBeamWidth = 3;
     public double laserVolume = 0.65;
     public int maxLaserSoundSources = 8;
     public int laserGunRange = 64;
@@ -39,14 +49,12 @@ public final class LaserConfig {
     public int laserGunHitsPerSecond = 20;
     public double laserGunKnockback = 1;
     public int turretRange = 32;
-    public boolean industrialProgression = true;
+    @Deprecated public transient boolean industrialProgression = true;
     public int machineCapacity = 100_000;
     public int machineTransfer = 512;
     public int generatorPerTick = 128;
-    public int smelterPerTick = 32;
-    public int crystalGrowerPerTick = 64;
+    public int generatorHeatPerTick = 2;
     public int assemblyPerTick = 160;
-    public int alloySmeltingTicks = 200;
     public int crystalGrowthTicks = 600;
     public int laserAssemblyTicks = 400;
     public int crystalTankCapacity = 8_000;
@@ -80,7 +88,7 @@ public final class LaserConfig {
     }
 
     public boolean enablesEnergy(Predicate<String> loaded) {
-        return energyMode == EnergyMode.ON || energyMode == EnergyMode.AUTO && (industrialProgression || technicalMods.stream().anyMatch(loaded));
+        return true;
     }
 
     public LaserEnergyCost.Rates rates() {
@@ -89,6 +97,17 @@ public final class LaserConfig {
     }
 
     public void validate() {
+        if (smallSolarPeakFlux < 1 || smallSolarPeakFlux > net.askcraft.justifylasers.laser.LuminousFlux.MAX
+                || smallSolarBeamRange < 1 || smallSolarBeamRange > 512 || crystalGrowthFlux < 1 || crystalGrowthFlux > 1_000_000_000)
+            throw new IllegalArgumentException("Invalid small solar output or crystal growth flux");
+        if (!Double.isFinite(beamCombinerEfficiency) || beamCombinerEfficiency <= 0 || beamCombinerEfficiency > 1)
+            throw new IllegalArgumentException("beamCombinerEfficiency must be in (0, 1]");
+        if (lumensPerEnergyUnit < 1 || lumensPerEnergyUnit > 1_000_000
+                || solarPeakFlux < 1 || solarPeakFlux > net.askcraft.justifylasers.laser.LuminousFlux.MAX
+                || !Float.isFinite(solarDamagePerTick) || solarDamagePerTick < 0 || solarDamagePerTick > 100
+                || solarBeamRange < 1 || solarBeamRange > 512
+                || !Float.isFinite(solarBeamWidth) || solarBeamWidth < .1F || solarBeamWidth > 10)
+            throw new IllegalArgumentException("Invalid solar concentrator output, range or beam width");
         if (crystalTankCapacity < 1_000 || crystalTankCapacity > 64_000 || crystalWaterPerRecipe < 1 || crystalWaterPerRecipe > crystalTankCapacity)
             throw new IllegalArgumentException("Invalid crystal chamber water capacity or consumption");
         if (!Float.isFinite(saberDamage) || saberDamage < 0 || saberDamage > 100 || !Float.isFinite(staffDamage) || staffDamage < 0 || staffDamage > 100
@@ -107,18 +126,15 @@ public final class LaserConfig {
                 || !Double.isFinite(saberGuardAngle) || saberGuardAngle < 30 || saberGuardAngle > 160)
             throw new IllegalArgumentException("Invalid saber fencing damage, timings or stamina settings");
         if (machineCapacity < 1 || machineTransfer < 1 || generatorPerTick < 1 || generatorPerTick > machineCapacity
-                || smelterPerTick < 1 || smelterPerTick > machineCapacity || crystalGrowerPerTick < 1 || crystalGrowerPerTick > machineCapacity
+                || generatorHeatPerTick < 1 || generatorHeatPerTick > 100
                 || assemblyPerTick < 1 || assemblyPerTick > machineCapacity
-                || alloySmeltingTicks < 1 || alloySmeltingTicks > 72_000 || crystalGrowthTicks < 1 || crystalGrowthTicks > 72_000
+                || crystalGrowthTicks < 1 || crystalGrowthTicks > 72_000
                 || laserAssemblyTicks < 1 || laserAssemblyTicks > 72_000) throw new IllegalArgumentException("Invalid industrial machine rates, capacity or processing times");
         if (laserGunRange < 1 || laserGunRange > 512 || turretRange < 1 || turretRange > 128
                 || !Float.isFinite(laserGunDamage) || laserGunDamage < 0 || laserGunDamage > 100
                 || laserGunHitsPerSecond < 1 || laserGunHitsPerSecond > 20
                 || !Double.isFinite(laserGunKnockback) || laserGunKnockback < 0 || laserGunKnockback > 10) {
             throw new IllegalArgumentException("Invalid laser gun or turret range, damage, hit rate or knockback");
-        }
-        if (energyMode == null || technicalMods == null || technicalMods.stream().anyMatch(id -> id == null || !id.matches("[a-z][a-z0-9_]{1,63}"))) {
-            throw new IllegalArgumentException("Invalid energyMode or technicalMods in justifylasers.json");
         }
         if (capacity < 1 || maxInput < 1) throw new IllegalArgumentException("Energy capacity and maxInput must be positive");
         if (!Double.isFinite(energyTransmissionEfficiency) || energyTransmissionEfficiency <= 0 || energyTransmissionEfficiency >= 1) {
@@ -134,8 +150,22 @@ public final class LaserConfig {
         Path path = Platform.configDirectory().resolve("justifylasers.json");
         try {
             if (Files.exists(path)) {
-                LaserConfig loaded = JSON.fromJson(Files.readString(path, StandardCharsets.UTF_8), LaserConfig.class);
+                var root = com.google.gson.JsonParser.parseString(Files.readString(path, StandardCharsets.UTF_8));
+                if (!root.isJsonObject()) throw new IllegalArgumentException("Config must be a JSON object");
+                var document = root.getAsJsonObject();
+                LaserConfig loaded = JSON.fromJson(document, LaserConfig.class);
                 if (loaded == null) throw new IllegalArgumentException("Config cannot be empty");
+                int revision = document.has("solarIndustryRevision") ? document.get("solarIndustryRevision").getAsInt() : 0;
+                if (revision < 26) {
+                    if (loaded.generatorPerTick == 32) { loaded.generatorPerTick = 128; document.addProperty("generatorPerTick", 128); }
+                    if (revision < 25 && loaded.solarPeakFlux == 1_000_000) { loaded.solarPeakFlux = 480_000; document.addProperty("solarPeakFlux", 480_000); }
+                    document.addProperty("solarIndustryRevision", 26);
+                    loaded.solarIndustryRevision = 26;
+                    loaded.validate();
+                    Path backup = path.resolveSibling("justifylasers.pre-alpha26.json.bak");
+                    if (!Files.exists(backup)) Files.copy(path, backup);
+                    Files.writeString(path, JSON.toJson(document) + System.lineSeparator(), StandardCharsets.UTF_8);
+                }
                 loaded.validate();
                 current = loaded;
             } else {

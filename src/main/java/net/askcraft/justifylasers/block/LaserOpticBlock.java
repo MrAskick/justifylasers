@@ -27,7 +27,7 @@ import net.minecraft.world.BlockView;
 import net.minecraft.world.World;
 
 public final class LaserOpticBlock extends LaserBlock {
-    public enum Kind { MIRROR, SPLITTER, ENERGY_RECEIVER }
+    public enum Kind { MIRROR, SPLITTER, ENERGY_RECEIVER, COMBINER }
     public static final DirectionProperty FACING = Properties.FACING;
     public static final BooleanProperty LIT = Properties.LIT;
     private static final VoxelShape SPLITTER_SHAPE = net.minecraft.util.shape.VoxelShapes.union(
@@ -65,7 +65,7 @@ public final class LaserOpticBlock extends LaserBlock {
     @Override
     public VoxelShape getOutlineShape(BlockState state, BlockView world, BlockPos pos, ShapeContext context) {
         if (kind == Kind.MIRROR && world.getBlockEntity(pos) instanceof LaserOpticBlockEntity mirror) return mirror.mirrorShape();
-        return kind == Kind.SPLITTER ? SPLITTER_SHAPE : net.minecraft.util.shape.VoxelShapes.fullCube();
+        return kind == Kind.SPLITTER || kind == Kind.COMBINER ? SPLITTER_SHAPE : net.minecraft.util.shape.VoxelShapes.fullCube();
     }
 
     @Override

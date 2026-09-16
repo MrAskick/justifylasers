@@ -16,7 +16,7 @@ import net.minecraft.util.math.RotationAxis;
 import net.minecraft.util.math.Vec3d;
 
 public final class IndustrialMachineRenderer implements BlockEntityRenderer<IndustrialMachineBlockEntity> {
-    private static final OpticalComponentMesh GENERATOR = legacyChassis(true), SMELTER = legacyChassis(false);
+    private static final OpticalComponentMesh GROWER_PORTS = growerPorts();
 
     public IndustrialMachineRenderer(BlockEntityRendererFactory.Context context) { }
 
@@ -31,7 +31,9 @@ public final class IndustrialMachineRenderer implements BlockEntityRenderer<Indu
             matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(180 - machine.getCachedState().get(IndustrialMachineBlock.FACING).asRotation()));
             if (assembled) ChamberModel.render(machine, delta, matrices, consumers, light, overlay);
             else if (machine.kind().multiblock()) ChamberModel.casing(machine.kind(), matrices, consumers, light);
-            else legacy(machine.kind(), machine.status() == IndustrialMachineBlockEntity.Status.WORKING, matrices, consumers, light);
+            else FuelGeneratorModel.render(machine,matrices,consumers,light);
+            if (assembled && machine.kind() == MachineKind.CRYSTAL_GROWER)
+                GROWER_PORTS.render(matrices,consumers,light,0xFFF2CC,machine.lightFlux()>0,true);
         } finally { matrices.pop(); }
         if (assembled && !IrisCompatibility.isRenderingShadowPass()) effects(machine, delta, matrices, consumers);
     }
@@ -69,31 +71,24 @@ public final class IndustrialMachineRenderer implements BlockEntityRenderer<Indu
     public static void renderItem(MachineKind kind, MatrixStack matrices, VertexConsumerProvider consumers, int light, int overlay) {
         matrices.push(); matrices.translate(.5, .5, .5);
         if (kind.multiblock()) ChamberModel.casing(kind, matrices, consumers, light);
-        else legacy(kind, false, matrices, consumers, light);
+        else FuelGeneratorModel.render(null,matrices,consumers,light);
         matrices.pop();
     }
 
-    private static void legacy(MachineKind kind, boolean running, MatrixStack matrices, VertexConsumerProvider consumers, int light) {
-        (kind == MachineKind.FUEL_GENERATOR ? GENERATOR : SMELTER).render(matrices, consumers, light, 0xFF9B35, running, true);
-    }
-
-    private static OpticalComponentMesh legacyChassis(boolean generator) {
-        var b = new OpticalComponentMesh.Builder("laser_saber");
-        b.bevel("metal", -8, -8, -8, 8, -4.9, 8, .7);
-        b.bevel("metal", -7.7, 6.1, -7.7, 7.7, 8, 7.7, .4);
-        for (int x : new int[]{-1,1}) for (int z : new int[]{-1,1})
-            b.bevel("steel", x * 6.3 - .65, -4.85, z * 6.3 - .65, x * 6.3 + .65, 6.1, z * 6.3 + .65, .2);
-        b.box("control", false, -3.2, -7.4, -8.03, 3.2, -5.6, -7.9);
-        b.box("light", true, 4.4, -7.05, -8.045, 5.8, -6.5, -7.88);
-        b.box("vent", false, -5.8, -3.8, 6.4, 5.8, 4.8, 7.0);
-        b.solid("grip", -5.8, -4.6, -5.7, 5.8, 5.5, 5.6);
-        b.bevel("metal", -5.4, -3.8, -6.4, 5.4, 4.5, -5.6, .4);
-        b.box("light", true, -3.9, -2.5, -6.45, 3.9, 2.9, -6.40);
-        int bars = generator ? 5 : 3;
-        for (int i = 0; i < bars; i++) b.solid("grip", -4.2, -2.4 + i * 5.2 / bars, -6.51, 4.2, -2.0 + i * 5.2 / bars, -6.46);
-        for (int i = 0; i < 5; i++) b.solid("steel", -5, 8.01, -5 + i * 2.2, 5, 8.30, -4.4 + i * 2.2);
+    private static OpticalComponentMesh growerPorts() {
+        var b = new OpticalComponentMesh.Builder("small_solar_concentrator");
+        for (Direction side : Direction.Type.HORIZONTAL) {
+            var f = new OpticalComponentMesh.Builder("small_solar_concentrator");
+            for (double x : new double[]{-8,8}) {
+                f.bevel("armor",x-4.2,-11.9,-16.05,x+4.2,-4.1,-15.8,.45);
+                f.panel("metal",false,x-3.5,-11.3,x+3.5,-4.7,-16.08);
+                f.panel("lens",true,x-2.65,-10.6,x+2.65,-5.4,-16.11);
+            }
+            b.add(f.build(),side);
+        }
         return b.build();
     }
+
 
     @Override public boolean rendersOutsideBoundingBox(IndustrialMachineBlockEntity machine) { return machine.kind().multiblock(); }
     // NeoForge queries the renderer; legacy Forge queries the block entity instead.

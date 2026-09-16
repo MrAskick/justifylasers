@@ -1,6 +1,6 @@
 package net.askcraft.justifylasers.client;
 
-import net.askcraft.justifylasers.block.entity.LaserEmitterBlockEntity;
+import net.askcraft.justifylasers.laser.LaserBeamSource;
 import net.askcraft.justifylasers.config.LaserConfig;
 import net.askcraft.justifylasers.item.LaserSaberItem;
 import net.askcraft.justifylasers.laser.LaserBeamNetwork;
@@ -83,7 +83,7 @@ public final class LaserSoundController {
         Map<Object, Source> sources = new HashMap<>(WEAPONS);
         collectSabers(client, sources, gain, limit);
         paths.forEach((pos, path) -> {
-            if (world.getBlockEntity(pos) instanceof LaserEmitterBlockEntity emitter)
+            if (world.getBlockEntity(pos) instanceof LaserBeamSource emitter)
                 sources.put(pos, new Source(pos, Vec3d.ofCenter(pos), emitter.getBeamWidthScale(), path, world.getTime()));
         });
         List<Source> candidates = gain == 0 ? List.of() : sources.values().stream()

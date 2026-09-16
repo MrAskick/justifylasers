@@ -170,6 +170,13 @@ public final class Platform {
         NETWORK.build();
     }
 
+    public static void registerExplorationLoot() {
+        MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.LootTableLoadEvent event) -> {
+            var pool = net.askcraft.justifylasers.industry.TabletLoot.pool(event.getName());
+            if (pool != null) event.getTable().addPool(pool.name(net.askcraft.justifylasers.industry.TabletLoot.POOL_NAME).build());
+        });
+    }
+
     public static void onEndWorldTick(Consumer<ServerWorld> callback) {
         MinecraftForge.EVENT_BUS.addListener((TickEvent.LevelTickEvent event) -> {
             if (event.phase == TickEvent.Phase.END && event.level instanceof ServerWorld world) callback.accept(world);

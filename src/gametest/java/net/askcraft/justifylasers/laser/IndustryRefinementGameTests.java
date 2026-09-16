@@ -80,7 +80,7 @@ public class IndustryRefinementGameTests implements FabricGameTest {
     public void redstoneOnNonControllerMemberPausesAndResumes(TestContext context) {
         var machine = chamber(context);
         machine.setStack(0, new ItemStack(ModIndustry.RAW_PHOTONIC_CRYSTAL)); machine.setStack(1, new ItemStack(Items.QUARTZ,2));
-        machine.energy().restore(100_000); machine.fillWater(1000,false);
+        machine.receiveLight(machine.rate(),0xFFFFFF); machine.fillWater(1000,false);
         machine.cycleRedstone();
         IndustrialMachineBlockEntity.tick(machine.getWorld(), machine.getPos(), machine.getCachedState(), machine);
         context.assertTrue(machine.progress() == 0 && machine.status() == IndustrialMachineBlockEntity.Status.REDSTONE, "High mode waits without consuming resources");

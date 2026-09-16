@@ -23,8 +23,13 @@ public record LaserBeamTrace(
         @Nullable BlockPos hitBlock,
         @Nullable Direction hitSide,
         int rgb,
-        double power
+        double power,
+        @Nullable BlockPos combinedBy
 ) {
+    public LaserBeamTrace(Vec3d start, Vec3d end, Direction direction, @Nullable BlockPos hitBlock,
+                          @Nullable Direction hitSide, int rgb, double power) {
+        this(start, end, direction, hitBlock, hitSide, rgb, power, null);
+    }
     public LaserBeamTrace(Vec3d start, Vec3d end, Direction direction, @Nullable BlockPos hitBlock,
                           @Nullable Direction hitSide) {
         this(start, end, direction, hitBlock, hitSide, -1, 1);
@@ -35,7 +40,11 @@ public record LaserBeamTrace(
     }
 
     public LaserBeamTrace withOptics(int color, double fraction) {
-        return new LaserBeamTrace(start, end, direction, hitBlock, hitSide, color & 0xFFFFFF, fraction);
+        return new LaserBeamTrace(start, end, direction, hitBlock, hitSide, color & 0xFFFFFF, fraction, combinedBy);
+    }
+
+    public LaserBeamTrace combinedBy(@Nullable BlockPos combiner) {
+        return new LaserBeamTrace(start, end, direction, hitBlock, hitSide, rgb, power, combiner);
     }
 
     public Vec3d axis() {
@@ -97,6 +106,12 @@ public record LaserBeamTrace(
                     VoxelShape shape = state.getCollisionShape(view, currentPos, ShapeContext.absent());
                     if (shape.isEmpty()) {
                         return null;
+                    }
+                    if (state.getBlock() instanceof LaserOpticBlock) {
+                        // Vanilla's inside-shape probe advances by 0.1% of the entire ray, which
+                        // can skip an adjacent optical input on long beams. Use the exact face first.
+                        BlockHitResult surface = Box.raycast(shape.getBoundingBoxes(), start, maxEnd, currentPos);
+                        if (surface != null) return surface;
                     }
                     return view.raycastBlock(start, maxEnd, currentPos, shape, state);
                 },

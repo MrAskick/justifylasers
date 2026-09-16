@@ -97,6 +97,7 @@ apply from: rootProject.file('gradle/laser-materials.gradle')
 apply from: rootProject.file('gradle/laser-parts.gradle')
 apply from: rootProject.file('gradle/laser-optics.gradle')
 apply from: rootProject.file('gradle/industry-resources.gradle')
+apply from: rootProject.file('gradle/solar-resources.gradle')
 
 processResources {
     def metadata = [version: project.version, minecraft_version: minecraft_version, loader_version: loader_version,

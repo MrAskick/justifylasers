@@ -1,0 +1,54 @@
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import javax.imageio.ImageIO
+
+def solarResources = layout.buildDirectory.dir('generated/solar')
+tasks.register('generateSolarResources') {
+    inputs.file(rootProject.file('gradle/solar-resources.gradle'))
+    inputs.dir(rootProject.file('src/main/resources/assets/justifylasers/textures/component'))
+    outputs.dir(solarResources)
+    doLast {
+        def json = { String path, Object value ->
+            def output = new File(solarResources.get().asFile, path)
+            output.parentFile.mkdirs()
+            output.setText(JsonOutput.prettyPrint(JsonOutput.toJson(value)) + '\n', 'UTF-8')
+        }
+        def components = ['optical_resonator','reinforced_laser_housing','energy_core','focusing_lens_assembly','beam_controller']
+        def fuelAtlas = rootProject.file('src/main/resources/assets/justifylasers/textures/component/fuel_generator')
+        def fuelRect = new JsonSlurper().parse(new File(fuelAtlas, 'base.json')).regions.armor
+        def fuelParticle = new File(solarResources.get().asFile, 'assets/justifylasers/textures/block/particle/fuel_generator.png')
+        fuelParticle.parentFile.mkdirs()
+        ImageIO.write(ImageIO.read(new File(fuelAtlas, 'base.png')).getSubimage(fuelRect[0] as int, fuelRect[1] as int,
+                fuelRect[2] as int, fuelRect[3] as int), 'png', fuelParticle)
+        def blocks = components + ['solar_absorber','laser_absorbing_glass','small_solar_concentrator']
+        blocks.each { id ->
+            json("assets/justifylasers/blockstates/${id}.json", [variants:['':[model:"justifylasers:block/${id}"]]])
+            def texture = "justifylasers:block/particle/${id}"
+            if (components.contains(id) || id == 'small_solar_concentrator') {
+                def atlas = rootProject.file("src/main/resources/assets/justifylasers/textures/component/${id}")
+                def rect = new JsonSlurper().parse(new File(atlas, 'base.json')).regions.armor
+                def source = ImageIO.read(new File(atlas, 'base.png'))
+                def target = new File(solarResources.get().asFile, "assets/justifylasers/textures/block/particle/${id}.png")
+                target.parentFile.mkdirs()
+                ImageIO.write(source.getSubimage(rect[0] as int, rect[1] as int, rect[2] as int, rect[3] as int), 'png', target)
+            }
+            if (components.contains(id) || id == 'small_solar_concentrator') json("assets/justifylasers/models/block/${id}.json", [textures:[particle:texture],elements:[]])
+            else {
+                def model = [parent:'minecraft:block/cube_all',textures:[all:texture]]
+                if (id == 'laser_absorbing_glass') model.render_type = 'minecraft:translucent'
+                json("assets/justifylasers/models/block/${id}.json", model)
+                json("assets/justifylasers/models/item/${id}.json", [parent:"justifylasers:block/${id}"])
+            }
+            json("data/justifylasers/loot_tables/blocks/${id}.json", [type:'minecraft:block',pools:[[rolls:1,
+                 entries:[[type:'minecraft:item',name:"justifylasers:${id}"]],conditions:[[condition:'minecraft:survives_explosion']]]]])
+        }
+        json('assets/justifylasers/models/item/small_solar_concentrator.json',[parent:'builtin/entity',
+             textures:[particle:'justifylasers:block/particle/small_solar_concentrator'],
+             display:[gui:[rotation:[25,225,0],scale:[0.95,0.95,0.95]],ground:[translation:[0,3,0],scale:[0.45,0.45,0.45]],
+                      firstperson_righthand:[rotation:[0,45,0],scale:[0.7,0.7,0.7]],thirdperson_righthand:[rotation:[75,45,0],scale:[0.5,0.5,0.5]]]])
+        ['solar_absorber','laser_absorbing_glass'].each { id ->
+            java.nio.file.Files.deleteIfExists(new File(solarResources.get().asFile, "data/justifylasers/recipes/${id}.json").toPath())
+        }
+    }
+}
+sourceSets.main.resources.srcDir(tasks.named('generateSolarResources'))

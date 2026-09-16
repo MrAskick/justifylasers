@@ -132,6 +132,29 @@ final class OpticalComponentMesh {
             projected(atlas.surface(part),glow,min,max,new Vec3d(x,y,z),new Vec3d(x,Y,z),new Vec3d(X,Y,z),new Vec3d(X,y,z));
         }
 
+        void readableLabel(String part, double x, double y, double X, double Y, double z) {
+            var uv = atlas.region(part);
+            face(new Vec3d[]{new Vec3d(x,y,z),new Vec3d(x,Y,z),new Vec3d(X,Y,z),new Vec3d(X,y,z)},
+                    new ComponentAtlas.Uv[]{uv.uv(1,1),uv.uv(1,0),uv.uv(0,0),uv.uv(0,1)},false,255);
+        }
+
+        void surface(String part, boolean glow, Vec3d a, Vec3d b, Vec3d c, Vec3d d, int alpha) {
+            Vec3d min = new Vec3d(Math.min(Math.min(a.x,b.x),Math.min(c.x,d.x)), Math.min(Math.min(a.y,b.y),Math.min(c.y,d.y)), Math.min(Math.min(a.z,b.z),Math.min(c.z,d.z)));
+            Vec3d max = new Vec3d(Math.max(Math.max(a.x,b.x),Math.max(c.x,d.x)), Math.max(Math.max(a.y,b.y),Math.max(c.y,d.y)), Math.max(Math.max(a.z,b.z),Math.max(c.z,d.z)));
+            Vec3d n = normal(a,b,c,d);
+            var skin = atlas.trim(part);
+            face(new Vec3d[]{a,b,c,d}, new ComponentAtlas.Uv[]{skin.project(a,n,min,max),skin.project(b,n,min,max),
+                    skin.project(c,n,min,max),skin.project(d,n,min,max)}, glow, alpha);
+        }
+
+        void planarSurface(String part, Vec3d a, Vec3d b, Vec3d c, Vec3d d, double radius) {
+            var region = atlas.region(part);
+            Vec3d[] points = {a, b, c, d};
+            ComponentAtlas.Uv[] uv = new ComponentAtlas.Uv[4];
+            for (int i = 0; i < 4; i++) uv[i] = region.uv((points[i].x / radius + 1) / 2, (points[i].z / radius + 1) / 2);
+            face(points, uv, false, 255);
+        }
+
         void trimmedPanel(String part, boolean glow, double x, double y, double X, double Y, double z) {
             Vec3d min = new Vec3d(x, y, z), max = new Vec3d(X, Y, z);
             projected(atlas.trim(part), glow, min, max, new Vec3d(x,y,z), new Vec3d(x,Y,z), new Vec3d(X,Y,z), new Vec3d(X,y,z));

@@ -5,6 +5,8 @@ import net.askcraft.justifylasers.config.LaserConfig;
 import net.askcraft.justifylasers.energy.LaserEnergyBuffer;
 import net.askcraft.justifylasers.energy.LaserEnergyHost;
 import net.askcraft.justifylasers.laser.LaserBeamNetwork;
+import net.askcraft.justifylasers.laser.LaserLightSink;
+import net.askcraft.justifylasers.laser.LuminousFlux;
 import net.askcraft.justifylasers.laser.OpticalGeometry;
 import net.askcraft.justifylasers.laser.OpticPortMode;
 import net.askcraft.justifylasers.platform.Platform;
@@ -32,7 +34,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Arrays;
 import java.util.List;
 
-public final class LaserOpticBlockEntity extends LaserBlockEntity implements LaserEnergyHost {
+public final class LaserOpticBlockEntity extends LaserBlockEntity implements LaserEnergyHost, LaserLightSink {
     private final LaserEnergyBuffer energy = new LaserEnergyBuffer(() -> LaserConfig.get().capacity,
             () -> Integer.MAX_VALUE, this::markDirty);
     public static final int IDLE_COLOR = 0x65717A;
@@ -45,6 +47,8 @@ public final class LaserOpticBlockEntity extends LaserBlockEntity implements Las
     private boolean emission;
     private long lastInputTick = Long.MIN_VALUE;
     private int lastInput;
+    private long lastFlux;
+    private double syncedCombinerEfficiency = .95;
 
     public LaserOpticBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.LASER_OPTIC, pos, state);
@@ -74,6 +78,11 @@ public final class LaserOpticBlockEntity extends LaserBlockEntity implements Las
     }
 
     private void defaultPorts(boolean legacy) {
+        if (kind() == LaserOpticBlock.Kind.COMBINER) {
+            Arrays.fill(ports, OpticPortMode.INPUT);
+            ports[facing().ordinal()] = OpticPortMode.OUTPUT;
+            return;
+        }
         Arrays.fill(ports, OpticPortMode.OUTPUT);
         ports[facing().ordinal()] = OpticPortMode.INPUT;
         if (legacy && kind() == LaserOpticBlock.Kind.SPLITTER) {
@@ -99,6 +108,9 @@ public final class LaserOpticBlockEntity extends LaserBlockEntity implements Las
 
     public void setPortMode(Direction side, OpticPortMode mode) {
         if (!hasConfigurablePorts() || portMode(side) == mode) return;
+        if (kind() == LaserOpticBlock.Kind.COMBINER && mode == OpticPortMode.OUTPUT)
+            for (Direction other : Direction.values()) if (ports[other.ordinal()] == OpticPortMode.OUTPUT)
+                ports[other.ordinal()] = OpticPortMode.INPUT;
         ports[side.ordinal()] = mode;
         sync();
         if (world != null && !world.isClient) Platform.opticPortsChanged(this);
@@ -116,8 +128,10 @@ public final class LaserOpticBlockEntity extends LaserBlockEntity implements Las
     public Direction facing() { return getCachedState().get(LaserOpticBlock.FACING); }
     public Vec3d normal() { return OpticalGeometry.normal(yaw, pitch); }
     public int rgb() { return rgb; }
+    public double combiningEfficiency() { return world != null && world.isClient ? syncedCombinerEfficiency : LaserConfig.get().beamCombinerEfficiency; }
     public boolean emitsShaderLight() { return emission && getCachedState().get(LaserOpticBlock.LIT); }
     public int lastInput() { return lastInput; }
+    public long lastFlux() { return lastFlux; }
     @Override public LaserEnergyBuffer energy() { return energy; }
     public PlatformEnergyStorage energyPort(Direction side) { return side == null ? null : energyPorts[side.ordinal()]; }
     @Override public boolean acceptsEnergy() { return false; }
@@ -183,9 +197,22 @@ public final class LaserOpticBlockEntity extends LaserBlockEntity implements Las
             player.sendMessage(Text.translatable("message.justifylasers.mirror_angles", Math.round(yaw), Math.round(pitch)), true);
         } else if (kind() == LaserOpticBlock.Kind.SPLITTER) {
             player.sendMessage(Text.translatable("message.justifylasers.splitter"), true);
+        } else if (kind() == LaserOpticBlock.Kind.COMBINER) {
+            player.sendMessage(Text.translatable("message.justifylasers.combiner",
+                    Math.round((1 - LaserConfig.get().beamCombinerEfficiency) * 100)), true);
         } else {
-            player.sendMessage(Text.translatable("message.justifylasers.energy_receiver", energy.stored(), energy.capacity(), lastInput), true);
+            player.sendMessage(Text.translatable("message.justifylasers.energy_receiver", energy.stored(), energy.capacity(), lastInput,
+                    LuminousFlux.format(lastFlux)), true);
         }
+    }
+
+    @Override public void receiveLight(long lumens, int color) {
+        if (!exportsEnergy() || lumens <= 0) return;
+        if (lastInputTick != world.getTime()) { lastFlux = 0; lastInput = 0; }
+        lastFlux = LuminousFlux.clamp(lastFlux + LuminousFlux.clamp(lumens));
+        int amount = LuminousFlux.toEnergyRate(lumens, LaserConfig.get().lumensPerEnergyUnit, LaserConfig.get().energyTransmissionEfficiency);
+        receiveBeam(amount, color);
+        lastInputTick = world.getTime();
     }
 
     public void receiveBeam(int amount, int color) {
@@ -211,8 +238,9 @@ public final class LaserOpticBlockEntity extends LaserBlockEntity implements Las
     public static void serverTick(World world, BlockPos pos, BlockState state, LaserOpticBlockEntity optic) {
         if (optic.kind() != LaserOpticBlock.Kind.ENERGY_RECEIVER) return;
         net.askcraft.justifylasers.platform.Platform.exportEnergy(optic);
-        if (optic.lastInputTick < world.getTime() - 1 && optic.lastInput > 0) {
+        if (optic.lastInputTick < world.getTime() - 1) {
             optic.lastInput = 0;
+            optic.lastFlux = 0;
         }
     }
 
@@ -230,6 +258,7 @@ public final class LaserOpticBlockEntity extends LaserBlockEntity implements Las
         nbt.putInt("Energy", energy.stored());
         nbt.putIntArray("Ports", Arrays.stream(ports).mapToInt(Enum::ordinal).toArray());
         nbt.putBoolean("Emission", emission);
+        if (kind() == LaserOpticBlock.Kind.COMBINER) nbt.putDouble("CombinerEfficiency", combiningEfficiency());
     }
 
     @Override
@@ -243,7 +272,16 @@ public final class LaserOpticBlockEntity extends LaserBlockEntity implements Las
             int[] saved = nbt.getIntArray("Ports");
             for (int i = 0; i < ports.length; i++) ports[i] = i < saved.length ? OpticPortMode.byId(saved[i]) : OpticPortMode.DISABLED;
         }
+        if (kind() == LaserOpticBlock.Kind.COMBINER) {
+            boolean output = false;
+            for (int i = 0; i < ports.length; i++) if (ports[i] == OpticPortMode.OUTPUT) {
+                if (output) ports[i] = OpticPortMode.INPUT;
+                output = true;
+            }
+        }
         emission = nbt.getBoolean("Emission");
+        double efficiency = nbt.getDouble("CombinerEfficiency");
+        syncedCombinerEfficiency = Double.isFinite(efficiency) && efficiency > 0 && efficiency <= 1 ? efficiency : .95;
         LaserBeamNetwork.invalidate(world);
     }
 

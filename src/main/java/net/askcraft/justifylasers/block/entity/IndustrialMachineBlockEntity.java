@@ -5,6 +5,7 @@ import net.askcraft.justifylasers.config.LaserConfig;
 import net.askcraft.justifylasers.energy.LaserEnergyBuffer;
 import net.askcraft.justifylasers.energy.LaserEnergyHost;
 import net.askcraft.justifylasers.industry.IndustryRecipes;
+import net.askcraft.justifylasers.industry.GeneratorFuel;
 import net.askcraft.justifylasers.industry.MachineKind;
 import net.askcraft.justifylasers.laser.LaserColor;
 import net.askcraft.justifylasers.laser.LaserRedstoneMode;
@@ -38,7 +39,7 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 
-public final class IndustrialMachineBlockEntity extends LaserBlockEntity implements SidedInventory, LaserScreenFactory, LaserEnergyHost {
+public final class IndustrialMachineBlockEntity extends LaserBlockEntity implements SidedInventory, LaserScreenFactory, LaserEnergyHost, net.askcraft.justifylasers.laser.LaserLightSink {
     public static final int OUTPUT = 4, BLUEPRINT = 5, WATER_INPUT = 6, BUCKET_OUTPUT = 7, SLOT_COUNT = 8;
     public enum Status { IDLE, WORKING, NO_POWER, OUTPUT_FULL, DISABLED, NO_FUEL, CALIBRATING, UNFORMED, NO_WATER, NO_BLUEPRINT, REDSTONE }
     private final DefaultedList<ItemStack> items = DefaultedList.ofSize(SLOT_COUNT, ItemStack.EMPTY);
@@ -52,6 +53,11 @@ public final class IndustrialMachineBlockEntity extends LaserBlockEntity impleme
     private int syncedDuration;
     private int syncedRate, water, waterSpent;
     private String recipeKey = "";
+    private long receivedFlux, lightTick = Long.MIN_VALUE;
+    private int temperature = 200;
+    private GeneratorFuel burningFuel = GeneratorFuel.WOOD;
+    private int generatedRate;
+    private long heatRemainder;
     private BlockPos origin;
     private java.util.UUID owner;
     private String ownerName = "";
@@ -62,17 +68,41 @@ public final class IndustrialMachineBlockEntity extends LaserBlockEntity impleme
     public MachineKind kind() { return ((IndustrialMachineBlock) getCachedState().getBlock()).kind(); }
     @Override public LaserEnergyBuffer energy() { var controller = controller(); return controller != null && controller != this ? controller.energy : energy; }
     public PlatformEnergyStorage energyPort() { return energyPort; }
-    @Override public boolean acceptsEnergy() { return kind() != MachineKind.FUEL_GENERATOR && (!kind().multiblock() || formed()); }
+    @Override public boolean acceptsEnergy() { return kind() == MachineKind.ASSEMBLY_CHAMBER && formed(); }
     @Override public boolean exportsEnergy() { return kind() == MachineKind.FUEL_GENERATOR; }
     public int progress() { return progress; }
     public int fuel() { return fuel; }
     public int fuelTotal() { return fuelTotal; }
+    public int temperature() { return temperature / 10; }
+    public int efficiency() { return status == Status.WORKING ? burningFuel.efficiencyAt(temperature) : 0; }
+    public int fuelMaxTemperature() { return burningFuel.maxTemperature() / 10; }
+    public int generatedRate() { return generatedRate; }
+    public long lightFlux() {
+        var master = controller();
+        if (master != null && master != this) return master.lightFlux();
+        return world != null && (world.isClient || lightTick == world.getTime() || lightTick == world.getTime() - 1) ? receivedFlux : 0;
+    }
+    @Override public boolean acceptsLaser(Direction side, Vec3d point) {
+        if (kind() != MachineKind.CRYSTAL_GROWER || !formed() || side == null || !side.getAxis().isHorizontal()) return false;
+        Vec3d local = point.subtract(Vec3d.of(origin));
+        double plane = side.getDirection() == Direction.AxisDirection.POSITIVE ? 2 : 0;
+        double depth = side.getAxis() == Direction.Axis.X ? local.x : local.z;
+        double across = side.getAxis() == Direction.Axis.X ? local.z : local.x;
+        return Math.abs(depth - plane) < .08 && Math.min(Math.abs(across - .5), Math.abs(across - 1.5)) < .27 && Math.abs(local.y - .5) < .25;
+    }
+    @Override public void receiveLight(long lumens, int rgb) {
+        if (world == null || world.isClient || kind() != MachineKind.CRYSTAL_GROWER || !formed()) return;
+        var master = controller();
+        if (master != this) { if (master != null) master.receiveLight(lumens, rgb); return; }
+        if (lightTick != world.getTime()) { receivedFlux = 0; lightTick = world.getTime(); }
+        receivedFlux = net.askcraft.justifylasers.laser.LuminousFlux.clamp(receivedFlux + net.askcraft.justifylasers.laser.LuminousFlux.clamp(lumens));
+    }
     public int calibration() { return calibration; }
     public boolean enabled() { return enabled; }
     public Status status() { return status; }
     public int color() { return color; }
     public int duration() { return syncedDuration > 0 ? syncedDuration : kind().duration(); }
-    public int rate() { return syncedRate > 0 ? syncedRate : kind().rate(); }
+    public int rate() { return kind() == MachineKind.FUEL_GENERATOR ? generatedRate : syncedRate > 0 ? syncedRate : kind().rate(); }
     public BlockPos origin() { return origin; }
     public net.minecraft.util.math.Box getRenderBoundingBox() {
         if (!kind().multiblock() || origin == null) return new net.minecraft.util.math.Box(pos).expand(.03);
@@ -166,20 +196,34 @@ public final class IndustrialMachineBlockEntity extends LaserBlockEntity impleme
         }
         Status previous = machine.status;
         int before = machine.progress;
+        int beforeTemperature = machine.temperature;
         if (machine.kind() == MachineKind.FUEL_GENERATOR) {
             machine.generate();
+            machine.chargeTablet();
+            if (machine.status != Status.WORKING) {
+                int previousTemperature = machine.temperature;
+                machine.temperature = machine.burningFuel.approach(machine.temperature, LaserConfig.get().generatorHeatPerTick, false);
+                if (previousTemperature != machine.temperature) machine.markDirty();
+            }
             Platform.exportEnergy(machine);
         } else machine.process();
         boolean animating = machine.status == Status.WORKING || machine.calibration > 0;
         boolean periodic = world.getTime() % 10 == Math.floorMod(pos.asLong(), 10)
-                && (animating || machine.energy.stored() != machine.lastSyncedEnergy);
-        if (previous != machine.status || before > 0 && machine.progress == 0 || periodic) machine.sync();
+                && (animating || machine.kind() == MachineKind.CRYSTAL_GROWER || machine.temperature > 200 || machine.energy.stored() != machine.lastSyncedEnergy);
+        boolean cooled = beforeTemperature > GeneratorFuel.AMBIENT && machine.temperature == GeneratorFuel.AMBIENT;
+        if (previous != machine.status || before > 0 && machine.progress == 0 || cooled || periodic) machine.sync();
     }
 
     private void generate() {
+        generatedRate = 0;
         if (!enabled || !LaserConfig.technicalMode()) { status = Status.DISABLED; return; }
         if (!redstoneAllowsWork()) { status = Status.REDSTONE; return; }
-        if (energy.capacity() - energy.stored() < kind().rate()) { status = Status.OUTPUT_FULL; return; }
+        if (energy.stored() >= energy.capacity()) { status = Status.OUTPUT_FULL; return; }
+        GeneratorFuel profile = fuel > 0 ? burningFuel : GeneratorFuel.of(items.get(0));
+        int nextTemperature = profile.approach(temperature, LaserConfig.get().generatorHeatPerTick, true);
+        long produced = heatRemainder + profile.outputNumerator(nextTemperature, kind().rate());
+        int output = (int) (produced / GeneratorFuel.OUTPUT_DIVISOR);
+        if (energy.capacity() - energy.stored() < output) { status = Status.OUTPUT_FULL; return; }
         if (fuel <= 0) {
             ItemStack stack = items.get(0);
             int duration = IndustryRecipes.fuelTicks(stack);
@@ -189,11 +233,24 @@ public final class IndustrialMachineBlockEntity extends LaserBlockEntity impleme
             stack.decrement(1);
             if (!remainder.isEmpty()) addOutput(remainder);
             fuel = fuelTotal = duration;
+            burningFuel = profile;
         }
-        energy.receive(kind().rate(), false);
+        temperature = nextTemperature;
+        heatRemainder = produced % GeneratorFuel.OUTPUT_DIVISOR;
+        generatedRate = energy.receive(output, false);
         fuel--;
         status = Status.WORKING;
         markDirty();
+    }
+
+    private void chargeTablet() {
+        ItemStack tablet = items.get(WATER_INPUT);
+        if (!(tablet.getItem() instanceof net.askcraft.justifylasers.item.ExtraterrestrialTabletItem)) return;
+        int accepted = net.askcraft.justifylasers.item.ExtraterrestrialTabletItem.receive(tablet, Math.min(256, energy.stored()), true);
+        if (accepted > 0 && energy.consume(accepted)) {
+            net.askcraft.justifylasers.item.ExtraterrestrialTabletItem.receive(tablet, accepted, false);
+            markDirty();
+        }
     }
 
     private void process() {
@@ -220,7 +277,8 @@ public final class IndustrialMachineBlockEntity extends LaserBlockEntity impleme
         if (!canOutput(result)) { status = Status.OUTPUT_FULL; return; }
         int waterDue = Math.max(0, (int)((long) recipe.waterCost() * (progress + 1) / recipe.duration()) - waterSpent);
         if (kind() == MachineKind.CRYSTAL_GROWER && (water < waterDue || progress == 0 && water < recipe.waterCost())) { status = Status.NO_WATER; return; }
-        if (!energy.consume(recipe.rate())) { status = Status.NO_POWER; return; }
+        // LM is a current optical flux, not FE stored in the electrical buffer.
+        if (kind() == MachineKind.CRYSTAL_GROWER ? lightFlux() < recipe.rate() : !energy.consume(recipe.rate())) { status = Status.NO_POWER; return; }
         water -= waterDue; waterSpent += waterDue;
         status = Status.WORKING;
         if (++progress >= recipe.duration()) {
@@ -275,6 +333,9 @@ public final class IndustrialMachineBlockEntity extends LaserBlockEntity impleme
         nbt.putInt("Rate", rate()); nbt.putInt("Water", water); nbt.putInt("WaterSpent", waterSpent); nbt.putString("Recipe", recipeKey);
         if (origin != null) nbt.putLong("ChamberOrigin", origin.asLong());
         nbt.putInt("Fuel", fuel); nbt.putInt("FuelTotal", fuelTotal); nbt.putInt("Calibration", calibration);
+        nbt.putLong("LightFlux", lightFlux()); nbt.putInt("Temperature", temperature);
+        nbt.putInt("FuelMaxTemperature", burningFuel.maxTemperature()); nbt.putInt("FuelEfficiency", burningFuel.efficiency());
+        nbt.putLong("HeatRemainder", heatRemainder); nbt.putInt("GeneratedRate", generatedRate);
         nbt.putInt("Color", color); nbt.putInt("Status", status.ordinal()); nbt.putBoolean("Enabled", enabled);
         if (owner != null) nbt.putUuid("Owner", owner);
         nbt.putString("OwnerName", ownerName); nbt.putBoolean("PrivateAccess", privateAccess);
@@ -290,6 +351,14 @@ public final class IndustrialMachineBlockEntity extends LaserBlockEntity impleme
         progress = MathHelper.clamp(nbt.getInt("Progress"), 0, 72_000);
         fuel = MathHelper.clamp(nbt.getInt("Fuel"), 0, 1_000_000); fuelTotal = MathHelper.clamp(nbt.getInt("FuelTotal"), 0, 1_000_000);
         calibration = MathHelper.clamp(nbt.getInt("Calibration"), 0, 30);
+        receivedFlux = net.askcraft.justifylasers.laser.LuminousFlux.clamp(nbt.getLong("LightFlux"));
+        lightTick = Long.MIN_VALUE;
+        temperature = MathHelper.clamp(nbt.contains("Temperature") ? nbt.getInt("Temperature") : GeneratorFuel.AMBIENT, GeneratorFuel.AMBIENT, GeneratorFuel.MAX_TEMPERATURE);
+        burningFuel = nbt.contains("FuelMaxTemperature") ? new GeneratorFuel(
+                MathHelper.clamp(nbt.getInt("FuelMaxTemperature"), GeneratorFuel.AMBIENT + 1, GeneratorFuel.MAX_TEMPERATURE),
+                MathHelper.clamp(nbt.getInt("FuelEfficiency"), 1, GeneratorFuel.MAX_EFFICIENCY)) : GeneratorFuel.WOOD;
+        heatRemainder = Math.max(0, Math.min(GeneratorFuel.OUTPUT_DIVISOR - 1, nbt.getLong("HeatRemainder")));
+        generatedRate = MathHelper.clamp(nbt.getInt("GeneratedRate"), 0, LaserConfig.get().generatorPerTick);
         color = LaserColor.byIndex(nbt.getInt("Color")).ordinal();
         status = Status.values()[MathHelper.clamp(nbt.getInt("Status"), 0, Status.values().length - 1)];
         enabled = !nbt.contains("Enabled") || nbt.getBoolean("Enabled");
@@ -323,7 +392,8 @@ public final class IndustrialMachineBlockEntity extends LaserBlockEntity impleme
     @Override public boolean isValid(int slot, ItemStack stack) {
         var controller = controller(); if (controller != null && controller != this) return controller.isValid(slot, stack);
         if (slot == BLUEPRINT) return kind() == MachineKind.ASSEMBLY_CHAMBER && stack.getItem() instanceof net.askcraft.justifylasers.item.AssemblyBlueprintItem;
-        if (slot == WATER_INPUT) return kind() == MachineKind.CRYSTAL_GROWER && stack.isOf(net.minecraft.item.Items.WATER_BUCKET);
+        if (slot == WATER_INPUT) return kind() == MachineKind.CRYSTAL_GROWER ? stack.isOf(net.minecraft.item.Items.WATER_BUCKET)
+                : kind() == MachineKind.FUEL_GENERATOR && stack.getItem() instanceof net.askcraft.justifylasers.item.ExtraterrestrialTabletItem;
         if (slot == OUTPUT || slot == BUCKET_OUTPUT || slot < 0 || slot >= kind().inputs()) return false;
         var recipe = recipe();
         return recipe != null ? slot < recipe.inputs().size() && recipe.inputs().get(slot).test(stack) : kind() != MachineKind.ASSEMBLY_CHAMBER && IndustryRecipes.accepts(kind(), slot, stack);
@@ -332,10 +402,11 @@ public final class IndustrialMachineBlockEntity extends LaserBlockEntity impleme
         if (isPrivate() || kind().multiblock() && !formed()) return new int[0];
         return java.util.stream.IntStream.concat(java.util.stream.IntStream.range(0, kind().inputs()),
                 kind() == MachineKind.CRYSTAL_GROWER ? java.util.stream.IntStream.of(OUTPUT, WATER_INPUT, BUCKET_OUTPUT)
-                        : java.util.stream.IntStream.of(OUTPUT)).toArray();
+                        : kind() == MachineKind.FUEL_GENERATOR ? java.util.stream.IntStream.of(OUTPUT, WATER_INPUT) : java.util.stream.IntStream.of(OUTPUT)).toArray();
     }
     @Override public boolean canInsert(int slot, ItemStack stack, Direction side) { return !isPrivate() && (!kind().multiblock() || formed()) && slot != BLUEPRINT && isValid(slot, stack); }
-    @Override public boolean canExtract(int slot, ItemStack stack, Direction side) { return !isPrivate() && (!kind().multiblock() || formed()) && (slot == OUTPUT || slot == BUCKET_OUTPUT); }
+    @Override public boolean canExtract(int slot, ItemStack stack, Direction side) { return !isPrivate() && (!kind().multiblock() || formed()) && (slot == OUTPUT || slot == BUCKET_OUTPUT
+            || slot == WATER_INPUT && kind() == MachineKind.FUEL_GENERATOR && net.askcraft.justifylasers.item.ExtraterrestrialTabletItem.charge(stack) >= net.askcraft.justifylasers.item.ExtraterrestrialTabletItem.CAPACITY); }
     @Override public boolean canPlayerUse(PlayerEntity player) {
         return world != null && world.getBlockEntity(pos) == this && !player.isSpectator() && canAccess(player)
                 && player.squaredDistanceTo(Vec3d.ofCenter(pos)) <= 64;

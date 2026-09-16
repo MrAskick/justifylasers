@@ -59,7 +59,9 @@ final class IndustryJeiCategory implements IRecipeCategory<MachineRecipeData> {
                     .setStandardSlotBackground().addTooltipCallback((slot, tooltip) -> tooltip.add(Text.translatable("gui.justifylasers.industry.blueprint")));
         if (recipe.waterCost() > 0) {
             long amount = recipe.waterCost() * bucketVolume / 1000;
-            builder.addSlot(RecipeIngredientRole.INPUT, 111, 10).addFluidStack(Fluids.WATER, amount)
+            // Water is searchable, but it cannot be transferred into an item ingredient slot.
+            builder.addInvisibleIngredients(RecipeIngredientRole.INPUT).addFluidStack(Fluids.WATER, amount);
+            builder.addSlot(RecipeIngredientRole.RENDER_ONLY, 111, 10).addFluidStack(Fluids.WATER, amount)
                     .setFluidRenderer(Math.max(bucketVolume, amount), false, 16, 44);
         }
     }
@@ -71,7 +73,8 @@ final class IndustryJeiCategory implements IRecipeCategory<MachineRecipeData> {
         if (!recipe.blueprint().isBlank()) text(context, Text.translatable("gui.justifylasers.industry.blueprint_short"), 31, 15, 75, 0x9BCCDA);
         context.drawText(font, Text.literal("→"), 133, 43, 0xB1F5FF, false);
         text(context, Text.translatable("gui.justifylasers.industry.recipe_time", String.format(Locale.ROOT, "%.1f", recipe.duration() / 20d)), 8, 66, 158, 0xC4E6EB);
-        text(context, Text.literal(recipe.rate() + " " + Platform.ENERGY_UNIT + "/t · " + (long)recipe.rate() * recipe.duration() + " " + Platform.ENERGY_UNIT), 8, 79, 158, 0x6BC9D7);
+        text(context, Text.literal(kind == MachineKind.CRYSTAL_GROWER ? net.askcraft.justifylasers.laser.LuminousFlux.format(recipe.rate())
+                : recipe.rate() + " " + Platform.ENERGY_UNIT + "/t · " + (long)recipe.rate() * recipe.duration() + " " + Platform.ENERGY_UNIT), 8, 79, 158, 0x6BC9D7);
         if (recipe.waterCost() > 0) text(context, Text.translatable("gui.justifylasers.industry.recipe_water", recipe.waterCost()), 8, 92, 158, 0x839BEF);
         else if (!recipe.blueprint().isBlank()) text(context, Text.translatable("gui.justifylasers.industry.blueprint_reusable"), 8, 92, 158, 0x839DAF);
     }

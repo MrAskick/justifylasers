@@ -1,12 +1,12 @@
 package net.askcraft.justifylasers.item;
 
-import net.minecraft.item.Item;
+import net.minecraft.item.BlockItem;
 
-public final class LaserComponentItem extends Item {
+public final class LaserComponentItem extends BlockItem {
     private final String component;
 
     public LaserComponentItem(Settings settings, String component) {
-        super(settings);
+        super(net.askcraft.justifylasers.registry.ModIndustry.COMPONENT_BLOCKS.get(component), settings);
         this.component = component;
     }
 

@@ -21,6 +21,8 @@ public final class JustifyLasersJeiPlugin implements IModPlugin {
     public Identifier getPluginUid() { return JustifyLasers.id("guide"); }
 
     @Override public void onRuntimeAvailable(mezz.jei.api.runtime.IJeiRuntime runtime) {
+        RecipeNavigation.install(kind -> runtime.getRecipesGui().showTypes(java.util.List.of(IndustryJeiCategory.type(kind))),
+                () -> runtime.getRecipesGui().showTypes(java.util.List.of(MultiblockJeiCategory.TYPE)));
         var ingredients = runtime.getIngredientManager();
         var legacy = ingredients.getAllIngredients(VanillaTypes.ITEM_STACK).stream()
                 .filter(stack -> stack.isOf(net.askcraft.justifylasers.registry.ModIndustry.LASER_CHASSIS)
@@ -28,13 +30,19 @@ public final class JustifyLasersJeiPlugin implements IModPlugin {
         if (!legacy.isEmpty()) ingredients.removeIngredientsAtRuntime(VanillaTypes.ITEM_STACK, legacy);
     }
 
+    @Override public void onRuntimeUnavailable() { RecipeNavigation.install(null, null); }
+
     @Override public void registerCategories(mezz.jei.api.registration.IRecipeCategoryRegistration registration) {
+        registration.addRecipeCategories(new MultiblockJeiCategory(registration.getJeiHelpers()));
         for (var kind : net.askcraft.justifylasers.industry.MachineKind.values())
             if (kind != net.askcraft.justifylasers.industry.MachineKind.FUEL_GENERATOR)
                 registration.addRecipeCategories(new IndustryJeiCategory(kind, registration.getJeiHelpers()));
     }
 
     @Override public void registerRecipeCatalysts(mezz.jei.api.registration.IRecipeCatalystRegistration registration) {
+        for (var construction : MultiblockConstruction.all()) {
+            registration.addRecipeCatalyst(construction.result(), MultiblockJeiCategory.TYPE);
+        }
         net.askcraft.justifylasers.registry.ModIndustry.MACHINES.forEach((kind, block) -> {
             if (kind != net.askcraft.justifylasers.industry.MachineKind.FUEL_GENERATOR)
                 registration.addRecipeCatalyst(new ItemStack(block), IndustryJeiCategory.type(kind));
@@ -60,6 +68,8 @@ public final class JustifyLasersJeiPlugin implements IModPlugin {
 
     @Override
     public void registerRecipes(IRecipeRegistration registration) {
+        registration.addRecipes(MultiblockJeiCategory.TYPE, MultiblockConstruction.all());
+        info(registration, net.askcraft.justifylasers.registry.ModIndustry.BLUEPRINTS.get("extraterrestrial_tablet"), "tablet_schematic");
         var world = net.minecraft.client.MinecraftClient.getInstance().world;
         if (world != null) {
             var recipes = net.askcraft.justifylasers.industry.IndustryRecipe.all(world);
@@ -72,6 +82,7 @@ public final class JustifyLasersJeiPlugin implements IModPlugin {
         info(registration, ModEntities.REFOCUSING_CUBE_ITEM, "refocusing_cube");
         info(registration, ModBlocks.LASER_MIRROR, "laser_mirror");
         info(registration, ModBlocks.BEAM_SPLITTER, "beam_splitter");
+        info(registration, ModBlocks.BEAM_COMBINER, "beam_combiner");
         info(registration, ModBlocks.CONFIGURATOR, "configurator");
         info(registration, ModBlocks.LASER_GUN, "laser_gun");
         info(registration, ModBlocks.LASER_SABER, "laser_saber");
@@ -84,6 +95,10 @@ public final class JustifyLasersJeiPlugin implements IModPlugin {
             info(registration, net.askcraft.justifylasers.registry.ModIndustry.RAW_WOLFRAMITE, "raw_wolframite");
             info(registration, net.askcraft.justifylasers.registry.ModIndustry.RAW_PHOTONIC_CRYSTAL, "raw_photonic_crystal");
             info(registration, net.askcraft.justifylasers.registry.ModIndustry.EXTRATERRESTRIAL_TABLET, "extraterrestrial_tablet");
+            info(registration, net.askcraft.justifylasers.registry.ModIndustry.SMALL_SOLAR_CONCENTRATOR, "small_solar_concentrator");
+            info(registration, net.askcraft.justifylasers.registry.ModIndustry.SOLAR_ABSORBER, "solar_absorber");
+            info(registration, net.askcraft.justifylasers.registry.ModIndustry.LASER_ABSORBING_GLASS, "laser_absorbing_glass");
+            info(registration, net.askcraft.justifylasers.registry.ModIndustry.ELECTRIC_MOTOR, "electric_motor");
             info(registration, ModBlocks.POWERED_LASER_EMITTER, "powered_laser_emitter");
             info(registration, ModBlocks.ENERGY_RECEIVER, "energy_receiver");
             info(registration, ModLaserParts.ADVANCED_RANGE_MODULE, "advanced_range_module");

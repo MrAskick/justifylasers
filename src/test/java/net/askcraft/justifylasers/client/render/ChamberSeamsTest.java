@@ -8,6 +8,57 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 class ChamberSeamsTest {
+    @Test void largeCollectorPanelsUseOneContinuousSquareUvField() {
+        var grid=ComponentAtlas.load("solar_concentrator","base").region("grid");
+        int panels=0;
+        for(var face:SolarConcentratorModel.DISH.faces())if(grid.contains(face.ua())){
+            panels++;
+            var points=List.of(face.a(),face.b(),face.c(),face.d());var uv=List.of(face.ua(),face.ub(),face.uc(),face.ud());
+            for(int i=0;i<4;i++){
+                var expected=grid.uv((points.get(i).x*16/21+1)/2,(points.get(i).z*16/21+1)/2);
+                assertEquals(expected.u(),uv.get(i).u(),1e-7);assertEquals(expected.v(),uv.get(i).v(),1e-7);
+            }
+            assertTrue(face.normal().y>0,"Fronts of all panels face the sky");
+        }
+        assertEquals(16,panels,"Inner and outer sectors share one UV field, without repeated trims");
+    }
+
+    @Test void largeDishTracksBothHorizonsAndHasConservativeRenderBounds() {
+        for(int degrees=-89;degrees<=89;degrees++){
+            double radians=Math.toRadians(degrees);
+            var sun=new Vec3d(Math.sin(radians),Math.cos(radians),0);
+            float tilt=SolarConcentratorModel.sunTilt(sun);
+            var normal=SolarConcentratorModel.dishPoint(new Vec3d(0,1,0),tilt).subtract(SolarConcentratorModel.dishPoint(Vec3d.ZERO,tilt));
+            assertTrue(normal.dotProduct(sun)>.999999,"Dish normal tracks sun in world coordinates");
+            for(var face:SolarConcentratorModel.DISH.faces())for(var point:List.of(face.a(),face.b(),face.c(),face.d())){
+                var p=SolarConcentratorModel.dishPoint(point,tilt);
+                assertTrue(Math.abs(p.x)<1.5 && Math.abs(p.z)<1.5 && p.y>-.5 && p.y<3.5,"Tracking dish stays inside renderer bounds");
+            }
+        }
+        assertEquals(0,SolarConcentratorModel.sunTilt(new Vec3d(0,-1,0)),"Night park pose");
+    }
+    @Test void trackingDishStaysInsideOneBlockAtEverySunAngle() {
+        for (int angle=-90;angle<=90;angle++) {
+            double radians=Math.toRadians(angle);
+            for (var face:SmallSolarConcentratorModel.DISH.faces()) for (var p:List.of(face.a(),face.b(),face.c(),face.d())) {
+                double x=p.x*Math.cos(radians)-p.y*Math.sin(radians);
+                double y=p.x*Math.sin(radians)+p.y*Math.cos(radians)+.1;
+                assertTrue(Math.abs(x)<=.5 && y>=-.5 && y<=.5 && Math.abs(p.z)<=.5,
+                        "Small collector exceeds its block at angle="+angle+": "+p);
+            }
+        }
+    }
+    @Test void solarConcentratorHasNoCoplanarOverlaps() {
+        verify(SolarConcentratorModel.MESH, "solar concentrator");
+        verify(SolarConcentratorModel.DISH, "large dish");
+        verify(SolarConcentratorModel.PORT, "large port");
+        verify(SolarConcentratorModel.OUTLET, "large outlet");
+        verify(SmallSolarConcentratorModel.BASE, "small base");
+        verify(SmallSolarConcentratorModel.DISH, "small dish");
+        verify(SmallSolarConcentratorModel.PORT, "small port");
+        verify(SmallSolarConcentratorModel.OUTLET, "small outlet");
+        verify(FuelGeneratorModel.MESH, "fuel generator");
+    }
     @Test void chambersAndCasingsHaveNoCoplanarOverlaps() {
         for (boolean grower : new boolean[]{false,true}) for (boolean casing : new boolean[]{false,true})
             verify(ChamberModel.chassis(grower, casing), "grower=" + grower + ", casing=" + casing);
@@ -42,7 +93,7 @@ class ChamberSeamsTest {
         var overlaps = new java.util.ArrayList<String>();
         for (int i = 0; i < faces.size(); i++) {
             var a = faces.get(i);
-            assertTrue(Double.isFinite(a.normal().lengthSquared()), name);
+            assertTrue(Double.isFinite(a.normal().lengthSquared()), name + " degenerate face " + i + ": " + a);
             for (int j = i + 1; j < faces.size(); j++) {
                 var b = faces.get(j);
                 if (a.normal().dotProduct(b.normal()) < .999999 || Math.abs(a.normal().dotProduct(a.a().subtract(b.a()))) > 1e-7) continue;

@@ -209,6 +209,13 @@ public final class Platform {
     }
 
 
+    public static void registerExplorationLoot() {
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.LootTableLoadEvent event) -> {
+            var pool = net.askcraft.justifylasers.industry.TabletLoot.pool(event.getName());
+            if (pool != null) event.getTable().addPool(pool.name(net.askcraft.justifylasers.industry.TabletLoot.POOL_NAME).build());
+        });
+    }
+
     public static void onEndWorldTick(Consumer<ServerWorld> callback) {
         NeoForge.EVENT_BUS.addListener((LevelTickEvent.Post event) -> {
             if (event.getLevel() instanceof ServerWorld world) callback.accept(world);

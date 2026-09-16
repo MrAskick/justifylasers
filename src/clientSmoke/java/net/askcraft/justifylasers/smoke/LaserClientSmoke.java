@@ -28,6 +28,9 @@ public final class LaserClientSmoke {
     private static boolean reloading;
 
     public static void tick(MinecraftClient client) {
+        if (Boolean.getBoolean("justifylasers.smokeAlpha25") || Boolean.getBoolean("justifylasers.smokeAlpha26")) { OpticsWorldSmoke.tick(client); return; }
+        if (Boolean.getBoolean("justifylasers.smokeAlpha24")) { OpticsWorldSmoke.tick(client); return; }
+        if (Boolean.getBoolean("justifylasers.smokeSolar")) { OpticsWorldSmoke.tick(client); return; }
         if (Boolean.getBoolean("justifylasers.smokeSaberAudio")) { OpticsWorldSmoke.tick(client); return; }
         if (Boolean.getBoolean("justifylasers.smokeOres")) { OpticsWorldSmoke.tick(client); return; }
         if (Boolean.getBoolean("justifylasers.smokeDualWeapons")) { OpticsWorldSmoke.tick(client); return; }

@@ -1,6 +1,51 @@
 # Changelog
 
-For the public update from alpha.6, see the [short alpha.21 release notes](docs/releases/2.0.0-alpha.21.md). The entries below retain the individual development changes.
+For the latest public update, see the [short alpha.26 release notes](docs/releases/2.0.0-alpha.26.md), covering changes since alpha.21. The entries below retain the individual development changes.
+
+## 2.0.0-alpha.26
+
+- Changed the large Solar Concentrator to four external lower resonators with matching nozzles and one configurable output.
+- Added sun tracking to the large dish; fixed its panel UV grid and aligned incoming sunlight shafts with the moving dish.
+- Added fuel-specific generator temperatures and efficiency, gradual output, saved thermal state and fractional FE. Lava peaks at 1200 °C / 95% / 128 FE per tick; sticks cap at 300 °C.
+- Slowed heating to 0.2 °C/tick; cooling is three times faster. Detailed the generator's core, corner lights, vents, brackets, cables and live split display.
+- Updated JEI construction diagrams, Russian/English help and config migration. Existing alpha.25 collectors need three additional resonators.
+
+## 2.0.0-alpha.25
+
+- Added the one-block, sun-tracking Small Solar Concentrator (16 klm), its assembly schematic and an Electric Motor.
+- Rebuilt the large collector: 17 small collectors, lower configurable output, 480 klm peak and updated JEI construction guide.
+- Switched crystal growth to LM-only input through lower optical lenses; FE no longer powers the chamber.
+- Rebuilt the Fuel Generator with a live display and tablet charger; restored its workbench recipe and reduced output to 32 FE/tick.
+- Enabled all content without external technical mods; tablets can reproduce their own schematic for trading.
+- Returned laser-absorbing glass to the workbench; removed its schematic and the Electric Smelter.
+- Moved/shrank Help below the water tank, shortened JEI labels, and updated English/Russian guides.
+- Added progression, optical input, save/restore, ownership and model-geometry checks. Stock config values migrate once with a backup; old large collectors require rebuilding.
+
+## 2.0.0-alpha.24
+
+- Added the Beam Combiner: configurable six-sided ports, one output, summed light/energy with 5% loss, mixed colors and cycle-safe optical routing.
+- Added the loot-only Tablet Schematic in seven structure chest tables and the tablet's Assembly Chamber recipe; removed the Creative-only acquisition requirement.
+- Changed Control Circuits to diamonds, Crystal Mounts to iron ingots, and Blank Schematics to an iron ingot plus lapis lazuli.
+- Turned held schematics toward the player in both hands, including blank cards.
+- Added optional JEI arrow shortcuts and visual multiblock construction guides with layer controls and component counts.
+- Updated English/Russian help and progression documentation. Existing machines, inventories and energy costs are preserved.
+
+## 2.0.0-alpha.23
+
+- Added the Solar Concentrator GUI with live luminous flux, generation/status, power, all-side redstone control and whole-structure privacy.
+- Added solar-beam damage with armor/resistance support, scaled by sunlight and split power; no mining or ignition.
+- Introduced lm/klm/Mlm/Glm and direct optical consumers. Only range/thickness upgrades increase emitter output; existing FE work costs remain unchanged.
+- Smoothed the solar production curve and reduced peak output to 1 Mlm / 800 FE per tick, versus 656 klm / 524 FE per tick for a fully upgraded emitter.
+- Moved solar absorbers and laser-absorbing glass to assembly recipes with tablet schematics; removed workbench recipes and loose-component inspection popups.
+- Updated English/Russian interfaces and the concentrator guide. Existing structures and component IDs are preserved.
+
+## 2.0.0-alpha.22
+
+- Made all five laser components placeable and recoverable blocks; preserved item IDs and assembly recipes.
+- Added the 3×3×3 + resonator Solar Concentrator, absorption panels and laser-proof glass, with daylight/side-light occlusion and configurable output, range and width.
+- Connected solar beams to the existing optical and energy network; split branches share one generation budget.
+- Added the collector model, active emission and soft sunlight shafts with a client-side toggle; updated English/Russian text and construction documentation.
+- Fixed long-beam input detection for optics placed directly against the source. Original reference sheets remain excluded from runtime archives.
 
 ## 2.0.0-alpha.21
 

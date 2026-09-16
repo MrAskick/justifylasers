@@ -1,5 +1,6 @@
 package net.askcraft.justifylasers.laser;
 
+import net.askcraft.justifylasers.registry.ModBlocks;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
@@ -29,6 +30,7 @@ public final class LaserMining {
     }
 
     public static boolean breakBlock(ServerWorld world, BlockPos pos, boolean drops, boolean silkTouch) {
+        if (world.getBlockState(pos).isIn(ModBlocks.LASER_PROOF)) return false;
         if (drops && !silkTouch) {
             return world.breakBlock(pos, true, null);
         }

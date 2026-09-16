@@ -1,6 +1,6 @@
 # Assembly costs
 
-Defaults for 2.0.0-alpha.21 (unchanged since alpha.19). Times assume 20 ticks/second; FE and Fabric E use the same numeric values.
+Defaults for 2.0.0-alpha.25. Small Solar Concentrator replaces Laser-Absorbing Glass in the assembly catalog; glass now uses the workbench. Times assume 20 ticks/second; FE and Fabric E use the same numeric values.
 These are the direct costs of one operation, excluding the materials' own processing costs.
 
 | Schematic | Seconds | Energy/tick | Total energy |
@@ -10,6 +10,8 @@ These are the direct costs of one operation, excluding the materials' own proces
 | Beam Controller | 20 | 112 | 44,800 |
 | Energy Core | 28 | 152 | 85,120 |
 | Optical Resonator | 32 | 176 | 112,640 |
+| Solar Absorber | 15 | 88 | 26,400 |
+| Small Solar Concentrator | 44 | 64 | 56,320 |
 | Powered Laser Emitter | 60 | 320 | 384,000 |
 | Laser Gun | 50 | 256 | 256,000 |
 | LightSaber | 40 | 192 | 153,600 |
@@ -19,6 +21,8 @@ These are the direct costs of one operation, excluding the materials' own proces
 | Laser Receiver | 24 | 120 | 57,600 |
 | Laser Mirror | 14 | 56 | 15,680 |
 | Beam Splitter | 76 | 416 | 632,320 |
+| Beam Combiner | 84 | 464 | 779,520 |
+| Extraterrestrial Tablet | 30 | 144 | 86,400 |
 | Energy Receiver | 68 | 352 | 478,720 |
 | Configurator | 9 | 28 | 5,040 |
 | Block Destruction Module | 36 | 200 | 144,000 |

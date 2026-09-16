@@ -49,6 +49,7 @@ public final class ClientSettingsScreen extends Screen {
             slider(1, "scorch_distance", settings.scorchDistance, 16, 128, 8, value -> settings.scorchDistance = (int) value);
             toggle(2, "weapon_sway", () -> settings.weaponSway, value -> settings.weaponSway = value);
             toggle(3, "saber_sparks", () -> settings.saberSparks, value -> settings.saberSparks = value);
+            toggle(4, "solar_shafts", () -> settings.solarLightShafts, value -> settings.solarLightShafts = value);
         } else {
             slider(0, "sound_volume", settings.soundVolume * 100, 0, 100, 5, value -> settings.soundVolume = value / 100);
             slider(1, "sound_limit", settings.maxSoundSources, 1, 64, 1, value -> settings.maxSoundSources = (int) value);

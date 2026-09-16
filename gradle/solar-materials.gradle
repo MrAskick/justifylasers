@@ -1,0 +1,77 @@
+import groovy.json.JsonOutput
+import java.awt.image.BufferedImage
+import javax.imageio.ImageIO
+
+// Optional authoring task. The distributed resources contain only packed component crops.
+tasks.register('generateSolarMaterials') {
+    def root = rootProject.file('ref/Blocks/sun_concentrator/3x3x3_model')
+    inputs.files(new File(root, 'Sun_concentrator_UV.png'), new File(root, 'Sun_concentrator_UV_GLOW.png'))
+    inputs.file(rootProject.file('gradle/solar-materials.gradle'))
+    def destination = layout.buildDirectory.dir('generated/solarMaterials')
+    outputs.dir(destination)
+    doLast {
+        def sheet = ImageIO.read(new File(root, 'Sun_concentrator_UV.png'))
+        def mask = ImageIO.read(new File(root, 'Sun_concentrator_UV_GLOW.png'))
+        def parts = [
+            metal: [rect:[290,95,72,92],size:[64,64]],
+            armor: [rect:[66,72,112,115],size:[96,96]],
+            absorber: [rect:[557,30,214,185],size:[128,128]],
+            casing: [rect:[32,30,189,183],size:[128,128]],
+            controller: [rect:[232,32,182,179],size:[128,128]],
+            vent: [rect:[447,242,72,149],size:[48,96]],
+            glass: [rect:[695,624,187,173],size:[128,128]],
+            mirror: [rect:[280,852,112,90],size:[128,96]],
+            light: [rect:[568,52,18,19],mask:[50,64,16,18],size:[24,24]],
+            lens: [rect:[276,610,45,45],size:[64,64]]
+        ]
+        int size = 512, left = 4, top = 4, row = 0
+        def names = ['base','base_n','base_s','glow','glow_n','glow_s','indicator','indicator_n','indicator_s']
+        def images = names.collectEntries { [(it):new BufferedImage(size,size,BufferedImage.TYPE_INT_ARGB)] }
+        def regions = [:]
+        def particleImages = [:]
+        parts.each { name, spec ->
+            int width = spec.size[0], height = spec.size[1]
+            if (left + width + 4 > size) { left = 4; top += row + 8; row = 0 }
+            if (top + height + 4 > size) throw new GradleException('Solar atlas exceeds its 512px budget')
+            regions[name] = [left,top,width,height]
+            def tile = new BufferedImage(width,height,BufferedImage.TYPE_INT_ARGB)
+            for (int y = -4; y < height + 4; y++) for (int x = -4; x < width + 4; x++) {
+                double u = (Math.max(0,Math.min(width-1,x)) + .5) / width
+                double v = (Math.max(0,Math.min(height-1,y)) + .5) / height
+                def r = spec.rect
+                int pixel = sheet.getRGB(r[0] + (int)(u*r[2]), r[1] + (int)(v*r[3]))
+                int red = pixel >> 16 & 255, green = pixel >> 8 & 255, blue = pixel & 255
+                // Indicator faces own their light mask; panel artwork is never used as an emissive silhouette.
+                int emission = 0
+                if (spec.mask) {
+                    def m = spec.mask
+                    int sample = mask.getRGB(m[0] + (int)(u*m[2]), m[1] + (int)(v*m[3]))
+                    emission = Math.min(sample >> 16 & 255, Math.min(sample >> 8 & 255, sample & 255))
+                    red = 34; green = 39; blue = 43
+                } else if (Math.min(green,blue) > red + 45 && red > 130) {
+                    red = 40; green = 47; blue = 52
+                }
+                int albedo = (int)0xFF000000L | red << 16 | green << 8 | blue
+                int dx = left+x, dy = top+y
+                images.base.setRGB(dx,dy,albedo)
+                images.base_n.setRGB(dx,dy,(int)0xFF7F7FFFL)
+                images.base_s.setRGB(dx,dy,(int)(name == 'mirror' ? 0xFFD8DB00L : name == 'glass' ? 0xFFBA1000L : 0xFF784000L))
+                ['glow','indicator'].each { images[it].setRGB(dx,dy,(emission << 24) | 0xFFFFFF) }
+                ['glow_n','indicator_n'].each { images[it].setRGB(dx,dy,(int)0xFF7F7FFFL) }
+                images.glow_s.setRGB(dx,dy,((int)(emission * 0.9) << 24) | 0x602000)
+                images.indicator_s.setRGB(dx,dy,(int)0xFF602000L)
+                if (x >= 0 && y >= 0 && x < width && y < height) {
+                    int alpha = name == 'glass' && x > 7 && y > 7 && x < width-8 && y < height-8 ? 65 : 255
+                    tile.setRGB(x,y,(alpha << 24) | (albedo & 0xFFFFFF))
+                }
+            }
+            if (name == 'absorber' || name == 'glass') particleImages[name] = tile
+            left += width+8; row = Math.max(row,height)
+        }
+        def directory = new File(destination.get().asFile,'component/solar_concentrator'); directory.mkdirs()
+        images.each { name,img -> ImageIO.write(img,'png',new File(directory,name+'.png')) }
+        new File(directory,'base.json').setText(JsonOutput.toJson([size:size,regions:regions])+'\n','UTF-8')
+        def particles = new File(destination.get().asFile,'block/particle'); particles.mkdirs()
+        particleImages.each { name,img -> ImageIO.write(img,'png',new File(particles,(name == 'glass' ? 'laser_absorbing_glass' : 'solar_absorber')+'.png')) }
+    }
+}

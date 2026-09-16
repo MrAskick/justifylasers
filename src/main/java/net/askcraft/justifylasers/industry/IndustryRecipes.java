@@ -12,7 +12,6 @@ public final class IndustryRecipes {
         if (stack.isEmpty() || slot < 0 || slot >= kind.inputs()) return false;
         return switch (kind) {
             case FUEL_GENERATOR -> fuelTicks(stack) > 0;
-            case ELECTRIC_SMELTER -> slot == 0 && stack.isOf(ModIndustry.RAW_WOLFRAMITE);
             case CRYSTAL_GROWER -> slot == 0 ? stack.isOf(ModIndustry.RAW_PHOTONIC_CRYSTAL) : stack.isOf(Items.QUARTZ);
             case ASSEMBLY_CHAMBER -> false;
         };

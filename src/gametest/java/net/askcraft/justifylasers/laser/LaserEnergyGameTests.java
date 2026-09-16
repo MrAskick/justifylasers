@@ -190,6 +190,48 @@ public class LaserEnergyGameTests implements FabricGameTest {
         return emitter;
     }
 
+    @GameTest(templateName = EMPTY_STRUCTURE)
+    public void onlyRangeAndThicknessModulesIncreaseOpticalOutput(TestContext context) {
+        boolean mode = LaserConfig.technicalMode();
+        try {
+            LaserConfig.applyServerMode(true);
+            for (int upgrades : new int[]{0, 1, 64}) {
+                int opticalRate = LaserConfig.get().basePerTick + upgrades * 9;
+                long flux = LuminousFlux.fromEnergyRate(opticalRate, LaserConfig.get().lumensPerEnergyUnit);
+                int previousCost = 0;
+                for (boolean functions : new boolean[]{false, true}) {
+                    var emitter = create(context);
+                    installCrystal(emitter, LaserColor.RED);
+                    if (upgrades > 0) {
+                        emitter.setStack(LaserModule.RANGE.slot(), new ItemStack(ModLaserParts.ADVANCED_RANGE_MODULE, upgrades));
+                        emitter.setStack(LaserModule.THICKNESS.slot(), new ItemStack(ModLaserParts.MODULES.get(LaserModule.THICKNESS), upgrades));
+                    }
+                    if (functions) {
+                        for (var module : LaserModule.values()) if (module != LaserModule.RANGE && module != LaserModule.THICKNESS)
+                            emitter.setStack(module.slot(), new ItemStack(ModLaserParts.MODULES.get(module)));
+                        for (int property : new int[]{3, 4, 12, 15, 16, 17}) emitter.getPropertyDelegate().set(property, 1);
+                        emitter.getPropertyDelegate().set(9, 200);
+                        emitter.getPropertyDelegate().set(10, 100);
+                        emitter.getPropertyDelegate().set(11, 20);
+                        emitter.getPropertyDelegate().set(14, 100);
+                    }
+                    emitter.energy().restore(100_000);
+                    tick(emitter);
+                    context.assertTrue(emitter.isBeamActive() && emitter.opticalBudget() == flux, "Only optical modules set the output");
+                    context.assertTrue(emitter.transferBudget() == opticalRate, "FE-equivalent output excludes paid effects");
+                    context.assertTrue(100_000 - emitter.energy().stored() == emitter.energyCost(), "All work is still paid for");
+                    if (functions) context.assertTrue(emitter.energyCost() > previousCost, "Mining, damage and ignition still increase consumption");
+                    previousCost = emitter.energyCost();
+                    var clientMenu = new LaserEmitterScreenHandler(1, context.createMockSurvivalPlayer().getInventory(), emitter.getPos(), true);
+                    for (int index = 48; index < 52; index++) clientMenu.setProperty(index, (short) emitter.getPropertyDelegate().get(index));
+                    context.assertTrue(clientMenu.luminousFlux() == flux, "Flux survives vanilla's signed 16-bit menu packets");
+                    context.removeBlock(SOURCE);
+                }
+            }
+        } finally { context.removeBlock(SOURCE); LaserConfig.applyServerMode(mode); }
+        context.complete();
+    }
+
     private static void installCrystal(LaserEmitterBlockEntity emitter, LaserColor color) {
         emitter.setStack(0, new ItemStack(ModLaserParts.CRYSTALS.get(color)));
     }

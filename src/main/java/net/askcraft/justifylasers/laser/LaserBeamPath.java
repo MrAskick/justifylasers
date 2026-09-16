@@ -32,24 +32,26 @@ public record LaserBeamPath(List<LaserBeamTrace> segments) {
     }
 
     public static boolean isOpticalInput(World world, BlockState state, LaserBeamTrace trace) {
-        return state.getBlock() instanceof LaserOpticBlock optic
+        return world.getBlockEntity(trace.hitBlock()) instanceof LaserLightSink sink && sink.acceptsLaser(trace.hitSide(), trace.end())
+                || state.getBlock() instanceof LaserOpticBlock optic
                 && (optic.kind() == LaserOpticBlock.Kind.MIRROR || world.getBlockEntity(trace.hitBlock()) instanceof LaserOpticBlockEntity entity
                     && entity.acceptsLaser(trace.hitSide(), trace.end()));
     }
 
-    static LaserBeamPath trace(World world, LaserEmitterBlockEntity emitter, float tickDelta,
-                               Map<Integer, BlockPos> owners, Map<Integer, LaserBeamNetwork.CubeInput> inputs,
+    static LaserBeamPath trace(World world, LaserBeamSource emitter, float tickDelta,
+                               Map<Integer, CubeRoute> owners, Map<Integer, LaserBeamNetwork.CubeInput> inputs,
                                Map<BlockPos, LaserBeamNetwork.OpticInput> opticInputs) {
-        LaserBeamTrace first = LaserBeamTrace.trace(world, emitter.getPos(), emitter.getCachedState(), emitter.getBeamRange());
         ArrayDeque<Branch> pending = new ArrayDeque<>();
-        pending.add(new Branch(first.start(), first.axis(), emitter.getBeamRange(), emitter.getColor().rgb(),
-                1, 0, null, -1, Set.of(), Set.of()));
+        // Start just inside the source face, ignoring only its own body. Starting beyond the face
+        // skips the optical input plane when a receiver or splitter is placed directly against it.
+        pending.add(new Branch(emitter.beamOrigin(), emitter.beamDirection(), emitter.getBeamRange(), emitter.beamRgb(),
+                1, 0, emitter.beamExitBlock(), -1, Set.of(), Set.of(), null));
         List<LaserBeamTrace> segments = new ArrayList<>();
         while (!pending.isEmpty() && segments.size() < MAX_SEGMENTS) {
             Branch branch = pending.removeFirst();
             if (branch.remaining <= OpticalGeometry.EPSILON || branch.power <= 0) continue;
             LaserBeamTrace ray = LaserBeamTrace.traceFrom(world, branch.start, branch.axis, branch.remaining, branch.ignoredBlock)
-                    .withOptics(branch.rgb, branch.power);
+                    .withOptics(branch.rgb, branch.power).combinedBy(branch.combinedBy);
             RefocusingCubeEntity nearest = null;
             CubeOptics.Hit nearestHit = null;
             double distance = ray.length();
@@ -66,11 +68,14 @@ public record LaserBeamPath(List<LaserBeamTrace> segments) {
                 }
             }
             if (nearest != null) {
-                segments.add(new LaserBeamTrace(ray.start(), nearestHit.position(), ray.direction(), null).withOptics(branch.rgb, branch.power));
+                segments.add(new LaserBeamTrace(ray.start(), nearestHit.position(), ray.direction(), null)
+                        .withOptics(branch.rgb, branch.power).combinedBy(branch.combinedBy));
                 if (!nearestHit.acceptsInput() || branch.depth >= MAX_REFOCUSES || branch.cubes.contains(nearest.getId())) continue;
-                // One output per cube, even when split branches or several sources converge.
-                BlockPos owner = owners.putIfAbsent(nearest.getId(), emitter.getPos());
-                if (owner != null || inputs.containsKey(nearest.getId())) continue;
+                // A cube still selects one incident ray. Contributions already coalesced by a
+                // combiner share that ray, including when a splitter rejoins its own branches.
+                var route = new CubeRoute(branch.combinedBy, nearestHit.position(), branch.axis);
+                CubeRoute owner = owners.putIfAbsent(nearest.getId(), route);
+                if (owner != null && !route.sharesCombinedRay(owner)) continue;
                 CubeOptics.Frame frame = nearest.opticalFrame(tickDelta);
                 Vec3d exit = frame.output();
                 double toCenter = nearestHit.position().distanceTo(frame.center());
@@ -83,7 +88,7 @@ public record LaserBeamPath(List<LaserBeamTrace> segments) {
                 Set<Integer> visited = new HashSet<>(branch.cubes);
                 visited.add(nearest.getId());
                 pending.addFirst(new Branch(exit, frame.forward(), remaining, branch.rgb, branch.power,
-                        branch.depth + 1, null, nearest.getId(), Set.copyOf(visited), branch.optics));
+                        branch.depth + 1, null, nearest.getId(), Set.copyOf(visited), branch.optics, branch.combinedBy));
                 continue;
             }
             if (!ray.hasBlockHit()) {
@@ -99,12 +104,14 @@ public record LaserBeamPath(List<LaserBeamTrace> segments) {
                 opticInputs.merge(ray.hitBlock(), input, (previous, next) -> next.power() > previous.power() ? next : previous);
             }
             boolean redirect = optic != null && (optic.kind() == LaserOpticBlock.Kind.MIRROR && optic.reflectingSurface(ray.end())
-                    || optic.kind() == LaserOpticBlock.Kind.SPLITTER && optic.acceptsLaser(ray.hitSide(), ray.end()));
+                    || (optic.kind() == LaserOpticBlock.Kind.SPLITTER || optic.kind() == LaserOpticBlock.Kind.COMBINER)
+                        && optic.acceptsLaser(ray.hitSide(), ray.end()));
             if (!crystal && !redirect) {
                 segments.add(ray);
                 continue;
             }
-            segments.add(new LaserBeamTrace(ray.start(), ray.end(), ray.direction(), null).withOptics(branch.rgb, branch.power));
+            segments.add(new LaserBeamTrace(ray.start(), ray.end(), ray.direction(), null)
+                    .withOptics(branch.rgb, branch.power).combinedBy(branch.combinedBy));
             if (branch.depth >= MAX_REFOCUSES || branch.optics.contains(ray.hitBlock())) continue;
             Set<BlockPos> visited = new HashSet<>(branch.optics);
             visited.add(ray.hitBlock());
@@ -127,21 +134,43 @@ public record LaserBeamPath(List<LaserBeamTrace> segments) {
                     if (pending.size() + segments.size() >= MAX_SEGMENTS) break;
                     Vec3d axis = Vec3d.of(output.getVector());
                     Vec3d exit = center.add(axis.multiply(LaserOpticBlockEntity.PORT_DEPTH));
-                    pending.addLast(branch.continueFrom(exit, axis, remaining - interior, branch.rgb,
-                            branch.power / outputs.size(), ray.hitBlock(), visitedOptics));
+                    boolean combining = optic.kind() == LaserOpticBlock.Kind.COMBINER;
+                    double efficiency = combining ? optic.combiningEfficiency() : 1;
+                    Branch next = branch.continueFrom(exit, axis, remaining - interior, branch.rgb,
+                            branch.power * efficiency / outputs.size(), ray.hitBlock(), visitedOptics);
+                    pending.addLast(combining ? next.combinedAt(ray.hitBlock()) : next);
                 }
             }
         }
-        if (segments.isEmpty()) segments.add(first.withOptics(emitter.getColor().rgb(), 1));
+        if (segments.isEmpty()) segments.add(LaserBeamTrace.traceFrom(world, emitter.beamOrigin(), emitter.beamDirection(),
+                emitter.getBeamRange(), emitter.beamExitBlock()).withOptics(emitter.beamRgb(), 1));
+        if (segments.stream().anyMatch(ray -> ray.combinedBy() != null)) {
+            var contributions = segments.stream().filter(ray -> ray.combinedBy() != null)
+                    .map(ray -> new BeamContributions.Beam(ray, emitter.beamPosition(), 1, emitter.isLightEmissionEnabled(), ray.power(), 0)).toList();
+            segments.removeIf(ray -> ray.combinedBy() != null);
+            // Rejoined branches of this source must regain their summed damage/mining fraction,
+            // not merely overlap visually and hit the once-per-source target guard twice.
+            for (var beam : BeamContributions.merge(contributions)) segments.add(beam.trace().withOptics(beam.trace().rgb(), Math.min(1, beam.flux())));
+        }
         return new LaserBeamPath(List.copyOf(segments));
     }
 
     private record Branch(Vec3d start, Vec3d axis, double remaining, int rgb, double power, int depth,
-                          BlockPos ignoredBlock, int previousCube, Set<Integer> cubes, Set<BlockPos> optics) {
+                          BlockPos ignoredBlock, int previousCube, Set<Integer> cubes, Set<BlockPos> optics, BlockPos combinedBy) {
         Branch continueFrom(Vec3d point, Vec3d direction, double range, int color, double fraction,
                             BlockPos ignored, Set<BlockPos> visited) {
             return new Branch(point.add(direction.multiply(OpticalGeometry.EPSILON)), direction,
-                    range - OpticalGeometry.EPSILON, color, fraction, depth + 1, ignored, -1, cubes, visited);
+                    range - OpticalGeometry.EPSILON, color, fraction, depth + 1, ignored, -1, cubes, visited, combinedBy);
+        }
+        Branch combinedAt(BlockPos pos) {
+            return new Branch(start, axis, remaining, rgb, power, depth, ignoredBlock, previousCube, cubes, optics, pos);
+        }
+    }
+
+    record CubeRoute(BlockPos combiner, Vec3d entry, Vec3d axis) {
+        boolean sharesCombinedRay(CubeRoute other) {
+            return combiner != null && combiner.equals(other.combiner)
+                    && entry.squaredDistanceTo(other.entry) < 1e-10 && axis.dotProduct(other.axis) > .999999;
         }
     }
 }

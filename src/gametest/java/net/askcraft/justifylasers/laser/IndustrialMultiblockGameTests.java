@@ -81,7 +81,7 @@ public class IndustrialMultiblockGameTests implements FabricGameTest {
     public void dismantlingPausesWithoutDuplicatingState(TestContext context) {
         var machine = chamber(context, MachineKind.CRYSTAL_GROWER);
         machine.setStack(0, new ItemStack(ModIndustry.RAW_PHOTONIC_CRYSTAL)); machine.setStack(1, new ItemStack(Items.QUARTZ, 2));
-        machine.energy().restore(100_000); machine.fillWater(2000, false); tick(machine, 12);
+        machine.receiveLight(machine.rate(),0xFFFFFF); machine.fillWater(2000, false); tick(machine, 12);
         int energy = machine.energy().stored(), water = machine.water();
         context.assertTrue(machine.progress() == 12 && water < 2000, "Growth consumes water gradually");
         var saved = machine.createNbt();
@@ -103,7 +103,7 @@ public class IndustrialMultiblockGameTests implements FabricGameTest {
     public void waterBucketsAndDryPausesCannotCreateFreeCrystals(TestContext context) {
         var machine = chamber(context, MachineKind.CRYSTAL_GROWER);
         machine.setStack(0,new ItemStack(ModIndustry.RAW_PHOTONIC_CRYSTAL)); machine.setStack(1,new ItemStack(Items.QUARTZ,2));
-        machine.energy().restore(100_000); tick(machine, 5);
+        machine.energy().restore(100_000); machine.receiveLight(machine.rate(),0xFFFFFF); tick(machine, 5);
         context.assertTrue(machine.status() == IndustrialMachineBlockEntity.Status.NO_WATER && machine.energy().stored() == 100_000, "Dry chamber does not use power");
         machine.setStack(IndustrialMachineBlockEntity.WATER_INPUT,new ItemStack(Items.WATER_BUCKET)); tick(machine, 1);
         context.assertTrue(machine.getStack(6).isEmpty() && machine.getStack(7).isOf(Items.BUCKET), "Exactly one empty bucket is returned");
@@ -119,8 +119,9 @@ public class IndustrialMultiblockGameTests implements FabricGameTest {
             context.assertTrue(recipes.stream().anyMatch(recipe -> recipe.blueprint().equals(entry.getKey())), "Blueprint has a real machine recipe: " + entry.getKey());
             context.assertTrue(context.getWorld().getRecipeManager().get(JustifyLasers.id(entry.getKey())).isEmpty(), "No workbench bypass: " + entry.getKey());
         }
-        for (String id : new String[]{"fuel_generator", "electric_smelter"})
+        for (String id : new String[]{"electric_smelter"})
             context.assertTrue(context.getWorld().getRecipeManager().get(JustifyLasers.id(id)).isEmpty(), "WIP machine has no recipe");
+        context.assertTrue(context.getWorld().getRecipeManager().get(JustifyLasers.id("fuel_generator")).isPresent(), "Starter generator has a workbench recipe");
         var smelting = (net.minecraft.recipe.SmeltingRecipe)context.getWorld().getRecipeManager().get(JustifyLasers.id("wolframite_ingot")).orElseThrow();
         context.assertTrue(smelting.getCookTime() == 3000, "Normal furnace takes 150 seconds per ingot");
         var assembler = chamber(context,MachineKind.ASSEMBLY_CHAMBER);

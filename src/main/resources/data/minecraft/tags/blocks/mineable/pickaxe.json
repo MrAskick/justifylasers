@@ -7,14 +7,22 @@
     "justifylasers:laser_receiver",
     "justifylasers:laser_mirror",
     "justifylasers:beam_splitter",
+    "justifylasers:beam_combiner",
     "justifylasers:energy_receiver",
     "justifylasers:wolframite_ore",
     "justifylasers:photonic_crystal_ore",
     "justifylasers:deepslate_wolframite_ore",
     "justifylasers:deepslate_photonic_crystal_ore",
     "justifylasers:fuel_generator",
-    "justifylasers:electric_smelter",
+    "justifylasers:small_solar_concentrator",
     "justifylasers:crystal_growth_chamber",
-    "justifylasers:assembly_chamber"
+    "justifylasers:assembly_chamber",
+    "justifylasers:optical_resonator",
+    "justifylasers:reinforced_laser_housing",
+    "justifylasers:energy_core",
+    "justifylasers:focusing_lens_assembly",
+    "justifylasers:beam_controller",
+    "justifylasers:solar_absorber",
+    "justifylasers:laser_absorbing_glass"
   ]
 }

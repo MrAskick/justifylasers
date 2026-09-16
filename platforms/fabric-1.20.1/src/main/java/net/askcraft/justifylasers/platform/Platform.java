@@ -215,6 +215,13 @@ public final class Platform {
     }
 
 
+    public static void registerExplorationLoot() {
+        net.fabricmc.fabric.api.loot.v2.LootTableEvents.MODIFY.register((resources, manager, id, table, source) -> {
+            var pool = net.askcraft.justifylasers.industry.TabletLoot.pool(id);
+            if (source.isBuiltin() && pool != null) table.pool(pool);
+        });
+    }
+
     public static void onEndWorldTick(Consumer<ServerWorld> callback) {
         ServerTickEvents.END_WORLD_TICK.register(callback::accept);
     }

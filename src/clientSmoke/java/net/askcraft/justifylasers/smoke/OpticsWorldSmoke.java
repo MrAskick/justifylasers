@@ -77,6 +77,9 @@ public final class OpticsWorldSmoke {
             return;
         }
         int frame = ++ticks;
+        if (Boolean.getBoolean("justifylasers.smokeAlpha25") || Boolean.getBoolean("justifylasers.smokeAlpha26")) { Alpha25WorldSmoke.tick(client, frame); return; }
+        if (Boolean.getBoolean("justifylasers.smokeAlpha24")) { Alpha24WorldSmoke.tick(client, frame); return; }
+        if (Boolean.getBoolean("justifylasers.smokeSolar")) { SolarWorldSmoke.tick(client, frame); return; }
         if (Boolean.getBoolean("justifylasers.smokeSaberAudio")) { SaberAudioSmoke.tick(client, frame); return; }
         if (Boolean.getBoolean("justifylasers.smokeOres")) { OreWorldSmoke.tick(client, frame); return; }
         if (Boolean.getBoolean("justifylasers.smokeDualWeapons")) { DualWeaponWorldSmoke.tick(client, frame); return; }

@@ -1,7 +1,6 @@
 package net.askcraft.justifylasers.laser;
 
 import net.askcraft.justifylasers.block.LaserReceiverBlock;
-import net.askcraft.justifylasers.block.entity.LaserEmitterBlockEntity;
 import net.askcraft.justifylasers.item.LaserGunItem;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
@@ -70,7 +69,7 @@ public final class LaserScorchMarks {
             if (now - mark.touched >= LIFETIME_TICKS || !world.isChunkLoaded(patch.position())
                     || world.getBlockState(patch.position()) != patch.state()
                     || mark.source instanceof BlockPos source && world.isChunkLoaded(source)
-                    && world.getBlockEntity(source) instanceof LaserEmitterBlockEntity emitter
+                    && world.getBlockEntity(source) instanceof LaserBeamSource emitter
                     && !emitter.showsScorchMarks()) {
                 vertexCount -= mark.vertexCount;
                 iterator.remove();
@@ -81,7 +80,7 @@ public final class LaserScorchMarks {
             for (int segment = 0; segment < entry.getValue().segments().size(); segment++) {
                 LaserBeamTrace trace = entry.getValue().segments().get(segment);
                 if (!trace.hasBlockHit() || trace.hitSide() == null
-                        || !(world.getBlockEntity(entry.getKey()) instanceof LaserEmitterBlockEntity emitter) || !emitter.showsScorchMarks()) {
+                        || !(world.getBlockEntity(entry.getKey()) instanceof LaserBeamSource emitter) || !emitter.showsScorchMarks()) {
                     continue;
                 }
                 BlockState target = world.getBlockState(trace.hitBlock());

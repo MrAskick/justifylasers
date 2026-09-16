@@ -12,6 +12,7 @@ public final class JeiBridge implements IModPlugin {
     private final IModPlugin delegate = (IModPlugin) LoaderBridge.plugin("client.compat.JustifyLasersJeiPlugin");
     @Override public Identifier getPluginUid() { return delegate.getPluginUid(); }
     @Override public void onRuntimeAvailable(mezz.jei.api.runtime.IJeiRuntime runtime) { delegate.onRuntimeAvailable(runtime); }
+    @Override public void onRuntimeUnavailable() { delegate.onRuntimeUnavailable(); }
     @Override public void registerCategories(IRecipeCategoryRegistration registration) { delegate.registerCategories(registration); }
     @Override public void registerRecipeCatalysts(IRecipeCatalystRegistration registration) { delegate.registerRecipeCatalysts(registration); }
     @Override public void registerRecipeTransferHandlers(IRecipeTransferRegistration registration) { delegate.registerRecipeTransferHandlers(registration); }

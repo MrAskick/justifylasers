@@ -22,6 +22,11 @@ public abstract class BuiltinItemRendererMixin {
     @Inject(method = "render", at = @At("HEAD"), cancellable = true)
     private void justifylasers$renderOptic(ItemStack stack, ModelTransformationMode mode, MatrixStack matrices,
                                          VertexConsumerProvider consumers, int light, int overlay, CallbackInfo ci) {
+        if (stack.isOf(net.askcraft.justifylasers.registry.ModIndustry.SMALL_SOLAR_CONCENTRATOR.asItem())) {
+            matrices.push(); matrices.translate(.5,.5,.5);
+            net.askcraft.justifylasers.client.render.SmallSolarConcentratorModel.render(null,0,matrices,consumers,light);
+            matrices.pop(); ci.cancel(); return;
+        }
         if (stack.getItem() instanceof net.askcraft.justifylasers.item.ExtraterrestrialTabletItem) {
             net.askcraft.justifylasers.client.render.TabletRenderer.renderItem(stack, mode, matrices, consumers, light);
             ci.cancel(); return;

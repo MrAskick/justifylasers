@@ -4,6 +4,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import net.askcraft.justifylasers.JustifyLasers;
 import net.askcraft.justifylasers.block.entity.IndustrialMachineBlockEntity;
 import net.askcraft.justifylasers.industry.MachineKind;
+import net.askcraft.justifylasers.client.compat.RecipeNavigation;
 import net.askcraft.justifylasers.platform.Platform;
 import net.askcraft.justifylasers.platform.RenderVersion;
 import net.askcraft.justifylasers.screen.IndustrialMachineScreenHandler;
@@ -43,6 +44,9 @@ public final class IndustrialMachineScreen extends HandledScreen<IndustrialMachi
         if (page == Page.REDSTONE)
             button(65, 58, 189, 22, null, () -> Text.translatable(handler.redstoneMode().translationKey()),
                     () -> true, () -> send(1));
+        if (handler.kind().multiblock())
+            button(13, 129, 23, 21, TechGui.Icon.MODULES, () -> Text.translatable("gui.justifylasers.jei.construction"),
+                    RecipeNavigation::available, RecipeNavigation::showConstruction);
     }
 
     private static Text label(String key) { return Text.translatable("gui.justifylasers.powered." + key); }
@@ -58,7 +62,8 @@ public final class IndustrialMachineScreen extends HandledScreen<IndustrialMachi
                 var state = TechGui.State.of(active, false, isHovered(), isFocused(), false);
                 TechGui.button(context, getX(), getY(), width, height, state);
                 if (icon != null) {
-                    icon.draw(context, getX() + (width - 19) / 2F, getY() + (height - 19) / 2F, 19, state);
+                    int size = Math.min(19, Math.min(width, height) - 7);
+                    icon.draw(context, getX() + (width - size) / 2F, getY() + (height - size) / 2F, size, state);
                     setTooltip(Tooltip.of(getMessage()));
                 } else fitted(context, getMessage(), getX() + 7, getY() + (height - 8) / 2, width - 14, active ? 0xBBECF1 : 0x65838D);
             }
@@ -70,8 +75,12 @@ public final class IndustrialMachineScreen extends HandledScreen<IndustrialMachi
         super.render(context, mouseX, mouseY, delta);
         drawMouseoverTooltip(context, mouseX, mouseY);
         if (page != Page.MAIN) return;
+        if (RecipeNavigation.available() && handler.kind() != MachineKind.FUEL_GENERATOR
+                && inside(mouseX, mouseY, arrowX() - 3, 68, 16, 19))
+            context.drawTooltip(textRenderer, Text.translatable("gui.justifylasers.jei.recipes"), mouseX, mouseY);
         if (inside(mouseX, mouseY, 63, 102, 193, 8))
-            context.drawTooltip(textRenderer, Text.literal(handler.energy() + " / " + handler.capacity() + " " + Platform.ENERGY_UNIT), mouseX, mouseY);
+            context.drawTooltip(textRenderer, Text.literal(handler.kind() == MachineKind.CRYSTAL_GROWER
+                    ? handler.lightFlux() + " / " + handler.rate() + " lm" : handler.energy() + " / " + handler.capacity() + " " + Platform.ENERGY_UNIT), mouseX, mouseY);
         if (handler.kind() == MachineKind.CRYSTAL_GROWER && inside(mouseX, mouseY, 24, 70, 16, 54))
             context.drawTooltip(textRenderer, Text.translatable("gui.justifylasers.industry.water", handler.water(), handler.tankCapacity()), mouseX, mouseY);
     }
@@ -114,19 +123,29 @@ public final class IndustrialMachineScreen extends HandledScreen<IndustrialMachi
                 fitted(context, label("owner").copy().append(": " + (handler.ownerName().isEmpty() ? "—" : handler.ownerName())), x + 65, y + 56, 188, 0x86B9CA);
             return;
         }
-        fitted(context, Text.translatable("gui.justifylasers.industry.status." + handler.status().name().toLowerCase(Locale.ROOT)),
+        fitted(context, Text.translatable(handler.kind() == MachineKind.CRYSTAL_GROWER && handler.status() == IndustrialMachineBlockEntity.Status.NO_POWER
+                        ? "gui.justifylasers.industry.no_light" : "gui.justifylasers.industry.status." + handler.status().name().toLowerCase(Locale.ROOT)),
                 x + 64, y + 38, handler.kind() == MachineKind.CRYSTAL_GROWER ? 139 : 191, handler.formed() ? 0xBBECF1 : 0xFFBE76);
-        fitted(context, Text.translatable("gui.justifylasers.industry.rate",
-                (handler.kind() == MachineKind.FUEL_GENERATOR ? "+" : "−") + handler.rate(), Platform.ENERGY_UNIT), x + 64, y + 51, handler.kind() == MachineKind.CRYSTAL_GROWER ? 139 : 191, 0x6CBBCA);
+        fitted(context, handler.kind() == MachineKind.CRYSTAL_GROWER
+                ? Text.translatable("gui.justifylasers.industry.light_rate", net.askcraft.justifylasers.laser.LuminousFlux.format(handler.lightFlux()), net.askcraft.justifylasers.laser.LuminousFlux.format(handler.rate()))
+                : Text.translatable("gui.justifylasers.industry.rate",
+                handler.kind() == MachineKind.FUEL_GENERATOR ? "+" + (handler.status() == IndustrialMachineBlockEntity.Status.WORKING ? handler.rate() : 0)
+                        : "−" + handler.rate(), Platform.ENERGY_UNIT), x + 64, y + 51, handler.kind() == MachineKind.CRYSTAL_GROWER ? 139 : 191, 0x6CBBCA);
         if (handler.kind() == MachineKind.ASSEMBLY_CHAMBER)
             fitted(context, Text.translatable("gui.justifylasers.industry.blueprint_short"), x + 177, y + 59, 33, 0x87B6C4);
         ghostInputs(context);
-        if (handler.kind() != MachineKind.CRYSTAL_GROWER) context.drawText(textRenderer, Text.literal("→"), x + 219, y + 74, 0x8CF1F4, false);
+        if (handler.kind() != MachineKind.FUEL_GENERATOR) context.drawText(textRenderer, Text.literal("→"), x + arrowX(), y + 74,
+                RecipeNavigation.available() && inside(mouseX, mouseY, arrowX() - 3, 68, 16, 19) ? 0xFFFFFF : 0x8CF1F4, false);
         int amount = handler.kind() == MachineKind.FUEL_GENERATOR ? handler.fuel() : handler.progress();
         int maximum = handler.kind() == MachineKind.FUEL_GENERATOR ? handler.fuelTotal() : handler.duration();
         bar(context, 64, 93, 190, 3, amount, maximum, 0xFFB9F6FF, 0xFF3F9BBB);
-        bar(context, 64, 103, 190, 5, handler.energy(), handler.capacity(), 0xFF8CFCE8, 0xFF237F99);
-        fitted(context, Text.translatable("gui.justifylasers.industry.automation"), x + 64, y + 113, 192, 0x618E9F);
+        bar(context, 64, 103, 190, 5, handler.kind() == MachineKind.CRYSTAL_GROWER ? handler.lightFlux() : handler.energy(),
+                handler.kind() == MachineKind.CRYSTAL_GROWER ? handler.rate() : handler.capacity(), 0xFF8CFCE8, 0xFF237F99);
+        fitted(context, handler.kind() == MachineKind.FUEL_GENERATOR
+                ? Text.translatable("gui.justifylasers.industry.generator_stats", handler.efficiency(), handler.temperature())
+                : Text.translatable("gui.justifylasers.industry.automation"), x + 64, y + 113, 192, 0x618E9F);
+        if (handler.kind() == MachineKind.FUEL_GENERATOR)
+            fitted(context, Text.translatable("gui.justifylasers.industry.charge"), x + 167, y + 43, 39, 0x87B6C4);
         if (handler.kind() == MachineKind.CRYSTAL_GROWER) {
             context.fill(x + 24, y + 70, x + 40, y + 124, 0xBC051722);
             int height = (int)(52L * handler.water() / Math.max(1, handler.tankCapacity()));
@@ -135,7 +154,15 @@ public final class IndustrialMachineScreen extends HandledScreen<IndustrialMachi
         }
     }
 
-    private void bar(DrawContext context, int bx, int by, int width, int height, int amount, int capacity, int top, int bottom) {
+    private int arrowX() { return handler.kind() == MachineKind.CRYSTAL_GROWER ? 181 : 219; }
+
+    @Override public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == 0 && page == Page.MAIN && inside((int) mouseX, (int) mouseY, arrowX() - 3, 68, 16, 19)
+                && RecipeNavigation.show(handler.kind())) return true;
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    private void bar(DrawContext context, int bx, int by, int width, int height, long amount, int capacity, int top, int bottom) {
         context.fill(x + bx, y + by, x + bx + width, y + by + height, 0xC0010E19);
         int fill = (int)Math.min(width, Math.max(0, (long)width * amount / Math.max(1, capacity)));
         if (fill > 0) context.fillGradient(x + bx, y + by, x + bx + fill, y + by + height, top, bottom);

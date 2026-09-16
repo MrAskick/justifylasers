@@ -22,5 +22,7 @@ abstract class EmitterSecurityMixin {
         }
         if (player.getWorld().getBlockEntity(pos) instanceof net.askcraft.justifylasers.block.entity.IndustrialMachineBlockEntity machine
                 && !machine.canAccess(player)) callback.setReturnValue(false);
+        if (player.getWorld().getBlockEntity(pos) instanceof net.askcraft.justifylasers.block.entity.LaserComponentBlockEntity component
+                && !component.canAccess(player)) callback.setReturnValue(false);
     }
 }

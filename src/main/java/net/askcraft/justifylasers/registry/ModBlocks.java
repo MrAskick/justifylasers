@@ -12,9 +12,12 @@ import net.minecraft.block.MapColor;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.Item;
 import net.minecraft.registry.Registries;
+import net.minecraft.registry.RegistryKeys;
+import net.minecraft.registry.tag.TagKey;
 import net.minecraft.sound.BlockSoundGroup;
 
 public final class ModBlocks {
+    public static final TagKey<Block> LASER_PROOF = TagKey.of(RegistryKeys.BLOCK, JustifyLasers.id("laser_proof"));
     public static Block LASER_EMITTER;
 
     public static Item LASER_EMITTER_ITEM;
@@ -28,6 +31,7 @@ public final class ModBlocks {
     public static Item LASER_RECEIVER_ITEM;
     public static LaserOpticBlock LASER_MIRROR;
     public static LaserOpticBlock BEAM_SPLITTER;
+    public static LaserOpticBlock BEAM_COMBINER;
     public static LaserOpticBlock ENERGY_RECEIVER;
     public static Item CONFIGURATOR;
     public static Block LASER_TURRET;
@@ -44,6 +48,7 @@ public final class ModBlocks {
                         .mapColor(MapColor.IRON_GRAY).strength(4, 12).requiresTool().sounds(BlockSoundGroup.METAL).nonOpaque()));
         LASER_MIRROR = optic("laser_mirror", LaserOpticBlock.Kind.MIRROR);
         BEAM_SPLITTER = optic("beam_splitter", LaserOpticBlock.Kind.SPLITTER);
+        BEAM_COMBINER = optic("beam_combiner", LaserOpticBlock.Kind.COMBINER);
         ENERGY_RECEIVER = optic("energy_receiver", LaserOpticBlock.Kind.ENERGY_RECEIVER);
         LASER_EMITTER = Platform.register(
                 Registries.BLOCK,
@@ -81,7 +86,7 @@ public final class ModBlocks {
         Platform.register(Registries.ITEM, JustifyLasers.id("laser_turret"), new BlockItem(LASER_TURRET, new Item.Settings()));
         CONFIGURATOR = Platform.register(Registries.ITEM, JustifyLasers.id("configurator"),
                 new net.askcraft.justifylasers.item.LaserConfiguratorItem(new Item.Settings().maxCount(1)));
-        for (LaserOpticBlock block : new LaserOpticBlock[]{LASER_MIRROR, BEAM_SPLITTER, ENERGY_RECEIVER}) {
+        for (LaserOpticBlock block : new LaserOpticBlock[]{LASER_MIRROR, BEAM_SPLITTER, BEAM_COMBINER, ENERGY_RECEIVER}) {
             Platform.register(Registries.ITEM, Registries.BLOCK.getId(block), new BlockItem(block, new Item.Settings()));
         }
         LASER_EMITTER_ITEM = Platform.register(

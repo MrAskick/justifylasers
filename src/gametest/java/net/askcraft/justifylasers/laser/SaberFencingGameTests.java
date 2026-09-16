@@ -21,6 +21,9 @@ public class SaberFencingGameTests implements FabricGameTest {
     public void restorePvp(net.minecraft.server.world.ServerWorld world) { world.getServer().setPvpEnabled(previousPvp); }
     private ServerPlayerEntity fighter(TestContext context, double z, float yaw) {
         var world = context.getWorld();
+        // Optical fixtures share this world; their long-range beams must not damage the combat dummies.
+        for(int x=0;x<=7;x++)for(int zz=0;zz<=7;zz++)if(x==0||x==7||zz==0||zz==7)
+            for(int y=1;y<=5;y++)context.setBlockState(x,y,zz,net.minecraft.block.Blocks.BARRIER);
         var player = new ServerPlayerEntity(world.getServer(), world, new com.mojang.authlib.GameProfile(java.util.UUID.randomUUID(), "test-fencer"));
         world.getServer().getPlayerManager().onPlayerConnect(new net.minecraft.network.ClientConnection(net.minecraft.network.NetworkSide.SERVERBOUND), player);
         player.changeGameMode(GameMode.SURVIVAL); player.setNoGravity(true);
@@ -86,14 +89,18 @@ public class SaberFencingGameTests implements FabricGameTest {
         var attacker = fighter(context, 2.5, 0); var defender = fighter(context, 4.3, 180);
         SaberCombat.swing(attacker, Hand.MAIN_HAND);
         context.runAtTick(2, () -> defender.getMainHandStack().use(context.getWorld(), defender, Hand.MAIN_HAND));
-        boolean[] parried = {false};
+        boolean[] parried = {false}, countered = {false};
         context.runAtEveryTick(() -> {
-            if (SaberCombat.state(defender).action() == SaberState.Action.PARRY) parried[0] = true;
+            if (!parried[0] && SaberCombat.state(defender).action() == SaberState.Action.PARRY) {
+                parried[0] = true;
+                // Counter inside the actual parry window, not at a fixed tick relative to player iteration order.
+                countered[0] = SaberCombat.swing(defender, Hand.MAIN_HAND);
+                context.assertTrue(SaberCombat.state(defender).windup() < net.askcraft.justifylasers.config.LaserConfig.get().saberWindupTicks, "Counter has a shorter windup");
+            }
         });
         context.runAtTick(8, () -> {
             context.assertTrue(parried[0] && defender.getHealth() == 20, "Well-timed guard must parry; attacker=" + SaberCombat.state(attacker) + ", defender=" + SaberCombat.state(defender));
-            context.assertTrue(SaberCombat.swing(defender, Hand.MAIN_HAND), "Parry allows an immediate counterattack");
-            context.assertTrue(SaberCombat.state(defender).windup() < net.askcraft.justifylasers.config.LaserConfig.get().saberWindupTicks, "Counter has a shorter windup");
+            context.assertTrue(countered[0], "Parry allows an immediate counterattack");
         });
         context.runAtTick(20, () -> { attacker.discard(); defender.discard(); context.complete(); });
     }

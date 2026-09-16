@@ -19,6 +19,7 @@ apply from: 'gradle/universal-isolation.gradle'
 apply from: 'gradle/component-atlases.gradle'
 apply from: 'gradle/crystal-materials.gradle'
 apply from: 'gradle/industry-materials.gradle'
+apply from: 'gradle/solar-materials.gradle'
 
 def universalInputs = ['fabric-1.20.1': 'fabric', 'neoforge-1.20.1': 'forge',
                        'fabric-1.21.1': 'fabric', 'forge-1.21.1': 'forge', 'neoforge-1.21.1': 'neoforge']
@@ -135,6 +136,7 @@ tasks.named('build') {
 
 tasks.named('test') { dependsOn ':fabric-1.20.1:test' }
 apply from: 'gradle/asset-audit.gradle'
+apply from: 'gradle/solar-upgrade-materials.gradle'
 ['runGameTest', 'runClient', 'runServer'].each { taskName ->
     tasks.register(taskName) { dependsOn ":fabric-1.20.1:${taskName}" }
 }

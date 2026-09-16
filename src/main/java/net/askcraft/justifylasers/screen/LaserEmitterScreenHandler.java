@@ -348,6 +348,12 @@ public class LaserEmitterScreenHandler extends ScreenHandler {
         return (properties.get(24) & 0xFFFF) | (properties.get(25) & 0x7FFF) << 16;
     }
 
+    public long luminousFlux() {
+        long value = 0;
+        for (int part = 0; part < 4; part++) value |= (long) (properties.get(48 + part) & 0xFFFF) << (part * 16);
+        return net.askcraft.justifylasers.laser.LuminousFlux.clamp(value);
+    }
+
     public boolean hasModule(LaserModule module) {
         return !isPoweredEmitter() || (properties.get(26) & 1 << module.ordinal()) != 0;
     }

@@ -51,10 +51,11 @@ public class IndustrialMachineGameTests implements FabricGameTest {
     @GameTest(templateName = EMPTY_STRUCTURE)
     public void generatorExportsRealEnergyAndReturnsFuelContainers(TestContext context) {
         var generator = machine(context, MachineKind.FUEL_GENERATOR, 1);
-        var consumer = machine(context, MachineKind.ELECTRIC_SMELTER, 2);
+        var consumer = machine(context, MachineKind.ASSEMBLY_CHAMBER, 2);
         generator.setStack(0, new ItemStack(Items.LAVA_BUCKET));
-        ticks(generator, 1);
-        context.assertTrue(consumer.energy().stored() == LaserConfig.get().generatorPerTick, "Adjacent machine receives native energy");
+        int generated = 0;
+        for (int i = 0; i < 100; i++) { ticks(generator, 1); generated += generator.generatedRate(); }
+        context.assertTrue(generated > 0 && consumer.energy().stored() == generated, "Adjacent machine receives exactly the dynamic thermal output");
         context.assertTrue(generator.getStack(4).isOf(Items.BUCKET) && generator.getStack(0).isEmpty(), "Fuel container is returned exactly once");
         generator.energy().restore(generator.energy().capacity());
         int fuel = generator.fuel();
@@ -65,16 +66,16 @@ public class IndustrialMachineGameTests implements FabricGameTest {
     }
 
     @GameTest(templateName = EMPTY_STRUCTURE)
-    public void wolframiteProcessingChargesExactlyAndCannotDuplicateOutput(TestContext context) {
-        var smelter = machine(context, MachineKind.ELECTRIC_SMELTER, 2);
-        smelter.setStack(0, new ItemStack(ModIndustry.RAW_WOLFRAMITE));
-        int cost = MachineKind.ELECTRIC_SMELTER.duration() * MachineKind.ELECTRIC_SMELTER.rate();
-        smelter.energy().restore(cost);
-        ticks(smelter, MachineKind.ELECTRIC_SMELTER.duration());
-        context.assertTrue(smelter.getStack(4).isOf(ModIndustry.WOLFRAMITE_INGOT) && smelter.getStack(4).getCount() == 1, "One batch produces one wolframite ingot");
-        context.assertTrue(smelter.energy().stored() == 0 && smelter.getStack(0).isEmpty() && smelter.getStack(1).isEmpty(), "Exact cost and inputs consumed");
-        ticks(smelter, 20);
-        context.assertTrue(smelter.getStack(4).getCount() == 1, "Completed batch cannot repeat without ingredients");
+    public void generatorChargesTabletWithoutCreatingEnergy(TestContext context) {
+        var generator = machine(context, MachineKind.FUEL_GENERATOR, 2);
+        var tablet = new ItemStack(ModIndustry.EXTRATERRESTRIAL_TABLET);
+        generator.setStack(IndustrialMachineBlockEntity.WATER_INPUT, tablet);
+        generator.setStack(0, new ItemStack(Items.COAL));
+        int generated = 0;
+        for (int i = 0; i < 100; i++) { ticks(generator, 1); generated += generator.generatedRate(); }
+        context.assertTrue(generated > 0 && net.askcraft.justifylasers.item.ExtraterrestrialTabletItem.charge(tablet) == generated, "Tablet receives only paid thermal energy, including fractional production");
+        context.assertTrue(generator.energy().stored() == 0 && generator.getStack(0).isEmpty(), "No duplicate buffer energy or repeated fuel item");
+        context.assertFalse(net.minecraft.registry.Registries.BLOCK.containsId(JustifyLasers.id("electric_smelter")), "Electric smelter removed");
         context.complete();
     }
 
@@ -85,6 +86,7 @@ public class IndustrialMachineGameTests implements FabricGameTest {
         grower.setStack(1, new ItemStack(Items.QUARTZ, 2));
         grower.fillWater(1000, false);
         grower.energy().restore(100_000);
+        grower.receiveLight(grower.rate(), 0xFFFFFF);
         ticks(grower, 10);
         var saved = grower.createNbt();
         var restored = new IndustrialMachineBlockEntity(grower.getPos(), grower.getCachedState());
@@ -97,7 +99,8 @@ public class IndustrialMachineGameTests implements FabricGameTest {
         grower.setStack(4, new ItemStack(ModLaserParts.CRYSTALS.get(LaserColor.WHITE), 64));
         ticks(grower, 5);
         context.assertTrue(grower.progress() == 10 && grower.energy().stored() == energy, "Blocked output does not drain energy or consume inputs");
-        grower.removeStack(4); grower.energy().restore(0); ticks(grower, 3);
+        grower.removeStack(4); grower.energy().restore(0);
+        var withoutLight = grower.createNbt(); grower.readNbt(withoutLight); ticks(grower, 3);
         context.assertTrue(grower.progress() == 10 && grower.getStack(0).getCount() == 1, "No-power pause preserves the batch");
         grower.removeStack(0); ticks(grower, 1);
         context.assertTrue(grower.progress() == 0, "Removing an ingredient invalidates partial progress");
@@ -109,7 +112,7 @@ public class IndustrialMachineGameTests implements FabricGameTest {
         var grower = machine(context, MachineKind.CRYSTAL_GROWER, 1);
         grower.setStack(0, new ItemStack(ModIndustry.RAW_PHOTONIC_CRYSTAL)); grower.setStack(1, new ItemStack(Items.QUARTZ, 2));
         grower.fillWater(1000, false);
-        grower.energy().restore(100_000); ticks(grower, grower.kind().duration());
+        grower.receiveLight(grower.rate(), 0xFFFFFF); ticks(grower, grower.kind().duration());
         context.assertTrue(grower.getStack(4).isOf(ModIndustry.PHOTONITE_CRYSTAL), "Grower produces a bare photonite crystal");
         context.assertTrue(grower.water() == 0, "Exactly one bucket of water was consumed");
         var assembler = machine(context, MachineKind.ASSEMBLY_CHAMBER, 4);

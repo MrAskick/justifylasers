@@ -23,6 +23,7 @@ public final class ModItemGroups {
                             entries.add(ModEntities.REFOCUSING_CUBE_ITEM);
                             entries.add(ModBlocks.LASER_MIRROR);
                             entries.add(ModBlocks.BEAM_SPLITTER);
+                            entries.add(ModBlocks.BEAM_COMBINER);
                             entries.add(ModBlocks.CONFIGURATOR);
                             entries.add(ModBlocks.LASER_GUN);
                             entries.add(ModBlocks.LASER_SABER);
@@ -36,6 +37,10 @@ public final class ModItemGroups {
                                 for (var material : new net.minecraft.item.Item[]{ModIndustry.RAW_WOLFRAMITE, ModIndustry.RAW_PHOTONIC_CRYSTAL,
                                         ModIndustry.WOLFRAMITE_INGOT, ModIndustry.PHOTONITE_CRYSTAL, ModIndustry.CRYSTAL_MOUNT}) entries.add(material);
                                 ModIndustry.COMPONENTS.values().forEach(entries::add);
+                                entries.add(ModIndustry.SOLAR_ABSORBER);
+                                entries.add(ModIndustry.SMALL_SOLAR_CONCENTRATOR);
+                                entries.add(ModIndustry.ELECTRIC_MOTOR);
+                                entries.add(ModIndustry.LASER_ABSORBING_GLASS);
                                 entries.add(ModIndustry.BLANK_SCHEMATIC);
                                 entries.add(ModIndustry.EXTRATERRESTRIAL_TABLET);
                                 ModIndustry.BLUEPRINTS.values().forEach(entries::add);

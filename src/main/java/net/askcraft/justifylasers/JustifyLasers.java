@@ -45,6 +45,7 @@ public final class JustifyLasers {
         Platform.registerSettingsReceiver();
         Platform.registerEnergy();
         net.askcraft.justifylasers.industry.IndustryRecipe.initialize();
+        Platform.registerExplorationLoot();
         LaserBeamNetwork.initialize();
         Platform.onEndWorldTick(net.askcraft.justifylasers.laser.SaberCombat::tick);
         Platform.onEndWorldTick(net.askcraft.justifylasers.item.LaserGunItem::tick);

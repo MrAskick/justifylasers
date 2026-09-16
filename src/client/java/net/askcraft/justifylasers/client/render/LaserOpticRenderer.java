@@ -36,6 +36,7 @@ public final class LaserOpticRenderer implements BlockEntityRenderer<LaserOpticB
             switch (optic.kind()) {
                 case MIRROR -> LaserMirrorModel.render(optic, matrices, consumers, light);
                 case SPLITTER -> BeamSplitterModel.render(optic, matrices, consumers, light);
+                case COMBINER -> BeamCombinerModel.render(optic, matrices, consumers, light);
                 case ENERGY_RECEIVER -> EnergyReceiverModel.render(optic, matrices, consumers, light);
             }
         } finally {

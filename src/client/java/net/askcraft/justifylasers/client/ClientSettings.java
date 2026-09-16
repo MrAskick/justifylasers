@@ -27,6 +27,7 @@ public final class ClientSettings {
     public int scorchDistance = 96;
     public boolean weaponSway = true;
     public boolean saberSparks = true;
+    public boolean solarLightShafts = true;
     public double soundVolume = 1;
     public int maxSoundSources = 8;
 

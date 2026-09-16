@@ -21,7 +21,7 @@ public final class IndustrialMachineScreenHandler extends ScreenHandler {
     private final PropertyDelegate properties;
     private final net.minecraft.world.World world;
     private final Inventory inventory;
-    public static final int PROPERTY_COUNT = 43;
+    public static final int PROPERTY_COUNT = 49;
     private boolean machineSlotsVisible = true;
 
     public IndustrialMachineScreenHandler(int id, PlayerInventory player, BlockPos pos) {
@@ -31,6 +31,7 @@ public final class IndustrialMachineScreenHandler extends ScreenHandler {
     public IndustrialMachineScreenHandler(int id, PlayerInventory player, IndustrialMachineBlockEntity machine) {
         this(id, player, machine, machine, new PropertyDelegate() {
             @Override public int get(int index) {
+                if (index >= 43 && index <= 46) return (int)(machine.lightFlux() >>> ((index - 43) * 16)) & 0xFFFF;
                 int value = switch (index) {
                     case 0 -> machine.kind().ordinal();
                     case 1, 2 -> machine.progress();
@@ -50,6 +51,8 @@ public final class IndustrialMachineScreenHandler extends ScreenHandler {
                     case 24 -> machine.redstoneMode().ordinal();
                     case 25 -> machine.isPrivate() ? 1 : 0;
                     case 26 -> machine.canManageSecurity(player.player) ? 1 : 0;
+                    case 47 -> machine.temperature();
+                    case 48 -> machine.efficiency();
                     default -> index >= 27 && index < 43 && index - 27 < machine.ownerName().length()
                             ? machine.ownerName().charAt(index - 27) : 0;
                 };
@@ -74,6 +77,7 @@ public final class IndustrialMachineScreenHandler extends ScreenHandler {
                 @Override public boolean isEnabled() {
                     return machineSlotsVisible && (input < kind().inputs() || input == IndustrialMachineBlockEntity.OUTPUT
                             || input == IndustrialMachineBlockEntity.BLUEPRINT && kind() == MachineKind.ASSEMBLY_CHAMBER
+                            || input == IndustrialMachineBlockEntity.WATER_INPUT && kind() == MachineKind.FUEL_GENERATOR
                             || input >= IndustrialMachineBlockEntity.WATER_INPUT && kind() == MachineKind.CRYSTAL_GROWER);
                 }
             });
@@ -93,6 +97,13 @@ public final class IndustrialMachineScreenHandler extends ScreenHandler {
     public int fuel() { return value(9); }
     public int fuelTotal() { return value(11); }
     public int rate() { return value(15); }
+    public long lightFlux() {
+        long flux = 0;
+        for (int i = 0; i < 4; i++) flux |= (properties.get(43 + i) & 0xFFFFL) << (i * 16);
+        return net.askcraft.justifylasers.laser.LuminousFlux.clamp(flux);
+    }
+    public int temperature() { return properties.get(47); }
+    public int efficiency() { return properties.get(48); }
     public int water() { return value(19); }
     public int tankCapacity() { return value(21); }
     public boolean formed() { return properties.get(23) != 0; }
@@ -113,7 +124,8 @@ public final class IndustrialMachineScreenHandler extends ScreenHandler {
     private boolean accepts(int slot, ItemStack stack) {
         if (machine != null) return machine.isValid(slot, stack);
         if (slot == IndustrialMachineBlockEntity.BLUEPRINT) return kind() == MachineKind.ASSEMBLY_CHAMBER && stack.getItem() instanceof net.askcraft.justifylasers.item.AssemblyBlueprintItem;
-        if (slot == IndustrialMachineBlockEntity.WATER_INPUT) return kind() == MachineKind.CRYSTAL_GROWER && stack.isOf(net.minecraft.item.Items.WATER_BUCKET);
+        if (slot == IndustrialMachineBlockEntity.WATER_INPUT) return kind() == MachineKind.CRYSTAL_GROWER ? stack.isOf(net.minecraft.item.Items.WATER_BUCKET)
+                : kind() == MachineKind.FUEL_GENERATOR && stack.getItem() instanceof net.askcraft.justifylasers.item.ExtraterrestrialTabletItem;
         if (slot >= kind().inputs()) return false;
         var recipe = recipe();
         return recipe != null ? slot < recipe.inputs().size() && recipe.inputs().get(slot).test(stack)
