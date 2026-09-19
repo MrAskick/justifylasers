@@ -40,6 +40,23 @@ class BeamCombiningTest {
         assertEquals(2, BeamContributions.merge(List.of(a, b)).size());
     }
 
+    @Test void touchingPortsKeepTheirExactEndpointAfterCoalescing() {
+        for (var end : List.of(new Vec3d(113.5, -56.5, 290), new Vec3d(29_999_000, 250, -29_999_000))) {
+            for (Direction direction : Direction.values()) {
+                Vec3d axis = Vec3d.of(direction.getVector());
+                Vec3d start = end.subtract(axis.multiply(OpticalGeometry.EPSILON));
+                var trace = new LaserBeamTrace(start, end, direction, BlockPos.ofFloored(end), direction.getOpposite())
+                        .withOptics(0xFF0000, .95).combinedBy(BlockPos.ORIGIN);
+                assertEquals(1, trace.axis().dotProduct(axis), 1e-12);
+                var merged = BeamContributions.merge(List.of(new BeamContributions.Beam(trace, BlockPos.ORIGIN, 1, true, .95, 0)));
+                assertEquals(1, merged.size());
+                assertEquals(0, merged.get(0).trace().end().squaredDistanceTo(end), 1e-18);
+                assertEquals(trace.hitBlock(), merged.get(0).trace().hitBlock());
+                assertEquals(.95, merged.get(0).flux());
+            }
+        }
+    }
+
     @Test void lossesRemainBoundedAtHugeFluxAndThroughCascades() {
         long initial = 4_000_000_000_000L, flux = initial;
         for (int i = 0; i < 16; i++) {

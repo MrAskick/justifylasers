@@ -29,6 +29,7 @@ class ClientSettingsTest {
         settings.scorchDistance = Integer.MIN_VALUE;
         settings.soundVolume = Double.POSITIVE_INFINITY;
         settings.maxSoundSources = 100;
+        settings.maxMirrors = 100;
         settings.normalize();
         assertEquals(1.8, settings.cubeMagnification);
         assertEquals(128, settings.cubeLensDistance);
@@ -36,6 +37,7 @@ class ClientSettingsTest {
         assertEquals(16, settings.scorchDistance);
         assertEquals(1, settings.soundVolume);
         assertEquals(64, settings.maxSoundSources);
+        assertEquals(32, settings.maxMirrors);
     }
 
     @Test void settingsRoundTripAndNewFieldsKeepTheirDefaults() throws Exception {

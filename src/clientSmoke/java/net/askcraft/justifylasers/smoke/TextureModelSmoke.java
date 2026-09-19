@@ -6,6 +6,7 @@ import net.askcraft.justifylasers.client.render.LaserGunModel;
 import net.askcraft.justifylasers.client.render.LaserModuleModel;
 import net.askcraft.justifylasers.laser.LaserColor;
 import net.askcraft.justifylasers.registry.ModLaserParts;
+import net.askcraft.justifylasers.registry.ModBlocks;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -108,7 +109,7 @@ public final class TextureModelSmoke {
                     matrices.translate(0.18,0.23,0.18);
                     matrices.scale(0.64F,0.64F,0.64F);
                     matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees((index%3)*30));
-                    net.askcraft.justifylasers.client.render.LaserConfiguratorModel.render(matrices,consumers,light);
+                    net.askcraft.justifylasers.client.render.LaserConfiguratorModel.render(new ItemStack(ModBlocks.CONFIGURATOR),matrices,consumers,light);
                 } else {
                     int rgb=index%3==1?0xFF1717:0x26DCFF;
                     if(index<3) {

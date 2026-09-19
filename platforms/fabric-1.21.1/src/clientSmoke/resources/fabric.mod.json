@@ -3,5 +3,6 @@
   "id": "justifylasers_client_smoke",
   "version": "1",
   "environment": "client",
+  "mixins": ["justifylasers.smoke.mixins.json"],
   "entrypoints": {"client": ["net.askcraft.justifylasers.smoke.SmokeEntrypoint"]}
 }

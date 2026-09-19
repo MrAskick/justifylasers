@@ -44,7 +44,8 @@ public class LaserPartGameTests implements FabricGameTest {
             var block = ((LaserPartItem) item).getBlock();
             context.assertTrue(world.getBlockState(target).isOf(block), "Correct decoration block");
             context.assertTrue(world.getBlockState(target).get(LaserPartBlock.FACING) == Direction.NORTH, "Face the placing player");
-            context.assertTrue(world.getBlockEntity(target) instanceof LaserPartBlockEntity, "Non-ticking display entity is present");
+            context.assertTrue(((LaserPartBlock) block).isRawMineral() ? world.getBlockEntity(target) == null
+                    : world.getBlockEntity(target) instanceof LaserPartBlockEntity, "Baked minerals need no display entity; modules retain their settings entity");
             context.assertTrue(world.getBlockState(target).getLuminance() == 0, "Shader emission must not add vanilla block light");
             context.assertTrue(block.asItem() == item, "Pick block returns the original module/crystal");
             player.setStackInHand(Hand.MAIN_HAND, new ItemStack(Items.DIAMOND_PICKAXE));
@@ -54,7 +55,7 @@ public class LaserPartGameTests implements FabricGameTest {
             drops.forEach(ItemEntity::discard);
             tested++;
         }
-        context.assertTrue(tested == 21, "Every decoration, including the crystal mount, covered");
+        context.assertTrue(tested == ModLaserParts.DECORATIONS.size(), "Every decoration, including raw minerals and new modes, covered");
         player.discard();
         context.complete();
     }

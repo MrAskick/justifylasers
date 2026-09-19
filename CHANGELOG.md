@@ -1,6 +1,91 @@
 # Changelog
 
-For the latest public update, see the [short alpha.26 release notes](docs/releases/2.0.0-alpha.26.md), covering changes since alpha.21. The entries below retain the individual development changes.
+For the latest public update, see the [short alpha.37 release notes](docs/releases/2.0.0-alpha.37.md), covering changes since alpha.26. The entries below retain the individual development changes.
+
+## 2.0.0-alpha.37
+
+- Removed bridge footstep pitch shifting without changing walking or sprint cadence.
+- Changed the grower's status to “Waiting for fluid” / “Ожидание жидкости”.
+- Removed local authoring tools from the published repository and excluded future additions.
+
+## 2.0.0-alpha.36
+
+- Added 15 metadata-based Optical Amplifier levels (+1 lm to +1 Tlm), an emitter slot, paid FE scaling, workbench upgrades and JEI recipes.
+- Preserved unfinished machine work and spent fluid across missing ingredients and reloads; replaced exact growth presets with hue ranges.
+- Moved seed wear into natural gem data, marked cut gems as artificial, migrated legacy seeds, and rebalanced yield and wear chances.
+- Rebuilt the Spectrum Module, gave the cutter its own materials, and added placeable translucent grown-crystal clusters and the supplied bucket textures.
+- Matched nutrient colors to their buckets and normalized water-like fluid properties; fixed splitter/combiner settings copy and paste.
+- Increased bridge walking/sprint cadence and added a client-side machine-display toggle. Updated EN/RU text and regression coverage.
+
+## 2.0.0-alpha.35
+
+- Fixed bridge footstep overlap and mounted straight/corner emitters flush with their supporting face.
+- Raised the mirror limit to 32, added performance warnings and optional shader-pack reflections (off by default); simplified mirror materials and widened luminous trim.
+- Added the FE-powered Chemical Synthesizer, four placeable nutrient fluids and native fluid automation.
+- Added RGB Spectrum Modules, reusable degrading crystal seeds and advanced LM-driven growth; kept the original photonite recipe.
+- Added the 2×2×2 Laser Cutter, requiring both light and electrical energy to finish grown crystals.
+- Added schematics, recipes, EN/RU text, JEI process requirements and production regression tests.
+
+## 2.0.0-alpha.34
+
+- Fixed a world-entry freeze on Forge 1.21.1 caused by mirror rendering replacing the main camera's culling frustum, even with reflections disabled.
+- Preserve vanilla culling across reflection passes and keep mirror clip planes out of the camera-cube visibility calculation.
+- Added a native-client regression guard for the first world frame and subsequent mirror frames. No gameplay or save-format changes.
+
+## 2.0.0-alpha.33
+
+- Rebuilt mirrors with independent stand/tilt rotation, beam-free linking, mouse aiming and optional live reflections with parallax and depth.
+- Moved the Configurator wheel to rebindable Left Ctrl; added tablet schematic search and turquoise module names.
+- Simplified bridge placement and added eight randomized walking sounds; corrected rotated bridge and chamber UVs and removed roof inserts.
+- Removed component-facing restrictions from large solar assembly. Added rendering/input/placement regressions and documented the reported Forge/OptiFine incompatibility.
+
+## 2.0.0-alpha.32
+
+- Added 45° bridge roll and corner emitters for joined, LM-powered light tunnels.
+- Added an animated Shift radial menu, mode colors, energy consumption and charging to the Configurator.
+- Gave Thickness Module II a distinct twin-cartridge model; kept its existing upgrade value.
+- Added the corner-emitter schematic/recipe, updated English/Russian help, and expanded collision/input/energy regression tests.
+
+## 2.0.0-alpha.31
+
+- Fixed the Lithium bridge-collision crash and added independent roll for vertical bridge emitters.
+- Unified installed/placed Mining LM costs and work speed; doubled module LM prices. Fixed healing at 0.1 HP/s and removed its tuning controls.
+- Added native item ports for emitter/module/turret automation, Thickness Module II (8×), and optional distance attenuation (off by default).
+- Raised creative optical output to 1 Tlm; shortened lava fuel duration threefold, including existing burns.
+- Aligned emitter module slots, restyled the turret GUI, and gave the Loot Collector a distinct name/model.
+- Replaced the Electric Motor placeholder with a placeable 3D model. Preserved existing items and settings; updated English/Russian help and regression coverage.
+
+## 2.0.0-alpha.30
+
+- Fixed bridge support during world re-entry and repeated LM charges after beam combining.
+- Added composable beam effects; Lift/Descent cancel at equal strength. Moved Mining into the Effect slot.
+- Added a craftable Collection module and nested Drops/Silk/Ignition/Collection slots in Mining. Ignition smelts mining loot or ignites Damage targets.
+- Added adjustable creative-emitter output from 0 to 1 Glm, including real optical energy delivery.
+- Replaced grower scans with mounted focusing heads, converging colored beams and moving highlights.
+- Preserved old module inventories; updated menus, English/Russian text and regression tests.
+
+## 2.0.0-alpha.29
+
+- Fixed bridge attachment gaps and added six-direction floor/wall/ceiling mounting with matching collision.
+- Added Heal/Lift/Lower modules, configurable world modules and installed-module priority; solar upgrades remain external.
+- Moved Silk/Drops into Mining; added Collect and nine-slot storage. Disabled new Scorch insertion, retained surface marks and old items.
+- Added searchable mod-aware target blacklists/whitelists to all effect modes and turrets; updated FE/LM costs.
+- Separated schematic creative entries, made raw minerals placeable and added input-colored grower rays.
+- Updated English/Russian text, recipes, player guides and regression coverage.
+
+## 2.0.0-alpha.28
+
+- Fixed Lithium bridge movement, missing bridge particles and directly touching optical combiners.
+- Slimmed bridge emitters, inset their surfaces and raised default range to 256 blocks.
+- Replaced the crystal grower's minimum-light threshold with proportional speed: 480 klm = 1×; saved fractional progress and exact material/water costs.
+- Replaced grower arcs with input-colored pulsing light; updated GUI/JEI, configuration migration and regression tests.
+
+## 2.0.0-alpha.27
+
+- Added LM-powered Hard Light Bridges: walkable surfaces without supporting blocks or entities, colored by their incoming beams.
+- Added connected 1-, 2- and 3-wide emitters, five-sided input, configurator rotation and power-based range.
+- Added obstacle clipping, client/server collision synchronization, shader-aware rendering, a tablet schematic and an Assembly Chamber recipe.
+- Added Russian/English help and bridge geometry, networking, movement and solar-power tests. No existing content removed.
 
 ## 2.0.0-alpha.26
 

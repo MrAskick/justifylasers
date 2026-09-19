@@ -226,8 +226,6 @@ public class LaserWorldSmoke {
         world.setBlockState(EMITTER, ModBlocks.POWERED_LASER_EMITTER.getDefaultState().with(LaserEmitterBlock.FACING, Direction.EAST));
         LaserEmitterBlockEntity emitter = (LaserEmitterBlockEntity) world.getBlockEntity(EMITTER);
         emitter.setStack(0, new ItemStack(ModLaserParts.CRYSTALS.get(LaserColor.RED)));
-        emitter.setStack(LaserModule.SCORCH_MARKS.slot(),
-                new ItemStack(ModLaserParts.MODULES.get(LaserModule.SCORCH_MARKS)));
         emitter.setStack(LaserModule.ENTITY_DAMAGE.slot(), new ItemStack(ModLaserParts.MODULES.get(LaserModule.ENTITY_DAMAGE)));
         emitter.setStack(LaserModule.RANGE.slot(), new ItemStack(ModLaserParts.ADVANCED_RANGE_MODULE, 8));
         emitter.setStack(LaserModule.THICKNESS.slot(), new ItemStack(ModLaserParts.MODULES.get(LaserModule.THICKNESS), 32));

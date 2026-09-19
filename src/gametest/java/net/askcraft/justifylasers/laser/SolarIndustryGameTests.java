@@ -147,8 +147,10 @@ public class SolarIndustryGameTests implements FabricGameTest {
         grower.fillWater(1000, false); grower.energy().restore(100_000);
         tick(grower);
         context.assertTrue(grower.progress() == 0 && grower.water() == 1000, "Stored legacy FE cannot grow crystals");
-        grower.receiveLight(6000, 0xFF0000); grower.receiveLight(6000, 0x0000FF); tick(grower);
+        grower.receiveLight(grower.rate() / 2, 0xFF0000); grower.receiveLight(grower.rate() / 2, 0x0000FF); tick(grower);
         context.assertTrue(grower.progress() == 1 && grower.energy().stored() == 100_000, "Two beams aggregate as LM; no FE consumed");
+        var mixed = new LightMixture(); mixed.add(0xFF0000, 1); mixed.add(0x0000FF, 1);
+        context.assertTrue(grower.lightRgb() == mixed.rgb(), "Chamber illumination retains the mixed input color");
         var saved = grower.createNbt(); grower.readNbt(saved); tick(grower);
         context.assertTrue(grower.progress() == 1 && grower.lightFlux() == 0, "NBT cannot restore spendable optical power");
         context.complete();
@@ -165,7 +167,7 @@ public class SolarIndustryGameTests implements FabricGameTest {
         int[] paused = {0};
         context.runAtTick(30, () -> {
             context.assertTrue(source.luminousFlux() > 15_000 && grower.lightFlux() > 15_000, "Actual network delivers small solar output to a lower lens");
-            context.assertTrue(grower.progress() > 20 && grower.energy().stored() == 0, "Real server ticking advances LM growth without energy mods");
+            context.assertTrue(grower.completion(0) > 0 && grower.progress() < 2 && grower.energy().stored() == 0, "Small solar input grows slowly instead of hitting a threshold");
             world.setTimeOfDay(18000);
         });
         context.runAtTick(34, () -> paused[0] = grower.progress());
@@ -175,8 +177,8 @@ public class SolarIndustryGameTests implements FabricGameTest {
         });
         context.runAtTick(670, () -> {
             try {
-                context.assertTrue(grower.getStack(4).isOf(ModIndustry.PHOTONITE_CRYSTAL), "First crystal grown from real sunlight");
-                context.assertTrue(grower.water() == 0 && grower.getStack(0).isEmpty() && grower.getStack(1).isEmpty(), "One exact batch after pause/resume");
+                context.assertTrue(grower.progress() > 18 && grower.progress() < 23 && grower.getStack(4).isEmpty(), "Real solar growth follows the 16/480 klm speed ratio after pause/resume");
+                context.assertTrue(grower.water() > 950 && grower.water() < 1000 && grower.getStack(0).getCount() == 1, "Partial growth spends proportional water and preserves the unfinished batch");
             } finally { world.setTimeOfDay(originalTime); }
             context.complete();
         });

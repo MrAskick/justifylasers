@@ -25,7 +25,8 @@ public final class LaserPartRenderer implements BlockEntityRenderer<LaserPartBlo
         if (stack.getItem() instanceof LaserCrystalItem) {
             LaserCrystalModel.render(stack, mode, matrices, consumers, light, overlay);
         } else if (stack.getItem() instanceof LaserPartItem part) {
-            if (part.partId().equals("crystal_mount")) LaserCrystalModel.renderMount(mode, matrices, consumers, light, overlay);
+            if (part.partId().startsWith("grown_")) GrownCrystalModel.render(part.partId(), mode, matrices, consumers, overlay);
+            else if (part.partId().equals("crystal_mount")) LaserCrystalModel.renderMount(mode, matrices, consumers, light, overlay);
             else LaserModuleModel.render(part.partId(), mode, matrices, consumers, light, overlay);
         }
     }

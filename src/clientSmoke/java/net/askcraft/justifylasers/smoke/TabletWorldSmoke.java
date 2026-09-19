@@ -36,7 +36,7 @@ final class TabletWorldSmoke {
         if (tick == 120) {
             if (!(client.currentScreen instanceof TabletScreen screen) || screen.getScreenHandler().charge() <= 40_000) throw new AssertionError("Tablet charge did not synchronize");
             capture(client,"active");
-            click(client,55,93);
+            click(client,55,121);
         }
         if (tick == 137) {
             var screen = (TabletScreen)client.currentScreen;
@@ -83,6 +83,22 @@ final class TabletWorldSmoke {
         if (tick == 326) {
             if (client.options.getPerspective() != net.minecraft.client.option.Perspective.THIRD_PERSON_BACK) throw new AssertionError("Tablet did not restore the previous perspective");
             client.getServer().execute(() -> Platform.openScreen(player(client),new TabletScreenHandler.Factory(40)));
+        }
+        if(tick==337) {
+            click(client,50,58);
+            var screen=(TabletScreen)client.currentScreen;
+            for(char c:"powered_laser_emitter".toCharArray()) screen.charTyped(c,0);
+        }
+        if(tick==343) {
+            var screen=(TabletScreen)client.currentScreen;
+            if(screen.matches().size()!=1 || screen.getScreenHandler().selected()!=screen.matches().get(0)) throw new AssertionError("Filtered list lost original server blueprint ID");
+            capture(client,"search");
+            for(int i=0;i<30;i++) screen.keyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_BACKSPACE,0,0);
+            for(char c:"no_such_schematic".toCharArray()) screen.charTyped(c,0);
+            if(!screen.matches().isEmpty()) throw new AssertionError("No-result search contains rows");
+            for(int i=0;i<30;i++) screen.keyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_BACKSPACE,0,0);
+            screen.keyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE,0,0);
+            if(screen.matches().size()!=screen.getScreenHandler().blueprints().size()) throw new AssertionError("Clearing search did not restore all blueprints");
         }
         for (int component = 0; component < 5; component++) {
             if (tick == 345 + component * 20) client.interactionManager.clickButton(((TabletScreen)client.currentScreen).getScreenHandler().syncId,21+component);

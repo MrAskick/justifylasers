@@ -121,20 +121,28 @@ public class LaserWeaponGameTests implements FabricGameTest {
 
     @GameTest(templateName = EMPTY_STRUCTURE, tickLimit = 50)
     public void turretAimsAndFiresWithoutEnergyButStopsAfterGunRemoval(TestContext context) {
+        // A reused plot can contain passive mobs that legitimately block the turret's line of fire.
+        var plot = new Box(context.getAbsolute(Vec3d.ZERO), context.getAbsolute(new Vec3d(8, 8, 8)));
+        context.getWorld().getOtherEntities(null, plot, entity -> !(entity instanceof net.minecraft.entity.player.PlayerEntity))
+                .forEach(net.minecraft.entity.Entity::discard);
         var turret = turret(context);
         turret.setStack(0, new ItemStack(ModBlocks.LASER_GUN));
         var zombie = context.spawnMob(EntityType.ZOMBIE, new Vec3d(5.5, 2, 2.5));
         zombie.setAiDisabled(true);
+        zombie.setNoGravity(true);
         zombie.getAttributeInstance(EntityAttributes.GENERIC_KNOCKBACK_RESISTANCE).setBaseValue(1);
         zombie.setFireTicks(0);
         context.setBlockState(5, 4, 2, Blocks.STONE);
         context.runAtTick(20, () -> {
-            context.assertTrue(turret.firing() && zombie.getHealth() < 20, "Turret rotates and damages without an energy inventory");
+            context.assertTrue(turret.firing() && zombie.getHealth() < 20, "Turret rotates and damages without an energy inventory: health=" + zombie.getHealth()
+                    + ", position=" + zombie.getPos() + ", firing=" + turret.firing() + ", ray="
+                    + LaserWeapon.trace(context.getWorld(), turret.pivot(), turret.direction(1), 32, null));
             turret.removeStack(0);
         });
         context.runAtTick(22, () -> {
             context.assertFalse(turret.firing(), "A stand without a gun cannot fire");
             context.removeBlock(new BlockPos(2, 2, 2));
+            zombie.discard();
             context.complete();
         });
     }

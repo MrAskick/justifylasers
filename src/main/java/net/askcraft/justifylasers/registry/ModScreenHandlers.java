@@ -9,6 +9,7 @@ import net.minecraft.screen.ScreenHandlerType;
 
 public final class ModScreenHandlers {
     public static ScreenHandlerType<LaserEmitterScreenHandler> LASER_EMITTER;
+    public static ScreenHandlerType<net.askcraft.justifylasers.screen.LaserModuleScreenHandler> LASER_MODULE;
     public static ScreenHandlerType<net.askcraft.justifylasers.screen.IndustrialMachineScreenHandler> INDUSTRIAL_MACHINE;
     public static ScreenHandlerType<net.askcraft.justifylasers.screen.SolarConcentratorScreenHandler> SOLAR_CONCENTRATOR;
     public static ScreenHandlerType<net.askcraft.justifylasers.screen.TabletScreenHandler> TABLET;
@@ -21,6 +22,8 @@ public final class ModScreenHandlers {
     }
 
     public static void initialize() {
+        LASER_MODULE = Platform.register(Registries.SCREEN_HANDLER, JustifyLasers.id("laser_module"),
+                Platform.screenType(net.askcraft.justifylasers.screen.LaserModuleScreenHandler::new));
         SOLAR_CONCENTRATOR = Platform.register(Registries.SCREEN_HANDLER, JustifyLasers.id("solar_concentrator"),
                 Platform.screenType(net.askcraft.justifylasers.screen.SolarConcentratorScreenHandler::new));
         TABLET = Platform.register(Registries.SCREEN_HANDLER, JustifyLasers.id("tablet"),

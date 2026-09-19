@@ -5,3 +5,5 @@ license="MIT"
 modId="justifylasers_client_smoke"
 version="1"
 displayName="Laser Client Smoke Test"
+[[mixins]]
+config="justifylasers.smoke.mixins.json"

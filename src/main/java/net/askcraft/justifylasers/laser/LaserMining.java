@@ -30,8 +30,12 @@ public final class LaserMining {
     }
 
     public static boolean breakBlock(ServerWorld world, BlockPos pos, boolean drops, boolean silkTouch) {
+        return breakBlock(world, pos, drops, silkTouch, false);
+    }
+
+    public static boolean breakBlock(ServerWorld world, BlockPos pos, boolean drops, boolean silkTouch, boolean smelt) {
         if (world.getBlockState(pos).isIn(ModBlocks.LASER_PROOF)) return false;
-        if (drops && !silkTouch) {
+        if (drops && !silkTouch && !smelt) {
             return world.breakBlock(pos, true, null);
         }
 
@@ -53,13 +57,23 @@ public final class LaserMining {
 
         BlockState state = world.getBlockState(pos);
         ItemStack tool = new ItemStack(Items.NETHERITE_PICKAXE);
-        net.askcraft.justifylasers.platform.GameVersion.applySilkTouch(tool, world);
+        if (silkTouch) net.askcraft.justifylasers.platform.GameVersion.applySilkTouch(tool, world);
         // Resolve loot before removal so shulker boxes and other block-entity loot retain their data.
         List<ItemStack> loot = Block.getDroppedStacks(state, world, pos, blockEntity, null, tool);
         if (!world.breakBlock(pos, false, null)) {
             return false;
         }
-        loot.forEach(stack -> Block.dropStack(world, pos, stack));
+        for (var stack : loot) {
+            var cooked = smelt ? net.askcraft.justifylasers.platform.GameVersion.smelt(stack, world) : ItemStack.EMPTY;
+            if (cooked.isEmpty() || cooked == stack) Block.dropStack(world, pos, stack);
+            else {
+                int count = Math.multiplyExact(stack.getCount(), cooked.getCount());
+                while (count > 0) {
+                    var part = cooked.copy(); part.setCount(Math.min(count, part.getMaxCount()));
+                    Block.dropStack(world, pos, part); count -= part.getCount();
+                }
+            }
+        }
         state.onStacksDropped(world, pos, tool, true);
         return true;
     }

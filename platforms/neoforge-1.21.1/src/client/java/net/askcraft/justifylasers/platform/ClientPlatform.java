@@ -34,6 +34,10 @@ public final class ClientPlatform {
     private static final java.util.List<ShaderRegistration> SHADERS = new java.util.ArrayList<>();
 
     public static void initialize() {
+        net.askcraft.justifylasers.registry.ModNutrients.STILL.values().forEach(fluid ->
+                net.minecraft.client.render.RenderLayers.setRenderLayer(fluid, net.minecraft.client.render.RenderLayer.getTranslucent()));
+        net.askcraft.justifylasers.registry.ModNutrients.FLOWING.values().forEach(fluid ->
+                net.minecraft.client.render.RenderLayers.setRenderLayer(fluid, net.minecraft.client.render.RenderLayer.getTranslucent()));
         net.askcraft.justifylasers.network.SaberStatePacket.receiver = net.askcraft.justifylasers.client.SaberFencingClient::receive;
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.player.ItemTooltipEvent event) -> net.askcraft.justifylasers.client.SaberTooltips.append(event.getItemStack(), event.getToolTip()));
         NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut event) -> LaserConfig.resetServerMode());
@@ -113,6 +117,14 @@ public final class ClientPlatform {
     }
 
     private ClientPlatform() {
+    }
+
+    public static void sendConfiguratorMode(net.askcraft.justifylasers.network.ConfiguratorModePacket packet) {
+        PacketDistributor.sendToServer(new net.askcraft.justifylasers.network.ConfiguratorModePayload(packet));
+    }
+
+    public static void sendMirrorAim(net.askcraft.justifylasers.network.MirrorAimPacket packet) {
+        PacketDistributor.sendToServer(new net.askcraft.justifylasers.network.MirrorAimPayload(packet));
     }
 
     public static void sendSaberToggle(net.askcraft.justifylasers.network.SaberTogglePacket packet) {

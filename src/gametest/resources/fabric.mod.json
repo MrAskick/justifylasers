@@ -7,6 +7,12 @@
   "license": "MIT",
   "entrypoints": {
     "fabric-gametest": [
+      "net.askcraft.justifylasers.laser.Prompt7GameTests",
+      "net.askcraft.justifylasers.laser.Prompt6GameTests",
+      "net.askcraft.justifylasers.laser.Alpha32GameTests",
+      "net.askcraft.justifylasers.laser.Alpha31GameTests",
+      "net.askcraft.justifylasers.laser.BeamModuleGameTests",
+      "net.askcraft.justifylasers.laser.LightBridgeGameTests",
       "net.askcraft.justifylasers.laser.LaserDamageGameTests",
       "net.askcraft.justifylasers.laser.LaserDamageSettingsGameTests",
       "net.askcraft.justifylasers.laser.LaserIgnitionGameTests",

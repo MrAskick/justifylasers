@@ -22,6 +22,10 @@ public abstract class BuiltinItemRendererMixin {
     @Inject(method = "render", at = @At("HEAD"), cancellable = true)
     private void justifylasers$renderOptic(ItemStack stack, ModelTransformationMode mode, MatrixStack matrices,
                                          VertexConsumerProvider consumers, int light, int overlay, CallbackInfo ci) {
+        if (stack.getItem() instanceof BlockItem bridgeItem && bridgeItem.getBlock() instanceof net.askcraft.justifylasers.block.LightBridgeBlock bridge) {
+            net.askcraft.justifylasers.client.render.LightBridgeBlockRenderer.renderItem(matrices, consumers, light, bridge.corner());
+            ci.cancel(); return;
+        }
         if (stack.isOf(net.askcraft.justifylasers.registry.ModIndustry.SMALL_SOLAR_CONCENTRATOR.asItem())) {
             matrices.push(); matrices.translate(.5,.5,.5);
             net.askcraft.justifylasers.client.render.SmallSolarConcentratorModel.render(null,0,matrices,consumers,light);
@@ -59,7 +63,7 @@ public abstract class BuiltinItemRendererMixin {
             net.askcraft.justifylasers.client.render.LaserGunRenderer.renderItem(stack, mode, matrices, consumers, light);
             ci.cancel();
         } else if (stack.isOf(net.askcraft.justifylasers.registry.ModBlocks.CONFIGURATOR)) {
-            net.askcraft.justifylasers.client.render.LaserConfiguratorModel.render(matrices, consumers, light);
+            net.askcraft.justifylasers.client.render.LaserConfiguratorModel.render(stack, matrices, consumers, light);
             ci.cancel();
         } else if (stack.isOf(net.askcraft.justifylasers.registry.ModBlocks.LASER_TURRET.asItem())) {
             net.askcraft.justifylasers.client.render.LaserTurretRenderer.renderItem(matrices, consumers, light);

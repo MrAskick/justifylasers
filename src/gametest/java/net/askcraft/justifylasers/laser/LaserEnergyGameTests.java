@@ -92,20 +92,26 @@ public class LaserEnergyGameTests implements FabricGameTest {
             }
             emitter.getPropertyDelegate().set(12, 1);
             emitter.getPropertyDelegate().set(15, 1);
-            context.assertFalse(emitter.ignitesEntities() || emitter.hasSilkTouch() || emitter.dropsBlocks() || emitter.showsScorchMarks(), "Saved toggles cannot bypass module requirements");
-            for (LaserModule module : LaserModule.values()) emitter.setStack(module.slot(), new ItemStack(ModLaserParts.MODULES.get(module)));
+            context.assertFalse(emitter.ignitesEntities() || emitter.hasSilkTouch() || emitter.dropsBlocks(), "Saved toggles cannot bypass module requirements");
+            context.assertTrue(emitter.showsScorchMarks(), "Scorch marks no longer need a slot");
+            for (LaserModule module : LaserModule.values()) if (module != LaserModule.SCORCH_MARKS && module.ordinal() <= LaserModule.TARGET_FILTER.ordinal())
+                emitter.setStack(module.slot(), new ItemStack(ModLaserParts.MODULES.get(module)));
             emitter.setStack(LaserModule.RANGE.slot(), new ItemStack(ModLaserParts.ADVANCED_RANGE_MODULE));
             context.assertTrue(emitter.ignitesEntities() && emitter.hasSilkTouch() && emitter.dropsBlocks() && emitter.showsScorchMarks(), "Installed modules unlock configured effects");
             installCrystal(emitter, LaserColor.RED);
             emitter.energy().restore(100000);
             emitter.getPropertyDelegate().set(3, 1);
-            emitter.getPropertyDelegate().set(14, 100);
+            emitter.setStack(LaserModule.BLOCK_DESTRUCTION.slot(), new ItemStack(ModLaserParts.MODULES.get(LaserModule.BLOCK_DESTRUCTION)));
+            emitter.removeStack(LaserModule.IGNITION.slot());
+            emitter.setStack(LaserModule.RANGE.slot(), new ItemStack(ModLaserParts.ADVANCED_RANGE_MODULE, 64));
+            emitter.getPropertyDelegate().set(14, 0);
             tick(emitter);
+            for (int i = 1; i < LaserMining.ticksToBreak(1.5F, 0); i++) tick(emitter);
             context.assertTrue(context.getWorld().isAir(context.getAbsolutePos(TARGET)), "Powered mining works");
             context.assertTrue(context.getWorld().getEntitiesByClass(ItemEntity.class, new Box(context.getAbsolutePos(TARGET)).expand(1),
                     item -> item.getStack().isOf(Items.STONE)).size() == 1, "Collection and Silk Touch modules affect actual loot");
             emitter.removeStack(LaserModule.SCORCH_MARKS.slot());
-            context.assertFalse(emitter.showsScorchMarks(), "Removing module disables its effect immediately");
+            context.assertTrue(emitter.showsScorchMarks(), "Scorch marks remain without the disabled module");
             context.removeBlock(SOURCE);
         } finally {
             LaserConfig.applyServerMode(initialMode);
@@ -118,12 +124,14 @@ public class LaserEnergyGameTests implements FabricGameTest {
         LaserEmitterBlockEntity emitter = create(context);
         emitter.energy().restore(1_800_001);
         installCrystal(emitter, LaserColor.VIOLET);
-        for (LaserModule module : LaserModule.values()) emitter.setStack(module.slot(), new ItemStack(ModLaserParts.MODULES.get(module)));
+        for (LaserModule module : LaserModule.values()) if (module != LaserModule.SCORCH_MARKS && module != LaserModule.BLOCK_DESTRUCTION && module.ordinal() <= LaserModule.TARGET_FILTER.ordinal())
+            emitter.setStack(module.slot(), new ItemStack(ModLaserParts.MODULES.get(module)));
         NbtCompound saved = emitter.createNbt();
         LaserEmitterBlockEntity restored = new LaserEmitterBlockEntity(SOURCE, ModBlocks.POWERED_LASER_EMITTER.getDefaultState());
         restored.readNbt(saved);
         context.assertTrue(restored.energy().stored() == 1_800_001 && restored.crystal().color() == LaserColor.VIOLET, "Energy and crystal persist");
-        for (LaserModule module : LaserModule.values()) context.assertTrue(restored.hasModule(module), "Module persists " + module);
+        for (LaserModule module : LaserModule.values()) if (module != LaserModule.SCORCH_MARKS && module != LaserModule.BLOCK_DESTRUCTION && module.ordinal() <= LaserModule.TARGET_FILTER.ordinal())
+            context.assertTrue(restored.hasModule(module), "Module persists " + module);
         context.removeBlock(SOURCE);
         context.complete();
     }
@@ -168,9 +176,9 @@ public class LaserEnergyGameTests implements FabricGameTest {
         var menu = new LaserEmitterScreenHandler(42, player.getInventory(), emitter);
         player.getInventory().setStack(9, new ItemStack(ModLaserParts.CRYSTALS.get(LaserColor.RED)));
         player.getInventory().setStack(10, new ItemStack(ModLaserParts.CRYSTALS.get(LaserColor.BLUE)));
-        context.assertFalse(menu.quickMove(player, LaserEmitterBlockEntity.MODULE_SLOT_COUNT).isEmpty(), "Shift-click inserts crystal");
+        context.assertFalse(menu.quickMove(player, LaserEmitterBlockEntity.INVENTORY_SIZE).isEmpty(), "Shift-click inserts crystal");
         context.assertTrue(emitter.crystal().color() == LaserColor.RED && player.getInventory().getStack(9).isEmpty(), "One crystal moved");
-        context.assertTrue(menu.quickMove(player, LaserEmitterBlockEntity.MODULE_SLOT_COUNT + 1).isEmpty() && !player.getInventory().getStack(10).isEmpty(), "Occupied slot cannot eat another crystal");
+        context.assertTrue(menu.quickMove(player, LaserEmitterBlockEntity.INVENTORY_SIZE + 1).isEmpty() && !player.getInventory().getStack(10).isEmpty(), "Occupied slot cannot eat another crystal");
         context.assertFalse(menu.quickMove(player, 0).isEmpty(), "Crystal can be recovered");
         context.assertTrue(emitter.crystal() == null, "Module slot is now empty");
         int crystals = 0;
@@ -207,7 +215,8 @@ public class LaserEnergyGameTests implements FabricGameTest {
                         emitter.setStack(LaserModule.THICKNESS.slot(), new ItemStack(ModLaserParts.MODULES.get(LaserModule.THICKNESS), upgrades));
                     }
                     if (functions) {
-                        for (var module : LaserModule.values()) if (module != LaserModule.RANGE && module != LaserModule.THICKNESS)
+                        for (var module : LaserModule.values()) if (module != LaserModule.RANGE && module != LaserModule.THICKNESS && module != LaserModule.SCORCH_MARKS
+                                && module.ordinal() <= LaserModule.TARGET_FILTER.ordinal())
                             emitter.setStack(module.slot(), new ItemStack(ModLaserParts.MODULES.get(module)));
                         for (int property : new int[]{3, 4, 12, 15, 16, 17}) emitter.getPropertyDelegate().set(property, 1);
                         emitter.getPropertyDelegate().set(9, 200);

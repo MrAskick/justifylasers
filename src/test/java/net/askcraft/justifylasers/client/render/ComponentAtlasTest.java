@@ -15,7 +15,7 @@ class ComponentAtlasTest {
     void everyComponentHasMatchingAlbedoNormalAndEmissionMaps() throws Exception {
         for (String kind : List.of("gun", "crystal", "turret"))
             for (LaserColor color : LaserColor.values()) checkImages(kind, color.asString());
-        for (String id : LaserModuleModel.meshes().keySet()) checkImages("module/" + id, "default");
+        for (String id : LaserModuleModel.meshes().keySet()) checkImages("module/" + LaserModuleModel.atlasId(id), "default");
     }
 
     private void checkImages(String kind, String variant) throws Exception {
@@ -63,7 +63,7 @@ class ComponentAtlasTest {
                 for (var face : mesh) check(turret, face.ua(), face.ub(), face.uc(), face.ud());
         }
         LaserModuleModel.meshes().forEach((id, mesh) -> {
-            var atlas = ComponentAtlas.load("module/" + id, "default");
+            var atlas = ComponentAtlas.load("module/" + LaserModuleModel.atlasId(id), "default");
             for (var face : mesh) check(atlas, face.ua(), face.ub(), face.uc(), face.ud());
         });
     }

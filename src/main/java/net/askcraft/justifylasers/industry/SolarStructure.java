@@ -1,7 +1,6 @@
 package net.askcraft.justifylasers.industry;
 
 import net.askcraft.justifylasers.block.entity.LaserComponentBlockEntity;
-import net.askcraft.justifylasers.block.LaserComponentBlock;
 import net.askcraft.justifylasers.block.entity.SolarConcentratorBlockEntity;
 import net.askcraft.justifylasers.laser.LaserBeamNetwork;
 import net.askcraft.justifylasers.registry.ModIndustry;
@@ -35,11 +34,20 @@ public final class SolarStructure {
         return List.copyOf(cells);
     }
     public static BlockPos origin(SolarConcentratorBlockEntity source) {
-        return source.small() ? source.getPos() : source.getPos().offset(source.facing().getOpposite(), 2).add(-1, 0, -1);
+        if (source.small()) return source.getPos();
+        if (source.structureOrigin() != null) return source.structureOrigin();
+        // The resonator's placement rotation is cosmetic, not a multiblock assembly constraint.
+        for (Cell port : RESONATORS) {
+            BlockPos candidate = source.getPos().subtract(port.offset());
+            if (matchesAt(source, candidate)) return candidate;
+        }
+        return source.getPos().offset(source.facing().getOpposite(), 2).add(-1, 0, -1);
     }
     public static boolean matches(SolarConcentratorBlockEntity source) {
+        return matchesAt(source, origin(source));
+    }
+    private static boolean matchesAt(SolarConcentratorBlockEntity source, BlockPos origin) {
         World world = source.getWorld();
-        BlockPos origin = origin(source);
         if (source.small() || world == null || !world.isChunkLoaded(source.getPos()) || source.isRemoved()
                 || !world.getBlockState(source.getPos()).isOf(ModIndustry.COMPONENT_BLOCKS.get("optical_resonator"))) return false;
         for (Cell cell : PARTS) {
@@ -47,13 +55,13 @@ public final class SolarStructure {
             if (!world.isChunkLoaded(pos) || !world.getBlockState(pos).isOf(ModIndustry.COMPONENT_BLOCKS.get(cell.component))
                     || !(world.getBlockEntity(pos) instanceof LaserComponentBlockEntity part)) return false;
             if (part.controllerPos() != null && !part.controllerPos().equals(source.getPos())) return false;
-            if (cell.component.equals("optical_resonator") && part.getCachedState().get(LaserComponentBlock.FACING) != resonatorFacing(cell)) return false;
             if (part instanceof SolarConcentratorBlockEntity collector && !collector.allowsJoining(source)) return false;
         }
         return true;
     }
     public static boolean form(SolarConcentratorBlockEntity source) {
         if (source.getWorld() == null || source.getWorld().isClient || !matches(source)) return false;
+        source.setStructureOrigin(origin(source));
         for (Cell cell : PARTS) {
             var part = (LaserComponentBlockEntity) source.getWorld().getBlockEntity(origin(source).add(cell.offset));
             if (!source.getPos().equals(part.controllerPos())) part.assignController(source.getPos());
@@ -80,6 +88,7 @@ public final class SolarStructure {
                     && source.getPos().equals(member.controllerPos())) member.assignController(null);
         }
         source.assignController(null);
+        source.setStructureOrigin(null);
         LaserBeamNetwork.invalidate(world);
     }
     private SolarStructure() { }

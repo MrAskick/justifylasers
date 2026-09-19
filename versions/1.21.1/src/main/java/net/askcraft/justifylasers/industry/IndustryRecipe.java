@@ -58,22 +58,24 @@ public record IndustryRecipe(MachineRecipeData data) implements Recipe<RecipeInp
                 ItemStack.VALIDATED_CODEC.fieldOf("result").forGetter(recipe -> recipe.data.result()),
                 Codec.intRange(0, 72_000).optionalFieldOf("ticks", 0).forGetter(recipe -> recipe.data.ticks()),
                 Codec.intRange(0, Integer.MAX_VALUE).optionalFieldOf("energy", 0).forGetter(recipe -> recipe.data.energy()),
-                Codec.intRange(0, 64_000).optionalFieldOf("water", 0).forGetter(recipe -> recipe.data.water())
-        ).apply(instance, (key, machine, blueprint, inputs, result, ticks, energy, water) -> new IndustryRecipe(new MachineRecipeData(key, machine, blueprint,
-                inputs.stream().map(Input::ingredient).toList(), inputs.stream().map(Input::count).toList(), result, ticks, energy, water))));
+                Codec.intRange(0, 64_000).optionalFieldOf("water", 0).forGetter(recipe -> recipe.data.water()),
+                RecipeProcess.CODEC.optionalFieldOf("process", RecipeProcess.BASIC).forGetter(recipe -> recipe.data.process())
+        ).apply(instance, (key, machine, blueprint, inputs, result, ticks, energy, water, process) -> new IndustryRecipe(new MachineRecipeData(key, machine, blueprint,
+                inputs.stream().map(Input::ingredient).toList(), inputs.stream().map(Input::count).toList(), result, ticks, energy, water, process))));
         private static final PacketCodec<RegistryByteBuf, IndustryRecipe> PACKET = new PacketCodec<>() {
             @Override public IndustryRecipe decode(RegistryByteBuf buffer) {
                 String key = buffer.readString(128); MachineKind kind = buffer.readEnumConstant(MachineKind.class); String blueprint = buffer.readString(128);
                 int size = buffer.readVarInt(); if (size < 1 || size > 4) throw new IllegalArgumentException("Invalid industrial ingredient count");
                 var ingredients = new java.util.ArrayList<Ingredient>(); var counts = new java.util.ArrayList<Integer>();
                 for (int i = 0; i < size; i++) { ingredients.add(Ingredient.PACKET_CODEC.decode(buffer)); counts.add(buffer.readVarInt()); }
-                return new IndustryRecipe(new MachineRecipeData(key, kind, blueprint, ingredients, counts, ItemStack.PACKET_CODEC.decode(buffer), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt()));
+                return new IndustryRecipe(new MachineRecipeData(key, kind, blueprint, ingredients, counts, ItemStack.PACKET_CODEC.decode(buffer), buffer.readVarInt(), buffer.readVarInt(), buffer.readVarInt(), RecipeProcess.read(buffer)));
             }
             @Override public void encode(RegistryByteBuf buffer, IndustryRecipe recipe) {
                 var data = recipe.data;
                 buffer.writeString(data.key()); buffer.writeEnumConstant(data.kind()); buffer.writeString(data.blueprint()); buffer.writeVarInt(data.inputs().size());
                 for (int i = 0; i < data.inputs().size(); i++) { Ingredient.PACKET_CODEC.encode(buffer, data.inputs().get(i)); buffer.writeVarInt(data.counts().get(i)); }
                 ItemStack.PACKET_CODEC.encode(buffer, data.result()); buffer.writeVarInt(data.ticks()); buffer.writeVarInt(data.energy()); buffer.writeVarInt(data.water());
+                data.process().write(buffer);
             }
         };
         @Override public MapCodec<IndustryRecipe> codec() { return CODEC; }

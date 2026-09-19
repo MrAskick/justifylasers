@@ -2,6 +2,11 @@
   "sources": [
     {
       "type": "minecraft:single",
+      "resource": "justifylasers:component/light_bridge/particle",
+      "sprite": "justifylasers:component/light_bridge/particle"
+    },
+    {
+      "type": "minecraft:single",
       "resource": "justifylasers:component/laser_saber/base",
       "sprite": "justifylasers:component/laser_saber/base"
     },

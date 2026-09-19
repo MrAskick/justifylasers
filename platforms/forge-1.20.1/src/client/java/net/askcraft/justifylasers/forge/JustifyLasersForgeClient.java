@@ -31,6 +31,7 @@ public final class JustifyLasersForgeClient {
     public static void keys(net.minecraftforge.client.event.RegisterKeyMappingsEvent event) {
         event.register(net.askcraft.justifylasers.client.ClientSettingsKey.OPEN);
         event.register(net.askcraft.justifylasers.client.ClientSettingsKey.SABER_TOGGLE);
+        event.register(net.askcraft.justifylasers.client.ClientSettingsKey.CONFIGURATOR);
     }
 
     @SubscribeEvent
@@ -41,6 +42,7 @@ public final class JustifyLasersForgeClient {
         event.registerBlockEntityRenderer(ModBlockEntities.INDUSTRIAL_MACHINE, net.askcraft.justifylasers.client.render.IndustrialMachineRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.LASER_TURRET, net.askcraft.justifylasers.client.render.LaserTurretRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.LASER_OPTIC, net.askcraft.justifylasers.client.render.LaserOpticRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntities.LIGHT_BRIDGE, net.askcraft.justifylasers.client.render.LightBridgeBlockRenderer::new);
     }
 
     @SubscribeEvent

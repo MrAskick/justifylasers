@@ -7,6 +7,8 @@ import net.minecraft.client.util.InputUtil;
 import org.lwjgl.glfw.GLFW;
 
 public final class ClientSettingsKey {
+    public static final KeyBinding CONFIGURATOR = new KeyBinding("key.justifylasers.configurator",
+            InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_LEFT_CONTROL, "key.categories.justifylasers");
     public static final KeyBinding SABER_TOGGLE = new KeyBinding("key.justifylasers.saber_toggle",
             InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_V, "key.categories.justifylasers");
     public static final KeyBinding OPEN = new KeyBinding("key.justifylasers.client_settings",

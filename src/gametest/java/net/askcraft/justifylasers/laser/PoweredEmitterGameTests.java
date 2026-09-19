@@ -117,12 +117,12 @@ public class PoweredEmitterGameTests implements FabricGameTest {
         context.assertTrue(menu.getType() == ModScreenHandlers.POWERED_LASER_EMITTER, "Powered emitter has a separate GUI type");
         emitter.setStack(7, new ItemStack(ModLaserParts.ADVANCED_RANGE_MODULE, 48));
         player.getInventory().setStack(9, new ItemStack(ModLaserParts.ADVANCED_RANGE_MODULE, 32));
-        menu.quickMove(player, LaserEmitterBlockEntity.MODULE_SLOT_COUNT);
+        menu.quickMove(player, LaserEmitterBlockEntity.INVENTORY_SIZE);
         context.assertTrue(emitter.getStack(7).getCount() == 64 && player.getInventory().getStack(9).getCount() == 16, "Shift-click respects stack64 and leaves remainder");
         context.assertTrue(emitter.getBeamRange() == 512, "Merging updates range");
         emitter.removeStack(7, 32);
         player.getInventory().setStack(10, new ItemStack(ModLaserParts.MODULES.get(LaserModule.RANGE), 32));
-        context.assertTrue(menu.quickMove(player, LaserEmitterBlockEntity.MODULE_SLOT_COUNT + 1).isEmpty()
+        context.assertTrue(menu.quickMove(player, LaserEmitterBlockEntity.INVENTORY_SIZE + 1).isEmpty()
                 && emitter.getStack(7).getCount() == 32, "Two tiers cannot merge");
         context.assertFalse(menu.quickMove(player, 7).isEmpty(), "Installed stack can be recovered");
         context.assertTrue(emitter.getBeamRange() == 1 && emitter.getStack(7).isEmpty(), "Recovered stack removes its upgrade");
@@ -173,11 +173,11 @@ public class PoweredEmitterGameTests implements FabricGameTest {
             tick(emitter);
             context.assertTrue(mob.getHealth() == 20 && context.getWorld().getBlockState(context.getAbsolutePos(TARGET)).isOf(Blocks.STONE), "Raw toggles cannot bypass missing modules");
             context.assertTrue(emitter.energyCost() == LaserConfig.get().basePerTick + 8, "Charge the installed range module, not locked capabilities");
-            emitter.setStack(5, new ItemStack(ModLaserParts.MODULES.get(LaserModule.BLOCK_DESTRUCTION)));
+            emitter.setStack(6, new ItemStack(ModLaserParts.MODULES.get(LaserModule.BLOCK_DESTRUCTION)));
+            context.assertTrue(emitter.breaksBlocks() && !emitter.damagesEntities(), "Mining occupies the effect slot");
             emitter.setStack(6, new ItemStack(ModLaserParts.MODULES.get(LaserModule.ENTITY_DAMAGE)));
             int cost = emitter.energyCost();
             context.assertTrue(cost > LaserConfig.get().basePerTick, "Enabled capabilities increase consumption");
-            emitter.removeStack(5);
             emitter.removeStack(6);
             context.assertFalse(emitter.breaksBlocks() || emitter.damagesEntities(), "Removing capability modules gates effects immediately");
             mob.discard();
@@ -261,16 +261,20 @@ public class PoweredEmitterGameTests implements FabricGameTest {
     public void legacyFiveSlotInventoryKeepsItsItems(TestContext context) {
         var emitter = create(context);
         emitter.setStack(0, new ItemStack(ModLaserParts.CRYSTALS.get(LaserColor.VIOLET)));
-        for (LaserModule module : new LaserModule[]{LaserModule.SILK_TOUCH, LaserModule.BLOCK_DROPS, LaserModule.SCORCH_MARKS, LaserModule.IGNITION}) {
+        for (LaserModule module : new LaserModule[]{LaserModule.SILK_TOUCH, LaserModule.BLOCK_DROPS, LaserModule.IGNITION}) {
             emitter.setStack(module.slot(), new ItemStack(ModLaserParts.MODULES.get(module)));
         }
         NbtCompound oldSave = emitter.createNbt();
+        NbtCompound oldScorch = new ItemStack(ModLaserParts.MODULES.get(LaserModule.SCORCH_MARKS)).writeNbt(new NbtCompound());
+        oldScorch.putByte("Slot", (byte) 3);
+        oldSave.getList("Items", net.minecraft.nbt.NbtElement.COMPOUND_TYPE).add(oldScorch);
         oldSave.remove("Owner");
         oldSave.remove("OwnerName");
         oldSave.remove("PrivateAccess");
         var restored = new LaserEmitterBlockEntity(SOURCE, ModBlocks.POWERED_LASER_EMITTER.getDefaultState());
         restored.readNbt(oldSave);
-        for (int slot = 0; slot < 5; slot++) context.assertTrue(restored.getStack(slot).getItem() == emitter.getStack(slot).getItem(), "Old slot " + slot + " stays intact");
+        for (int slot = 0; slot < 5; slot++) context.assertTrue(restored.getStack(slot).getItem() == (slot == 3
+                ? ModLaserParts.MODULES.get(LaserModule.SCORCH_MARKS) : emitter.getStack(slot).getItem()), "Old slot " + slot + " stays intact");
         context.assertFalse(restored.isPrivate(), "Legacy ownerless emitter remains accessible");
         context.assertTrue(restored.getBeamRange() == 1 && restored.getBeamWidthScale() == 0.1F, "New empty upgrade slots use minimum settings");
         context.removeBlock(SOURCE);
@@ -280,7 +284,11 @@ public class PoweredEmitterGameTests implements FabricGameTest {
     @GameTest(templateName = EMPTY_STRUCTURE)
     public void removingModulesDisablesForgedSettingsAndCostsScale(TestContext context) {
         var emitter = create(context);
-        emitter.setStack(5, new ItemStack(ModLaserParts.MODULES.get(LaserModule.BLOCK_DESTRUCTION)));
+        emitter.setStack(6, new ItemStack(ModLaserParts.MODULES.get(LaserModule.BLOCK_DESTRUCTION)));
+        emitter.getPropertyDelegate().set(3, 1);
+        int slowMining = emitter.energyCost();
+        emitter.getPropertyDelegate().set(14, 100);
+        context.assertTrue(emitter.energyCost() > slowMining, "Mining speed increases FE cost");
         emitter.setStack(6, new ItemStack(ModLaserParts.MODULES.get(LaserModule.ENTITY_DAMAGE)));
         emitter.getPropertyDelegate().set(3, 1);
         emitter.getPropertyDelegate().set(4, 1);
@@ -288,13 +296,12 @@ public class PoweredEmitterGameTests implements FabricGameTest {
         emitter.getPropertyDelegate().set(10, 0);
         emitter.getPropertyDelegate().set(11, 1);
         int previous = emitter.energyCost();
-        for (int[] setting : new int[][]{{14, 100}, {9, 200}, {11, 20}, {10, 100}}) {
+        for (int[] setting : new int[][]{{9, 200}, {11, 20}, {10, 100}}) {
             emitter.getPropertyDelegate().set(setting[0], setting[1]);
             int cost = emitter.energyCost();
             context.assertTrue(cost > previous, "Higher settings must increase energy cost");
             previous = cost;
         }
-        emitter.removeStack(5);
         emitter.removeStack(6);
         for (int id : new int[]{3, 4, 8, 12, 2005, 3000, 4020, 6100, 5001, 1200}) {
             context.assertFalse(emitter.allowsSetting(id), "Removed modules cannot be bypassed via control " + id);

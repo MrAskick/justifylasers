@@ -8,10 +8,11 @@ import net.minecraft.util.math.Vec3d;
 public final class LaserConfiguratorModel {
     static final OpticalComponentMesh MESH = build();
 
-    public static void render(MatrixStack matrices, VertexConsumerProvider consumers, int light) {
+    public static void render(net.minecraft.item.ItemStack stack, MatrixStack matrices, VertexConsumerProvider consumers, int light) {
         matrices.push();
         matrices.translate(0.5, 0, 0.5);
-        MESH.render(matrices, consumers, light, 0x19DAFF, true, true);
+        int color = net.askcraft.justifylasers.item.LaserConfiguratorItem.color(net.askcraft.justifylasers.item.LaserConfiguratorItem.mode(stack));
+        MESH.render(matrices, consumers, light, color, true, true);
         matrices.pop();
     }
 

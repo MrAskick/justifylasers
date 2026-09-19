@@ -31,6 +31,7 @@ public abstract class WorldRendererMixin {
             CallbackInfo ci
     ) {
         LaserBeamLateRenderer.render(camera, matrices, projectionMatrix);
+        net.askcraft.justifylasers.client.render.MirrorRenderer.composite(camera, matrices, projectionMatrix);
         net.askcraft.justifylasers.client.render.CubeLensRenderer.render(camera, matrices, projectionMatrix);
     }
 }

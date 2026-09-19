@@ -17,6 +17,7 @@ import net.minecraft.util.math.Vec3d;
 
 public final class IndustrialMachineRenderer implements BlockEntityRenderer<IndustrialMachineBlockEntity> {
     private static final OpticalComponentMesh GROWER_PORTS = growerPorts();
+    private static final OpticalComponentMesh PROJECTOR = projector();
 
     public IndustrialMachineRenderer(BlockEntityRendererFactory.Context context) { }
 
@@ -29,11 +30,24 @@ public final class IndustrialMachineRenderer implements BlockEntityRenderer<Indu
             double center = assembled ? 1 : .5;
             matrices.translate(center, center, center);
             matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(180 - machine.getCachedState().get(IndustrialMachineBlock.FACING).asRotation()));
-            if (assembled) ChamberModel.render(machine, delta, matrices, consumers, light, overlay);
+            if (assembled && machine.kind() == MachineKind.LASER_CUTTER) LaserCutterModel.render(machine, delta, matrices, consumers, light, overlay);
+            else if (assembled) ChamberModel.render(machine, delta, matrices, consumers, light, overlay);
+            else if (machine.kind() == MachineKind.LASER_CUTTER) LaserCutterModel.CASING.render(matrices, consumers, light, 0x91DFFF, false, false);
             else if (machine.kind().multiblock()) ChamberModel.casing(machine.kind(), matrices, consumers, light);
+            else if (machine.kind() == MachineKind.CHEMICAL_SYNTHESIZER) ChemicalSynthesizerModel.render(machine, matrices, consumers, light);
             else FuelGeneratorModel.render(machine,matrices,consumers,light);
-            if (assembled && machine.kind() == MachineKind.CRYSTAL_GROWER)
-                GROWER_PORTS.render(matrices,consumers,light,0xFFF2CC,machine.lightFlux()>0,true);
+            if (assembled && machine.kind().opticalInput()) GROWER_PORTS.render(matrices, consumers, light, machine.lightRgb(), machine.lightFlux() > 0, true);
+            if (assembled && machine.kind() == MachineKind.CRYSTAL_GROWER) {
+                float time = machine.getWorld().getTime() + delta;
+                for (int i = 0; i < 4; i++) {
+                    Vec3d start = projectorPosition(i), axis = focus(time, i).subtract(start).normalize();
+                    matrices.push();
+                    matrices.translate(start.x, start.y, start.z);
+                    matrices.multiply(new org.joml.Quaternionf().rotationTo(0, 0, -1, (float) axis.x, (float) axis.y, (float) axis.z));
+                    PROJECTOR.render(matrices, consumers, light, machine.lightRgb(), machine.lightFlux() > 0, true);
+                    matrices.pop();
+                }
+            }
         } finally { matrices.pop(); }
         if (assembled && !IrisCompatibility.isRenderingShadowPass()) effects(machine, delta, matrices, consumers);
     }
@@ -41,21 +55,28 @@ public final class IndustrialMachineRenderer implements BlockEntityRenderer<Indu
     private static void effects(IndustrialMachineBlockEntity machine, float delta, MatrixStack matrices, VertexConsumerProvider consumers) {
         Vec3d origin = Vec3d.of(machine.getPos()), center = origin.add(1, 1, 1);
         float time = machine.getWorld().getTime() + delta;
-        if (machine.kind() == MachineKind.CRYSTAL_GROWER && machine.status() == IndustrialMachineBlockEntity.Status.WORKING
-                && machine.getWorld().getTime() % 11 < 4) {
-            // Deterministic, short arcs inside the chamber. They never enter server beam tracing.
-            for (int side = 0; side < 2; side++) {
-                double angle = (Math.floor(time / 3) * 1.91 + side * Math.PI);
-                Vec3d from = center.add(Math.cos(angle) * .58, .30, Math.sin(angle) * .58);
-                Vec3d to = center.add(0, -.13 + machine.completion(delta) * .2, 0);
-                Vec3d previous = from;
-                for (int segment = 1; segment <= 4; segment++) {
-                    Vec3d next = from.lerp(to, segment / 4d);
-                    if (segment < 4) next = next.add(Math.sin(angle + segment * 7) * .045, Math.cos(angle * 2 + segment) * .06, Math.cos(angle + segment * 9) * .045);
-                    LaserBeamRenderer.render(new LaserBeamTrace(previous, next, Direction.DOWN, null), origin, machine.getPos(),
-                            100 + side * 4 + segment, time, side == 0 ? 0x8552FF : 0x457CFF, .13, true, matrices, consumers);
-                    previous = next;
-                }
+        if (machine.kind() == MachineKind.LASER_CUTTER && machine.status() == IndustrialMachineBlockEntity.Status.WORKING) {
+            float yaw = (float)Math.toRadians(180 - machine.getCachedState().get(IndustrialMachineBlock.FACING).asRotation());
+            Vec3d head = LaserCutterModel.headPosition(machine, delta).rotateY(yaw);
+            Vec3d start = center.add(head), end = start.add(0, -.43, 0);
+            LaserBeamRenderer.render(new LaserBeamTrace(start, end, Direction.DOWN, null), origin, machine.getPos(), 116,
+                    time, machine.lightRgb(), .17, true, matrices, consumers);
+        }
+        if (machine.kind() == MachineKind.CRYSTAL_GROWER && machine.lightFlux() > 0) {
+            for (int i = 0; i < 4; i++) {
+                double pulse = .5 + .5 * Math.sin(time * .13 + i * 1.9);
+                // Use the same frame as the four mounted focusing heads, including block rotation.
+                float yaw = (float) Math.toRadians(180 - machine.getCachedState().get(IndustrialMachineBlock.FACING).asRotation());
+                Vec3d start = center.add(projectorPosition(i).rotateY(yaw));
+                Vec3d end = center.add(focus(time, i).rotateY(yaw));
+                var axis = end.subtract(start);
+                LaserBeamRenderer.render(new LaserBeamTrace(start, end, Direction.getFacing(axis.x, axis.y, axis.z), null),
+                        origin, machine.getPos(), 96 + i, time, machine.lightRgb(), .14 + pulse * .10, true, matrices, consumers);
+                // A travelling highlight reads as optical focusing, not an electrical discharge.
+                double travel = (time * .027 + i * .25) % 1;
+                Vec3d glint = start.lerp(end, travel);
+                LaserBeamRenderer.render(new LaserBeamTrace(glint, glint.add(axis.normalize().multiply(.05)), Direction.UP, null),
+                        origin, machine.getPos(), 104 + i, time, machine.lightRgb(), .29, true, matrices, consumers);
             }
         }
         if (machine.calibration() > 0 && machine.getStack(IndustrialMachineBlockEntity.OUTPUT).isOf(ModBlocks.POWERED_LASER_EMITTER_ITEM)) {
@@ -70,9 +91,29 @@ public final class IndustrialMachineRenderer implements BlockEntityRenderer<Indu
 
     public static void renderItem(MachineKind kind, MatrixStack matrices, VertexConsumerProvider consumers, int light, int overlay) {
         matrices.push(); matrices.translate(.5, .5, .5);
-        if (kind.multiblock()) ChamberModel.casing(kind, matrices, consumers, light);
+        if (kind == MachineKind.LASER_CUTTER) LaserCutterModel.CASING.render(matrices, consumers, light, 0x91DFFF, false, false);
+        else if (kind.multiblock()) ChamberModel.casing(kind, matrices, consumers, light);
+        else if (kind == MachineKind.CHEMICAL_SYNTHESIZER) ChemicalSynthesizerModel.render(null, matrices, consumers, light);
         else FuelGeneratorModel.render(null,matrices,consumers,light);
         matrices.pop();
+    }
+
+    static Vec3d projectorPosition(int index) {
+        double angle = index * Math.PI / 2;
+        return new Vec3d(Math.cos(angle) * .55, .56, Math.sin(angle) * .55);
+    }
+
+    static Vec3d focus(float time, int index) {
+        double phase = time * .052 + index * Math.PI / 2;
+        return new Vec3d(Math.cos(phase) * .035, -.28 + .045 * Math.sin(phase * .7), Math.sin(phase) * .035);
+    }
+
+    private static OpticalComponentMesh projector() {
+        var b = new OpticalComponentMesh.Builder("small_solar_concentrator");
+        b.bevel("armor", -1.9, -1.9, .65, 1.9, 1.9, 3.9, .4);
+        b.profile("metal", false, new double[]{1.8, 1.8, 1.3, .85}, new double[]{1, .3, .02, -.02}, 1.8, 255);
+        b.profile("lens", true, new double[]{.85, .72, 0}, new double[]{-.021, -.05, -.06}, .85, 255);
+        return b.build();
     }
 
     private static OpticalComponentMesh growerPorts() {

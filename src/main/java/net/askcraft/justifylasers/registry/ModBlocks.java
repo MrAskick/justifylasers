@@ -38,11 +38,19 @@ public final class ModBlocks {
     public static Item LASER_GUN;
     public static Item LASER_SABER;
     public static Item LIGHT_STAFF;
+    public static Block LIGHT_BRIDGE;
+    public static Block CORNER_LIGHT_BRIDGE;
 
     private ModBlocks() {
     }
 
     public static void initialize() {
+        LIGHT_BRIDGE = Platform.register(Registries.BLOCK, JustifyLasers.id("light_bridge"),
+                new net.askcraft.justifylasers.block.LightBridgeBlock(AbstractBlock.Settings.create()
+                        .mapColor(MapColor.IRON_GRAY).strength(4, 12).requiresTool().sounds(BlockSoundGroup.METAL).nonOpaque()));
+        CORNER_LIGHT_BRIDGE = Platform.register(Registries.BLOCK, JustifyLasers.id("corner_light_bridge"),
+                new net.askcraft.justifylasers.block.LightBridgeBlock(AbstractBlock.Settings.create()
+                        .mapColor(MapColor.IRON_GRAY).strength(4, 12).requiresTool().sounds(BlockSoundGroup.METAL).nonOpaque().dynamicBounds(), true));
         LASER_TURRET = Platform.register(Registries.BLOCK, JustifyLasers.id("laser_turret"),
                 new net.askcraft.justifylasers.block.LaserTurretBlock(AbstractBlock.Settings.create()
                         .mapColor(MapColor.IRON_GRAY).strength(4, 12).requiresTool().sounds(BlockSoundGroup.METAL).nonOpaque()));
@@ -78,6 +86,8 @@ public final class ModBlocks {
     }
 
     public static void initializeItems() {
+        Platform.register(Registries.ITEM, JustifyLasers.id("light_bridge"), new BlockItem(LIGHT_BRIDGE, new Item.Settings()));
+        Platform.register(Registries.ITEM, JustifyLasers.id("corner_light_bridge"), new BlockItem(CORNER_LIGHT_BRIDGE, new Item.Settings()));
         LASER_SABER = Platform.register(Registries.ITEM, JustifyLasers.id("laser_saber"),
                 new net.askcraft.justifylasers.item.LaserSaberItem(new Item.Settings().maxCount(1), false));
         LIGHT_STAFF = Platform.register(Registries.ITEM, JustifyLasers.id("light_staff"),

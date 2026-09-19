@@ -40,6 +40,7 @@ public abstract class LaserScopeMixin {
     @Inject(method = "close", at = @At("HEAD"))
     private void justifylasers$releaseScopeTexture(CallbackInfo ci) {
         LaserScopeRenderer.clear();
+        net.askcraft.justifylasers.client.render.MirrorRenderer.clear();
         net.askcraft.justifylasers.client.render.CubeLensRenderer.clear();
         net.askcraft.justifylasers.client.render.SchematicIcons.clear();
     }

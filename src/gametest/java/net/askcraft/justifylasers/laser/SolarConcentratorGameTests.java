@@ -39,6 +39,22 @@ public class SolarConcentratorGameTests implements FabricGameTest {
     private static final BlockPos SOURCE = new BlockPos(3, 2, 1);
 
     @GameTest(templateName = EMPTY_STRUCTURE, batchId = "solar")
+    public void componentRotationsAreNotAssemblyConstraintsAndOriginSurvivesReload(TestContext context) {
+        int i=0;
+        for(var cell:SolarStructure.PARTS) {
+            var state=ModIndustry.COMPONENT_BLOCKS.get(cell.component()).getDefaultState();
+            if(state.contains(LaserComponentBlock.FACING)) state=state.with(LaserComponentBlock.FACING,new Direction[]{Direction.WEST,Direction.SOUTH,Direction.EAST,Direction.NORTH}[i++%4]);
+            context.setBlockState(ORIGIN.add(cell.offset()),state);
+        }
+        var source=(SolarConcentratorBlockEntity)context.getBlockEntity(SOURCE);
+        context.assertTrue(SolarStructure.form(source),"Arbitrary component rotations still form");
+        context.assertTrue(SolarStructure.origin(source).equals(context.getAbsolutePos(ORIGIN)),"Origin found from geometry, not resonator facing");
+        var saved=source.createNbt(); source.setStructureOrigin(null); source.readNbt(saved);
+        context.assertTrue(SolarStructure.origin(source).equals(context.getAbsolutePos(ORIGIN)) && SolarStructure.matches(source),"Saved multiblock retains its physical origin");
+        context.removeBlock(SOURCE); context.complete();
+    }
+
+    @GameTest(templateName = EMPTY_STRUCTURE, batchId = "solar")
     public void componentsPlaceAndDropTheirOriginalItems(TestContext context) {
         var world = context.getWorld();
         var player = context.createMockCreativeServerPlayerInWorld();
@@ -342,7 +358,8 @@ public class SolarConcentratorGameTests implements FabricGameTest {
             }
             context.setBlockState(receiverPos, ModBlocks.ENERGY_RECEIVER.getDefaultState().with(LaserOpticBlock.FACING, Direction.WEST));
             source.solarTick();
-            var path = LaserBeamNetwork.path(source, 1);
+            // Other fixtures in this batch have long solar rays; they must not claim this cube's single input.
+            var path = LaserBeamPath.trace(world, source, 1, new java.util.HashMap<>(), new java.util.HashMap<>(), new java.util.HashMap<>());
             context.assertTrue(path.segments().size() == 2, "Exactly one redirection: " + path.segments());
             context.assertTrue(context.getAbsolutePos(receiverPos).equals(path.last().hitBlock()), "Redirected solar beam reaches the energy receiver");
             context.assertTrue(path.last().rgb() == SolarConcentratorBlockEntity.BEAM_RGB && path.last().power() == 1, "Warm color and original power preserved");
@@ -474,6 +491,13 @@ public class SolarConcentratorGameTests implements FabricGameTest {
     @GameTest(templateName = EMPTY_STRUCTURE, batchId = "solar_damage", tickLimit = 35)
     public void solarDamageTicksRespectArmorAndStopOutsideTheBeam(TestContext context) {
         var world = context.getWorld();
+        // Other solar fixtures leave long redirected rays alive; keep this damage lane optically isolated.
+        for (int edge = -1; edge <= 7; edge++) for (int y = 2; y <= 3; y++) {
+            context.setBlockState(-1, y, edge, Blocks.OBSIDIAN);
+            context.setBlockState(7, y, edge, Blocks.OBSIDIAN);
+            context.setBlockState(edge, y, -1, Blocks.OBSIDIAN);
+            context.setBlockState(edge, y, 7, Blocks.OBSIDIAN);
+        }
         long time = world.getTimeOfDay();
         boolean mode = LaserConfig.technicalMode();
         world.setTimeOfDay(6000); LaserConfig.applyServerMode(true);
@@ -489,7 +513,7 @@ public class SolarConcentratorGameTests implements FabricGameTest {
         float[] health = new float[1];
         context.runAtTick(2, () -> health[0] = bare.getHealth());
         context.runAtTick(12, () -> {
-            context.assertTrue(Math.abs(health[0] - bare.getHealth() - 5) < .01, "Ten real ticks deal 5 HP at peak sunlight");
+            context.assertTrue(Math.abs(health[0] - bare.getHealth() - 5) < .01, "Ten real ticks deal 5 HP at peak sunlight: " + health[0] + " -> " + bare.getHealth());
             context.assertTrue(armored.getHealth() > bare.getHealth() && protectedMob.getHealth() > bare.getHealth(), "Armor and Resistance protect against solar damage");
             context.assertFalse(bare.isOnFire(), "No unconfigured ignition damage");
             source.solarTick();

@@ -79,7 +79,7 @@ public final class LaserScorchMarks {
         for (Map.Entry<BlockPos, LaserBeamPath> entry : LaserBeamNetwork.paths(world, 1).entrySet()) {
             for (int segment = 0; segment < entry.getValue().segments().size(); segment++) {
                 LaserBeamTrace trace = entry.getValue().segments().get(segment);
-                if (!trace.hasBlockHit() || trace.hitSide() == null
+                if (!trace.hasBlockHit() || trace.hitSide() == null || !trace.behavior().scorch()
                         || !(world.getBlockEntity(entry.getKey()) instanceof LaserBeamSource emitter) || !emitter.showsScorchMarks()) {
                     continue;
                 }
@@ -90,7 +90,7 @@ public final class LaserScorchMarks {
                 if (LaserBeamPath.isOpticalInput(world, target, trace)) continue;
                 ContactKey contactKey = new ContactKey(entry.getKey(), segment);
                 activeContacts.add(contactKey);
-                record(contactKey, trace.end(), trace.hitSide(), ScorchGeometry.radius(emitter.getBeamWidthScale() * (float) Math.sqrt(trace.power())),
+                record(contactKey, trace.end(), trace.hitSide(), ScorchGeometry.radius(emitter.getBeamWidthScale() * trace.behavior().widthMultiplier() * (float) Math.sqrt(trace.power())),
                         emitter.isLightEmissionEnabled(), now);
             }
         }

@@ -15,16 +15,22 @@ import java.util.List;
 
 public final class JustifyLasersClient {
     public static void initialize() {
+        net.askcraft.justifylasers.network.LightBridgePacket.receiver = packet ->
+                net.askcraft.justifylasers.bridge.LightBridgeNetwork.receive(MinecraftClient.getInstance().world, packet);
         ClientSettings.initialize();
         LaserDepthMerger.initialize();
         LaserScopeRenderer.initialize();
         net.askcraft.justifylasers.client.render.CubeLensRenderer.initialize();
+        net.askcraft.justifylasers.client.render.MirrorRenderer.initialize();
         IrisCompatibility.initialize();
         LaserRenderLayers.initialize();
         ClientPlatform.initialize();
     }
 
     public static void tick(MinecraftClient client) {
+        ConfiguratorControls.tick(client);
+        MirrorControls.tick(client);
+        BridgeFootsteps.tick(client);
         ClientSettingsKey.tick(client);
         SaberControls.tick(client);
         LaserGunControls.tick(client);

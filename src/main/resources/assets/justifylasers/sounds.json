@@ -1,4 +1,8 @@
 {
+  "light_bridge_step": {"subtitle": "subtitles.justifylasers.light_bridge_step", "sounds": [
+    "justifylasers:bridge/ancient1a", "justifylasers:bridge/ancient1b", "justifylasers:bridge/ancient2a", "justifylasers:bridge/ancient2b",
+    "justifylasers:bridge/bin1a", "justifylasers:bridge/bin1b", "justifylasers:bridge/bin2a", "justifylasers:bridge/bin2b"
+  ]},
   "laser_start": {"subtitle": "subtitles.justifylasers.laser_start", "sounds": ["justifylasers:laser_start"]},
   "laser_idle": {"subtitle": "subtitles.justifylasers.laser_idle", "sounds": ["justifylasers:laser_idle"]},
   "laser_stop": {"subtitle": "subtitles.justifylasers.laser_stop", "sounds": ["justifylasers:laser_stop"]},

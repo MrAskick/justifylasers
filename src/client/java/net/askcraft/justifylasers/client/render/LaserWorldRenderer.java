@@ -21,6 +21,7 @@ public final class LaserWorldRenderer {
             return;
         }
         Vec3d camera = context.camera().getPos();
+        LightBridgeRenderer.queue(context);
         LaserGunRenderer.renderBeams(context);
         LaserSaberRenderer.renderWorld(context);
         LaserConfiguratorPreview.render(context);
@@ -41,17 +42,18 @@ public final class LaserWorldRenderer {
                 matrices.translate(origin.x - camera.x, origin.y - camera.y, origin.z - camera.z);
                 for (int index = 0; index < entry.getValue().segments().size(); index++) {
                     LaserBeamTrace trace = entry.getValue().segments().get(index);
+                    float segmentWidth = width * trace.behavior().widthMultiplier();
                     if (trace.combinedBy() != null) {
-                        combined.add(new BeamContributions.Beam(trace, entry.getKey(), width * (float) Math.sqrt(trace.power()),
+                        combined.add(new BeamContributions.Beam(trace, entry.getKey(), segmentWidth * (float) Math.sqrt(trace.power()),
                                 emitter.isLightEmissionEnabled(), Math.max(1, emitter.luminousFlux()) * trace.power(), emitter.getTicks()));
                         continue;
                     }
-                    if (context.frustum() != null && !context.frustum().isVisible(new Box(trace.start(), trace.end()).expand(width * 0.35D + 0.25D))) {
+                    if (context.frustum() != null && !context.frustum().isVisible(new Box(trace.start(), trace.end()).expand(segmentWidth * 0.35D + 0.25D))) {
                         continue;
                     }
                     LaserBeamRenderer.render(trace, origin, entry.getKey(), index,
                             emitter.getTicks() + context.tickDelta(), trace.rgb() >= 0 ? trace.rgb() : emitter.beamRgb(),
-                            width * (float) Math.sqrt(trace.power()),
+                            segmentWidth * (float) Math.sqrt(trace.power()),
                             emitter.isLightEmissionEnabled(), matrices, consumers);
                 }
             } finally {

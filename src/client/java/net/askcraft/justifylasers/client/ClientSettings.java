@@ -23,11 +23,16 @@ public final class ClientSettings {
     public int cubeLensDistance = 64;
     public int maxLensCubes = 64;
     public boolean scopeLens = true;
+    public boolean mirrorReflections = false;
+    public boolean mirrorShaders = false;
+    public int mirrorDistance = 32;
+    public int maxMirrors = 2;
     public boolean scorchMarks = true;
     public int scorchDistance = 96;
     public boolean weaponSway = true;
     public boolean saberSparks = true;
     public boolean solarLightShafts = true;
+    public boolean machineDisplays = true;
     public double soundVolume = 1;
     public int maxSoundSources = 8;
 
@@ -54,6 +59,8 @@ public final class ClientSettings {
     }
 
     public void normalize() {
+        mirrorDistance = Math.max(8, Math.min(64, mirrorDistance));
+        maxMirrors = Math.max(1, Math.min(32, maxMirrors));
         cubeMagnification = finite(cubeMagnification, 1, 3, 1.8);
         cubeLensDistance = Math.max(8, Math.min(128, cubeLensDistance));
         maxLensCubes = Math.max(1, Math.min(64, maxLensCubes));

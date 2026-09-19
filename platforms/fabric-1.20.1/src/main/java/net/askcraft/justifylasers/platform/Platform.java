@@ -137,6 +137,14 @@ public final class Platform {
     }
 
     public static void registerSettingsReceiver() {
+        ServerPlayNetworking.registerGlobalReceiver(net.askcraft.justifylasers.network.MirrorAimPacket.ID, (server, player, handler, buffer, sender) -> {
+            var packet = new net.askcraft.justifylasers.network.MirrorAimPacket(buffer);
+            server.execute(() -> packet.apply(player));
+        });
+        ServerPlayNetworking.registerGlobalReceiver(net.askcraft.justifylasers.network.ConfiguratorModePacket.ID, (server, player, handler, buffer, sender) -> {
+            var packet = new net.askcraft.justifylasers.network.ConfiguratorModePacket(buffer);
+            server.execute(() -> packet.apply(player));
+        });
         ServerPlayNetworking.registerGlobalReceiver(net.askcraft.justifylasers.network.SaberTogglePacket.ID, (server, player, handler, buffer, sender) -> server.execute(() -> new net.askcraft.justifylasers.network.SaberTogglePacket().apply(player)));
         ServerPlayNetworking.registerGlobalReceiver(net.askcraft.justifylasers.network.LaserGunControlPacket.ID, (server, player, handler, buffer, sender) -> {
             var packet = new net.askcraft.justifylasers.network.LaserGunControlPacket(buffer);
@@ -155,9 +163,9 @@ public final class Platform {
 
     public static void registerEnergy() {
         EnergyStorage.ITEM.registerForItems((stack, context) -> new PlatformTabletEnergy(context),
-                net.askcraft.justifylasers.registry.ModIndustry.EXTRATERRESTRIAL_TABLET);
+                net.askcraft.justifylasers.registry.ModIndustry.EXTRATERRESTRIAL_TABLET, net.askcraft.justifylasers.registry.ModBlocks.CONFIGURATOR);
         net.fabricmc.fabric.api.transfer.v1.fluid.FluidStorage.SIDED.registerForBlockEntity((machine, side) ->
-                machine.kind() == net.askcraft.justifylasers.industry.MachineKind.CRYSTAL_GROWER ? new PlatformWaterStorage(machine) : null, ModBlockEntities.INDUSTRIAL_MACHINE);
+                machine.kind().fluidTank() ? new PlatformWaterStorage(machine) : null, ModBlockEntities.INDUSTRIAL_MACHINE);
         EnergyStorage.SIDED.registerForBlockEntity((machine, side) -> machine.energyPort(), ModBlockEntities.INDUSTRIAL_MACHINE);
         for (String ore : new String[]{"wolframite", "photonic_crystal"})
             for (String variant : new String[]{"", "_buried", "_large"})
@@ -238,6 +246,12 @@ public final class Platform {
 
     public static Path configDirectory() {
         return FabricLoader.getInstance().getConfigDir();
+    }
+
+    public static void sendLightBridges(ServerPlayerEntity player, net.askcraft.justifylasers.network.LightBridgePacket packet) {
+        var buffer = PacketByteBufs.create();
+        packet.write(buffer);
+        ServerPlayNetworking.send(player, net.askcraft.justifylasers.network.LightBridgePacket.ID, buffer);
     }
 
     private Platform() {

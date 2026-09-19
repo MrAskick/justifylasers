@@ -8,6 +8,7 @@ import net.askcraft.justifylasers.laser.LaserBeamNetwork;
 import net.askcraft.justifylasers.laser.LaserLightSink;
 import net.askcraft.justifylasers.laser.LuminousFlux;
 import net.askcraft.justifylasers.laser.OpticalGeometry;
+import net.askcraft.justifylasers.laser.MirrorGeometry;
 import net.askcraft.justifylasers.laser.OpticPortMode;
 import net.askcraft.justifylasers.platform.Platform;
 import net.askcraft.justifylasers.platform.InventoryNbt;
@@ -43,6 +44,9 @@ public final class LaserOpticBlockEntity extends LaserBlockEntity implements Las
     private final PlatformEnergyStorage[] energyPorts = new PlatformEnergyStorage[6];
     private double yaw;
     private double pitch;
+    private BlockPos linkedMirror;
+    private boolean aimNeedsSync;
+    private long lastManualAim = Long.MIN_VALUE;
     private int rgb = IDLE_COLOR;
     private boolean emission;
     private long lastInputTick = Long.MIN_VALUE;
@@ -124,9 +128,45 @@ public final class LaserOpticBlockEntity extends LaserBlockEntity implements Las
                 Text.translatable("direction.justifylasers." + side.getName()), Text.translatable("port.justifylasers." + key)), true);
     }
 
+    public NbtCompound copySettings() {
+        var data = new NbtCompound();
+        data.putString("OpticKind", kind().name());
+        data.putIntArray("Ports", Arrays.stream(ports).mapToInt(Enum::ordinal).toArray());
+        return data;
+    }
+
+    public boolean pasteSettings(NbtCompound data) {
+        if (!hasConfigurablePorts() || !kind().name().equals(data.getString("OpticKind"))) return false;
+        int[] values = data.getIntArray("Ports");
+        if (values.length != 6 || Arrays.stream(values).anyMatch(value -> value < 0 || value >= OpticPortMode.values().length)
+                || kind() == LaserOpticBlock.Kind.COMBINER && Arrays.stream(values).filter(value -> value == OpticPortMode.OUTPUT.ordinal()).count() > 1) return false;
+        for (int i = 0; i < ports.length; i++) ports[i] = OpticPortMode.values()[values[i]];
+        sync();
+        if (world != null && !world.isClient) Platform.opticPortsChanged(this);
+        return true;
+    }
+
     public LaserOpticBlock.Kind kind() { return ((LaserOpticBlock) getCachedState().getBlock()).kind(); }
     public Direction facing() { return getCachedState().get(LaserOpticBlock.FACING); }
     public Vec3d normal() { return OpticalGeometry.normal(yaw, pitch); }
+    public double yaw() { return yaw; }
+    public double pitch() { return pitch; }
+    public BlockPos linkedMirror() { return linkedMirror; }
+    public void linkTo(BlockPos target) {
+        if (kind() != LaserOpticBlock.Kind.MIRROR || pos.equals(target)) return;
+        linkedMirror = target.toImmutable();
+        orient(Vec3d.ofCenter(target).subtract(Vec3d.ofCenter(pos)));
+        sync();
+    }
+    public boolean aimManually(double yaw, double pitch) {
+        if (world == null || world.isClient || world.getTime() - lastManualAim < 2 && lastManualAim != Long.MIN_VALUE
+                || !Double.isFinite(yaw) || !Double.isFinite(pitch)) return false;
+        if (Math.abs(MathHelper.wrapDegrees(yaw - this.yaw)) > 45 || Math.abs(pitch - this.pitch) > 45) return false;
+        if (Math.abs(MathHelper.wrapDegrees(yaw - this.yaw)) < .01 && Math.abs(pitch - this.pitch) < .01) return false;
+        lastManualAim = world.getTime();
+        aim(OpticalGeometry.normal(yaw, MathHelper.clamp(pitch, -89.5, 89.5)));
+        return true;
+    }
     public int rgb() { return rgb; }
     public double combiningEfficiency() { return world != null && world.isClient ? syncedCombinerEfficiency : LaserConfig.get().beamCombinerEfficiency; }
     public boolean emitsShaderLight() { return emission && getCachedState().get(LaserOpticBlock.LIT); }
@@ -142,6 +182,14 @@ public final class LaserOpticBlockEntity extends LaserBlockEntity implements Las
 
     @Nullable
     public BlockHitResult mirrorHit(Vec3d start, Vec3d end) {
+        if (linkedMirror != null && world != null && world.isChunkLoaded(linkedMirror)
+                && world.getBlockEntity(linkedMirror) instanceof LaserOpticBlockEntity target && target.kind() == LaserOpticBlock.Kind.MIRROR) {
+            Vec3d aimed = OpticalGeometry.aimMirror(Vec3d.ofCenter(pos), start, end.subtract(start), Vec3d.ofCenter(linkedMirror), MirrorGeometry.HALF * Math.sqrt(2));
+            if (aimed != null && Math.abs(aimed.dotProduct(normal())) < 1 - 1e-10) {
+                orient(aimed);
+                aimNeedsSync = !world.isClient;
+            }
+        }
         Vec3d normal = normal();
         Vec3d delta = end.subtract(start);
         double denominator = delta.dotProduct(normal);
@@ -150,47 +198,47 @@ public final class LaserOpticBlockEntity extends LaserBlockEntity implements Las
         double t = center.subtract(start).dotProduct(normal) / denominator;
         if (t < 0 || t > 1) return null;
         Vec3d point = start.add(delta.multiply(t));
-        if (point.squaredDistanceTo(center) > 0.36 * 0.36) return null;
+        if (!MirrorGeometry.contains(point.subtract(center), MirrorGeometry.frame(normal, facing()))) return null;
         return new BlockHitResult(point, Direction.getFacing(normal.x, normal.y, normal.z), pos, false);
     }
 
     public boolean reflectingSurface(Vec3d point) {
         Vec3d relative = point.subtract(Vec3d.ofCenter(pos));
-        return relative.lengthSquared() <= 0.36 * 0.36 + 1e-8 && Math.abs(relative.dotProduct(normal())) < 1e-7;
+        return MirrorGeometry.contains(relative, MirrorGeometry.frame(normal(), facing())) && Math.abs(relative.dotProduct(normal())) < 1e-7;
     }
 
     public VoxelShape supportShape() {
-        Vec3d mount = Vec3d.of(facing().getVector());
-        Vec3d center = new Vec3d(0.5, 0.5, 0.5);
-        Vec3d base = center.subtract(mount.multiply(0.45));
-        Vec3d baseSize = new Vec3d(mount.x == 0 ? 0.22 : 0.035, mount.y == 0 ? 0.22 : 0.035, mount.z == 0 ? 0.22 : 0.035);
-        Vec3d stem = center.subtract(mount.multiply(0.23));
-        Vec3d stemSize = new Vec3d(mount.x == 0 ? 0.055 : 0.2, mount.y == 0 ? 0.055 : 0.2, mount.z == 0 ? 0.055 : 0.2);
-        return VoxelShapes.union(VoxelShapes.cuboid(new Box(base.subtract(baseSize), base.add(baseSize))),
-                VoxelShapes.cuboid(new Box(stem.subtract(stemSize), stem.add(stemSize))));
+        return MirrorGeometry.supportShape(normal(),facing());
     }
 
     public VoxelShape mirrorShape() {
         Vec3d n = normal();
-        Vec3d extent = new Vec3d(panelExtent(n.x), panelExtent(n.y), panelExtent(n.z));
+        var frame=MirrorGeometry.frame(n,facing());
+        Vec3d extent = new Vec3d(panelExtent(frame.right().x,frame.up().x,n.x),
+                panelExtent(frame.right().y,frame.up().y,n.y),panelExtent(frame.right().z,frame.up().z,n.z));
         Vec3d center = new Vec3d(0.5, 0.5, 0.5);
         return VoxelShapes.union(supportShape(), VoxelShapes.cuboid(new Box(center.subtract(extent), center.add(extent))));
     }
 
-    private static double panelExtent(double normal) {
-        return 0.36 * Math.sqrt(Math.max(0, 1 - normal * normal)) + 0.03 * Math.abs(normal);
+    private static double panelExtent(double right,double up,double normal) {
+        return .375*(Math.abs(right)+Math.abs(up))+.041*Math.abs(normal);
     }
 
     public void aim(Vec3d normal) {
         if (normal.lengthSquared() < 1.0E-12 || !Double.isFinite(normal.lengthSquared())) return;
+        linkedMirror = null;
+        orient(normal);
+        sync();
+    }
+    private void orient(Vec3d normal) {
         Vec3d n = normal.normalize();
         yaw = Math.toDegrees(Math.atan2(-n.x, n.z));
         pitch = Math.toDegrees(Math.asin(MathHelper.clamp(n.y, -1, 1)));
-        sync();
     }
 
     public void interact(PlayerEntity player) {
         if (kind() == LaserOpticBlock.Kind.MIRROR) {
+            linkedMirror = null;
             if (player.isSneaking()) pitch = pitch >= 90 ? -90 : Math.min(90, pitch + 15);
             else yaw = (yaw + 15) % 360;
             sync();
@@ -236,6 +284,7 @@ public final class LaserOpticBlockEntity extends LaserBlockEntity implements Las
     }
 
     public static void serverTick(World world, BlockPos pos, BlockState state, LaserOpticBlockEntity optic) {
+        if (optic.aimNeedsSync) { optic.aimNeedsSync = false; optic.sync(); }
         if (optic.kind() != LaserOpticBlock.Kind.ENERGY_RECEIVER) return;
         net.askcraft.justifylasers.platform.Platform.exportEnergy(optic);
         if (optic.lastInputTick < world.getTime() - 1) {
@@ -254,6 +303,7 @@ public final class LaserOpticBlockEntity extends LaserBlockEntity implements Las
     protected void writeLaserNbt(NbtCompound nbt, InventoryNbt inventory) {
         nbt.putDouble("Yaw", yaw);
         nbt.putDouble("Pitch", pitch);
+        if (linkedMirror != null) nbt.putLong("LinkedMirror", linkedMirror.asLong());
         nbt.putInt("Rgb", rgb);
         nbt.putInt("Energy", energy.stored());
         nbt.putIntArray("Ports", Arrays.stream(ports).mapToInt(Enum::ordinal).toArray());
@@ -263,6 +313,8 @@ public final class LaserOpticBlockEntity extends LaserBlockEntity implements Las
 
     @Override
     protected void readLaserNbt(NbtCompound nbt, InventoryNbt inventory) {
+        linkedMirror = nbt.contains("LinkedMirror") ? BlockPos.fromLong(nbt.getLong("LinkedMirror")) : null;
+        if (linkedMirror != null && (linkedMirror.equals(pos) || linkedMirror.getSquaredDistance(pos) > 64 * 64)) linkedMirror = null;
         if (nbt.contains("Yaw") && Double.isFinite(nbt.getDouble("Yaw"))) yaw = nbt.getDouble("Yaw") % 360;
         if (nbt.contains("Pitch") && Double.isFinite(nbt.getDouble("Pitch"))) pitch = MathHelper.clamp(nbt.getDouble("Pitch"), -90, 90);
         if (nbt.contains("Rgb")) rgb = nbt.getInt("Rgb") & 0xFFFFFF;

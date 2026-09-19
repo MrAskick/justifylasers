@@ -19,7 +19,6 @@ import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.inventory.Inventories;
-import net.minecraft.inventory.Inventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.network.PacketByteBuf;
@@ -37,7 +36,7 @@ import net.minecraft.world.World;
 import java.util.Comparator;
 import java.util.UUID;
 
-public final class LaserTurretBlockEntity extends LaserBlockEntity implements Inventory, LaserScreenFactory {
+public final class LaserTurretBlockEntity extends LaserBlockEntity implements net.askcraft.justifylasers.platform.AutomatedInventory, LaserScreenFactory {
     private final DefaultedList<ItemStack> items = DefaultedList.ofSize(2, ItemStack.EMPTY);
     private final LaserTargetFilter filter = new LaserTargetFilter();
     private UUID owner;
@@ -151,6 +150,15 @@ public final class LaserTurretBlockEntity extends LaserBlockEntity implements In
     public void sync() {
         markDirty();
         if (world != null && !world.isClient) world.updateListeners(pos, getCachedState(), getCachedState(), Block.NOTIFY_LISTENERS);
+    }
+
+    public boolean editEntityFilter(PlayerEntity player, String type, boolean mode) {
+        if (!canPlayerUse(player) || !player.isAlive() || player.isSpectator() || !hasFilter()) return false;
+        if (mode) filter.toggleMode();
+        else if (!filter.toggleType(type)) return false;
+        targetId = -1;
+        sync();
+        return true;
     }
 
     @Override protected void writeLaserNbt(NbtCompound nbt, InventoryNbt inventory) {

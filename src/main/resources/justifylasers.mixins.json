@@ -4,6 +4,6 @@
   "plugin": "net.askcraft.justifylasers.compat.LoaderMixinPlugin",
   "package": "net.askcraft.justifylasers.mixin",
   "compatibilityLevel": "JAVA_17",
-  "mixins": ["EmitterSecurityMixin", "SaberSwingMixin", "SaberAttackMixin", "SaberGuardMixin"],
+  "mixins": ["EmitterSecurityMixin", "SaberSwingMixin", "SaberAttackMixin", "SaberGuardMixin", "LightBridgeCollisionMixin", "LightBridgeSupportMixin", "LithiumBridgeCollisionMixin", "MiningCollectionMixin", "BridgeLoginMixin", "CrystalOriginRecipeMixin", "CrystalOriginShapelessRecipeMixin"],
   "injectors": {"defaultRequire": 1}
 }

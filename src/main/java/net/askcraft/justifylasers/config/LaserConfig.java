@@ -20,9 +20,10 @@ public final class LaserConfig {
     private static final Gson JSON = new GsonBuilder().setPrettyPrinting().create();
     private static LaserConfig current = new LaserConfig();
     private static boolean technicalMode = true;
+    private static Double serverBeamLoss;
 
     @Deprecated public transient EnergyMode energyMode = EnergyMode.AUTO;
-    public int solarIndustryRevision = 26;
+    public int solarIndustryRevision = 28;
     @Deprecated public transient List<String> technicalMods = List.of("mekanism", "techreborn", "modern_industrialization", "powah", "thermal", "oritech");
     public int capacity = 2_000_000;
     public int maxInput = 100_000;
@@ -34,11 +35,15 @@ public final class LaserConfig {
     public double ignitionPerHit = 10;
     public double energyTransmissionEfficiency = 0.8;
     public double beamCombinerEfficiency = 0.95;
+    public boolean beamAttenuation = false;
+    public double beamLossPerBlock = 0.001;
     public int lumensPerEnergyUnit = 1000;
     public long solarPeakFlux = 480_000;
     public long smallSolarPeakFlux = 16_000;
     public int smallSolarBeamRange = 32;
-    public int crystalGrowthFlux = 12_000;
+    public int crystalGrowthFlux = 480_000;
+    public int lightBridgeMaxLength = 256;
+    public int lightBridgeLumensPerBlock = 2_000;
     public float solarDamagePerTick = 0.5F;
     public int solarBeamRange = 256;
     public float solarBeamWidth = 3;
@@ -97,6 +102,11 @@ public final class LaserConfig {
     }
 
     public void validate() {
+        if (!Double.isFinite(beamLossPerBlock) || beamLossPerBlock < 0 || beamLossPerBlock >= 1)
+            throw new IllegalArgumentException("beamLossPerBlock must be in [0, 1)");
+        if (lightBridgeMaxLength < 1 || lightBridgeMaxLength > net.askcraft.justifylasers.bridge.LightBridgeSpan.MAX_LENGTH
+                || lightBridgeLumensPerBlock < 1 || lightBridgeLumensPerBlock > 1_000_000_000)
+            throw new IllegalArgumentException("Invalid hard light bridge length or luminous flux cost");
         if (smallSolarPeakFlux < 1 || smallSolarPeakFlux > net.askcraft.justifylasers.laser.LuminousFlux.MAX
                 || smallSolarBeamRange < 1 || smallSolarBeamRange > 512 || crystalGrowthFlux < 1 || crystalGrowthFlux > 1_000_000_000)
             throw new IllegalArgumentException("Invalid small solar output or crystal growth flux");
@@ -156,17 +166,28 @@ public final class LaserConfig {
                 LaserConfig loaded = JSON.fromJson(document, LaserConfig.class);
                 if (loaded == null) throw new IllegalArgumentException("Config cannot be empty");
                 int revision = document.has("solarIndustryRevision") ? document.get("solarIndustryRevision").getAsInt() : 0;
-                if (revision < 26) {
-                    if (loaded.generatorPerTick == 32) { loaded.generatorPerTick = 128; document.addProperty("generatorPerTick", 128); }
+                if (revision < 28) {
+                    if (revision < 26 && loaded.generatorPerTick == 32) { loaded.generatorPerTick = 128; document.addProperty("generatorPerTick", 128); }
                     if (revision < 25 && loaded.solarPeakFlux == 1_000_000) { loaded.solarPeakFlux = 480_000; document.addProperty("solarPeakFlux", 480_000); }
-                    document.addProperty("solarIndustryRevision", 26);
-                    loaded.solarIndustryRevision = 26;
+                    if (loaded.crystalGrowthFlux == 12_000) loaded.crystalGrowthFlux = 480_000;
+                    if (loaded.lightBridgeMaxLength == 64) loaded.lightBridgeMaxLength = 256;
+                    document.addProperty("crystalGrowthFlux", loaded.crystalGrowthFlux);
+                    document.addProperty("lightBridgeMaxLength", loaded.lightBridgeMaxLength);
+                    document.addProperty("solarIndustryRevision", 28);
+                    loaded.solarIndustryRevision = 28;
                     loaded.validate();
-                    Path backup = path.resolveSibling("justifylasers.pre-alpha26.json.bak");
+                    Path backup = path.resolveSibling("justifylasers.pre-alpha28.json.bak");
                     if (!Files.exists(backup)) Files.copy(path, backup);
                     Files.writeString(path, JSON.toJson(document) + System.lineSeparator(), StandardCharsets.UTF_8);
                 }
                 loaded.validate();
+                if (!document.has("beamAttenuation") || !document.has("beamLossPerBlock")) {
+                    Path backup = path.resolveSibling("justifylasers.pre-alpha31.json.bak");
+                    if (!Files.exists(backup)) Files.copy(path, backup);
+                    document.addProperty("beamAttenuation", loaded.beamAttenuation);
+                    document.addProperty("beamLossPerBlock", loaded.beamLossPerBlock);
+                    Files.writeString(path, JSON.toJson(document) + System.lineSeparator(), StandardCharsets.UTF_8);
+                }
                 current = loaded;
             } else {
                 Files.createDirectories(path.getParent());
@@ -182,7 +203,16 @@ public final class LaserConfig {
         technicalMode = enabled;
     }
 
+    public static double beamLoss(boolean client) {
+        return client && serverBeamLoss != null ? serverBeamLoss : current.beamAttenuation ? current.beamLossPerBlock : 0;
+    }
+
+    public static void applyServerAttenuation(boolean enabled, double loss) {
+        serverBeamLoss = enabled && Double.isFinite(loss) && loss >= 0 && loss < 1 ? loss : 0;
+    }
+
     public static void resetServerMode() {
+        serverBeamLoss = null;
         technicalMode = current.enablesEnergy(Platform::isModLoaded);
     }
 }

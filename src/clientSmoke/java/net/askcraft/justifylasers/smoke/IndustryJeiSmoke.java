@@ -21,11 +21,21 @@ final class IndustryJeiSmoke {
         }
     }
 
-    private static void show(String id, int count) {
+    static void show(String id, int count) {
+        show(id, MachineRecipeData.class, count);
+    }
+
+    static void showAmplifiers() {
+        try {
+            show("amplifier_upgrades", Class.forName("net.askcraft.justifylasers.client.compat.AmplifierJeiCategory$Upgrade"), 14);
+        } catch (ClassNotFoundException failure) { throw new AssertionError("Missing amplifier recipe category", failure); }
+    }
+
+    private static <T> void show(String id, Class<T> recipeClass, int count) {
         try {
             var runtime = (IJeiRuntime) Class.forName("mezz.jei.common.Internal").getMethod("getJeiRuntime").invoke(null);
             var manager = runtime.getRecipeManager();
-            var type = manager.getRecipeType(JustifyLasers.id(id), MachineRecipeData.class).orElseThrow();
+            var type = manager.getRecipeType(JustifyLasers.id(id), recipeClass).orElseThrow();
             var recipes = manager.createRecipeLookup(type).get().toList();
             if (recipes.size() != count) throw new AssertionError("Wrong JEI recipe count for " + id + ": " + recipes.size());
             runtime.getRecipesGui().showRecipes(manager.getRecipeCategory(type), recipes, List.of());

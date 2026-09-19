@@ -20,6 +20,8 @@ public final class LaserOpticRenderer implements BlockEntityRenderer<LaserOpticB
     @Override
     public void render(LaserOpticBlockEntity optic, float tickDelta, MatrixStack matrices,
                        VertexConsumerProvider consumers, int light, int overlay) {
+        if (MirrorRenderer.hidden(optic.getPos())) return;
+        if (optic.kind() == LaserOpticBlock.Kind.MIRROR) MirrorRenderer.queue(optic);
         renderModel(optic, matrices, consumers, light);
     }
 

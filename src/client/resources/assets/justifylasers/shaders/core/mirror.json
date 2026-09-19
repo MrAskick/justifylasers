@@ -1,0 +1,9 @@
+{
+  "vertex": "justifylasers:mirror", "fragment": "justifylasers:mirror",
+  "attributes": ["Position", "UV0", "Color"],
+  "samplers": [{"name":"Scene"}, {"name":"SceneDepth"}, {"name":"WorldDepth"}],
+  "uniforms": [
+    {"name":"MainTransform", "type":"matrix4x4", "count":16, "values":[1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]},
+    {"name":"DepthToMain", "type":"matrix4x4", "count":16, "values":[1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]}
+  ]
+}

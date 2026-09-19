@@ -13,23 +13,19 @@ import net.askcraft.justifylasers.platform.InventoryNbt;
 import net.askcraft.justifylasers.platform.LaserScreenFactory;
 import net.askcraft.justifylasers.screen.SolarConcentratorScreenHandler;
 import net.minecraft.block.BlockState;
-import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 
-import java.util.HashSet;
 import java.util.UUID;
 
 public final class SolarConcentratorBlockEntity extends LaserComponentBlockEntity implements LaserBeamSource, LaserScreenFactory {
@@ -41,6 +37,7 @@ public final class SolarConcentratorBlockEntity extends LaserComponentBlockEntit
     private long panels;
     private long powerTick = Long.MIN_VALUE;
     private long damageTick = Long.MIN_VALUE;
+    private final net.askcraft.justifylasers.laser.LaserBeamEffects effects = new net.askcraft.justifylasers.laser.LaserBeamEffects();
     private long nextExposure = Long.MIN_VALUE;
     private Status status = Status.INCOMPLETE;
     private boolean enabled = true;
@@ -50,6 +47,10 @@ public final class SolarConcentratorBlockEntity extends LaserComponentBlockEntit
     private String ownerName = "";
     private boolean privateAccess;
     private Direction outputSide;
+    private BlockPos structureOrigin;
+
+    public BlockPos structureOrigin() { return structureOrigin; }
+    public void setStructureOrigin(BlockPos origin) { structureOrigin = origin == null ? null : origin.toImmutable(); }
 
     public SolarConcentratorBlockEntity(BlockPos pos, BlockState state) { super(pos, state); }
     public Direction facing() { return getCachedState().get(LaserComponentBlock.FACING); }
@@ -73,7 +74,7 @@ public final class SolarConcentratorBlockEntity extends LaserComponentBlockEntit
     public long visiblePanels() { return panels; }
     @Override public void setWorld(World world) { super.setWorld(world); LaserBeamNetwork.registerEmitter(world, pos); }
     @Override public void cancelRemoval() { super.cancelRemoval(); if (world != null) LaserBeamNetwork.registerEmitter(world, pos); }
-    @Override public void markRemoved() { super.markRemoved(); if (world != null) LaserBeamNetwork.removeEmitter(world, pos); }
+    @Override public void markRemoved() { effects.clear(this); super.markRemoved(); if (world != null) LaserBeamNetwork.removeEmitter(world, pos); }
 
     public void solarTick() {
         if (world == null || world.isClient) return;
@@ -111,8 +112,9 @@ public final class SolarConcentratorBlockEntity extends LaserComponentBlockEntit
         if (panels != previousPanels || status != previousStatus || flux != previous && world.getTime() % 5 == 0) sync();
         if (flux > 0 && damageTick != world.getTime()) {
             damageTick = world.getTime();
-            damageEntities();
+            effects.tick(this, LaserBeamNetwork.path(this, 1));
         }
+        if (flux <= 0) effects.clear(this);
     }
 
     private boolean receivesRedstone() {
@@ -126,25 +128,18 @@ public final class SolarConcentratorBlockEntity extends LaserComponentBlockEntit
         return false;
     }
 
-    private void damageEntities() {
-        if (!(world instanceof ServerWorld server) || LaserConfig.get().solarDamagePerTick <= 0) return;
-        var hit = new HashSet<UUID>();
+    @Override public net.askcraft.justifylasers.laser.BeamBehavior beamBehavior() {
+        var defaults = net.askcraft.justifylasers.laser.BeamBehavior.NONE;
+        double damage = LaserConfig.get().solarDamagePerTick;
+        int step = LaserDamage.clampDamageStep((int) Math.round(damage * 10));
         double intensity = flux / (double) LaserConfig.get().solarPeakFlux;
-        for (var ray : LaserBeamNetwork.path(this, 1).segments()) {
-            double radius = LaserEmitterBlockEntity.BEAM_HIT_RADIUS * width * Math.sqrt(ray.power());
-            float damage = (float) (LaserConfig.get().solarDamagePerTick * intensity * ray.power());
-            if (damage <= 0) continue;
-            var source = LaserDamage.source(server, ray.start());
-            for (LivingEntity target : server.getEntitiesByClass(LivingEntity.class, new Box(ray.start(), ray.end()).expand(radius + .35),
-                    entity -> entity.isAlive() && !entity.isSpectator())) {
-                var bounds = target.getBoundingBox().expand(radius);
-                if ((bounds.contains(ray.start()) || bounds.raycast(ray.start(), ray.end()).isPresent()) && hit.add(target.getUuid()))
-                    LaserDamage.hit(target, source, ray.axis(), damage, intensity * ray.power());
-            }
-        }
+        return defaults.withEntity(new net.askcraft.justifylasers.laser.BeamBehavior.EntityEffect(
+                net.askcraft.justifylasers.laser.LaserEntityMode.DAMAGE, damage > 0, step, 10, 20, false,
+                intensity * damage / LaserDamage.damageForStep(step)));
     }
 
     public void stop() {
+        effects.clear(this);
         flux = 0; panels = 0; powerTick = Long.MIN_VALUE; nextExposure = Long.MIN_VALUE; status = Status.INCOMPLETE;
         LaserBeamNetwork.invalidate(world);
         sync();
@@ -227,9 +222,13 @@ public final class SolarConcentratorBlockEntity extends LaserComponentBlockEntit
         if (owner != null) nbt.putUuid("Owner", owner);
         nbt.putString("OwnerName", ownerName);
         nbt.putInt("SolarOutput", outputSide().getId());
+        if (structureOrigin != null) nbt.putLong("SolarOrigin", structureOrigin.asLong());
     }
     @Override protected void readLaserNbt(NbtCompound nbt, InventoryNbt inventory) {
         super.readLaserNbt(nbt, inventory);
+        structureOrigin = nbt.contains("SolarOrigin") ? BlockPos.fromLong(nbt.getLong("SolarOrigin")) : null;
+        if (structureOrigin != null && SolarStructure.RESONATORS.stream().noneMatch(cell -> structureOrigin.add(cell.offset()).equals(pos)))
+            structureOrigin = null;
         flux = LuminousFlux.clamp(nbt.getLong("SolarFlux"));
         panels = nbt.getLong("SolarPanels") & ((1L << SolarExposure.PANELS.size()) - 1);
         range = MathHelper.clamp(nbt.getInt("SolarRange"), 1, 512);

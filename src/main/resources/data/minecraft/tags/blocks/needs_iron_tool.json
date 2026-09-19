@@ -1,8 +1,12 @@
 {
   "replace": false,
   "values": [
+    "justifylasers:light_bridge",
+    "justifylasers:corner_light_bridge",
     "justifylasers:laser_emitter",
     "justifylasers:laser_receiver",
+    "justifylasers:chemical_synthesizer",
+    "justifylasers:laser_cutter",
     "justifylasers:wolframite_ore",
     "justifylasers:photonic_crystal_ore",
     "justifylasers:deepslate_wolframite_ore",

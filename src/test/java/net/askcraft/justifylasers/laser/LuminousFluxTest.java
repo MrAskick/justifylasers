@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class LuminousFluxTest {
     @Test void formatsEveryRequestedPrefixWithoutScientificNotation() {
         for (var entry : java.util.Map.of(0L, "0 lm", 999L, "999 lm", 1_000L, "1 klm", 12_340L, "12.34 klm",
-                999_999L, "999.99 klm", 1_000_000L, "1 Mlm", 1_800_000_000L, "1.8 Glm", LuminousFlux.MAX, "1000000 Glm").entrySet())
+                999_999L, "999.99 klm", 1_000_000L, "1 Mlm", 1_800_000_000L, "1.8 Glm", LuminousFlux.MAX, "1000 Tlm").entrySet())
             assertEquals(entry.getValue(), LuminousFlux.format(entry.getKey()));
         assertEquals("0 lm", LuminousFlux.format(-1));
     }
@@ -43,7 +43,8 @@ class LuminousFluxTest {
         assertEquals(30, config.solarPeakFlux / config.smallSolarPeakFlux);
         assertTrue(config.solarPeakFlux > 17 * config.smallSolarPeakFlux);
         assertTrue(config.solarPeakFlux < 34 * config.smallSolarPeakFlux);
-        assertTrue(config.smallSolarPeakFlux > config.crystalGrowthFlux);
+        assertEquals(config.solarPeakFlux, config.crystalGrowthFlux, "Large collector peak is 1x growth speed");
+        assertEquals(30, config.crystalGrowthFlux / config.smallSolarPeakFlux, "Small collector grows at 1/30 speed");
         config.validate();
         config.lumensPerEnergyUnit = 0;
         assertThrows(IllegalArgumentException.class, config::validate);

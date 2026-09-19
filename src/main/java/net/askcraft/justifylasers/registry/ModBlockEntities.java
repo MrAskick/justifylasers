@@ -11,6 +11,7 @@ import net.minecraft.block.entity.BlockEntityType;
 import net.minecraft.registry.Registries;
 
 public final class ModBlockEntities {
+    public static BlockEntityType<net.askcraft.justifylasers.block.entity.LightBridgeBlockEntity> LIGHT_BRIDGE;
     public static BlockEntityType<net.askcraft.justifylasers.block.entity.LaserComponentBlockEntity> LASER_COMPONENT;
     public static BlockEntityType<LaserEmitterBlockEntity> LASER_EMITTER;
     public static BlockEntityType<net.askcraft.justifylasers.block.entity.IndustrialMachineBlockEntity> INDUSTRIAL_MACHINE;
@@ -24,6 +25,8 @@ public final class ModBlockEntities {
     }
 
     public static void initialize() {
+        LIGHT_BRIDGE = Platform.register(Registries.BLOCK_ENTITY_TYPE, JustifyLasers.id("light_bridge"),
+                Platform.blockEntityType(net.askcraft.justifylasers.block.entity.LightBridgeBlockEntity::new, ModBlocks.LIGHT_BRIDGE, ModBlocks.CORNER_LIGHT_BRIDGE));
         LASER_COMPONENT = Platform.register(Registries.BLOCK_ENTITY_TYPE, JustifyLasers.id("laser_component"),
                 Platform.blockEntityType((pos, state) -> state.isOf(ModIndustry.COMPONENT_BLOCKS.get("optical_resonator"))
                         || state.isOf(ModIndustry.SMALL_SOLAR_CONCENTRATOR)

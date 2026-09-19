@@ -19,6 +19,44 @@ import net.minecraft.util.math.Direction;
 
 public class IndustrialMachineGameTests implements FabricGameTest {
     @GameTest(templateName = EMPTY_STRUCTURE)
+    public void opticalGrowthScalesBelowAndAboveTheReferenceWithoutRoundingLoss(TestContext context) {
+        var grower = machine(context, MachineKind.CRYSTAL_GROWER, 2);
+        context.assertTrue(LaserConfig.get().crystalGrowthFlux == 480_000, "Default 1x reference is 480 klm");
+        for (int flux : new int[]{16_000, 120_000, 240_000, 480_000, 960_000, 1_920_000}) {
+            grower.clear(); grower.readNbt(grower.createNbt());
+            grower.setStack(0, new ItemStack(ModIndustry.RAW_PHOTONIC_CRYSTAL));
+            grower.setStack(1, new ItemStack(Items.QUARTZ, 2));
+            grower.restoreWater(1_000); grower.energy().restore(1234);
+            grower.receiveLight(flux, 0x24FF91);
+            int duration = (int)((long)grower.recipe().duration() * grower.recipe().rate() / flux);
+            ticks(grower, duration - 1);
+            context.assertTrue(grower.getStack(4).isEmpty() && grower.completion(0) > 0, "No early result at " + flux);
+            ticks(grower, 1);
+            context.assertTrue(grower.getStack(4).isOf(ModIndustry.PHOTONITE_CRYSTAL), "Exact scaled finish at " + flux + " lm / " + duration + " ticks");
+            context.assertTrue(grower.water() == 0 && grower.getStack(0).isEmpty() && grower.getStack(1).isEmpty(), "One batch consumes exactly one set of inputs");
+            context.assertTrue(grower.energy().stored() == 1234, "FE remains unrelated to growth");
+        }
+        context.complete();
+    }
+
+    @GameTest(templateName = EMPTY_STRUCTURE)
+    public void fractionalGrowthSurvivesReloadAndHighFluxNeverDuplicatesABatch(TestContext context) {
+        var grower = machine(context, MachineKind.CRYSTAL_GROWER, 2);
+        grower.setStack(0, new ItemStack(ModIndustry.RAW_PHOTONIC_CRYSTAL, 2));
+        grower.setStack(1, new ItemStack(Items.QUARTZ, 4)); grower.restoreWater(2_000);
+        grower.receiveLight(1, 0xDD4422); ticks(grower, 1000);
+        var saved = grower.createNbt();
+        context.assertTrue(grower.progress() == 0 && saved.getLong("GrowthRemainder") == 1000, "Even 1 lm accumulates exact work");
+        grower.readNbt(saved); ticks(grower, 10);
+        context.assertTrue(grower.createNbt().getLong("GrowthRemainder") == 1000 && grower.lightFlux() == 0, "Reload preserves work, not spendable light");
+        grower.receiveLight(LuminousFlux.MAX, 0xDD4422); ticks(grower, 1);
+        context.assertTrue(grower.getStack(4).getCount() == 1 && grower.water() == 1000 && grower.getStack(0).getCount() == 1, "Huge input completes at most one paid batch per tick");
+        grower.setStack(4, new ItemStack(ModIndustry.PHOTONITE_CRYSTAL, 64)); ticks(grower, 4);
+        context.assertTrue(grower.water() == 1000 && grower.progress() == 0, "Full output cannot consume light-work materials");
+        context.complete();
+    }
+
+    @GameTest(templateName = EMPTY_STRUCTURE)
     public void oreLootUsesRawMaterialsAndRespectsSilkTouch(TestContext context) {
         var pickaxe = new ItemStack(Items.IRON_PICKAXE);
         var silk = new ItemStack(Items.DIAMOND_PICKAXE);
@@ -103,7 +141,7 @@ public class IndustrialMachineGameTests implements FabricGameTest {
         var withoutLight = grower.createNbt(); grower.readNbt(withoutLight); ticks(grower, 3);
         context.assertTrue(grower.progress() == 10 && grower.getStack(0).getCount() == 1, "No-power pause preserves the batch");
         grower.removeStack(0); ticks(grower, 1);
-        context.assertTrue(grower.progress() == 0, "Removing an ingredient invalidates partial progress");
+        context.assertTrue(grower.progress() == 10, "Removing an ingredient pauses paid progress");
         context.complete();
     }
 

@@ -91,7 +91,7 @@ final class FuelGeneratorModel {
         float heat=machine==null?0:Math.min(1,Math.max(0,(machine.temperature()-20)/1180F));
         int glow=0xFF0000 | (int)(65+heat*140)<<8 | (int)(8+heat*65);
         MESH.render(matrices,consumers,light,glow,working||heat>.03F,true);
-        if(IrisCompatibility.isRenderingShadowPass())return;
+        if(IrisCompatibility.isRenderingShadowPass() || !net.askcraft.justifylasers.client.ClientSettings.get().machineDisplays)return;
         matrices.push();
         matrices.translate(.293,.252,-.506);
         matrices.scale(-.005F,-.005F,.005F);

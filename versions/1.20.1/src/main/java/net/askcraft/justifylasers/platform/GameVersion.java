@@ -40,6 +40,13 @@ public final class GameVersion {
 
     public static void setItemData(ItemStack stack, NbtCompound data) { stack.setNbt(data.copy()); }
 
+    public static ItemStack smelt(ItemStack stack, ServerWorld world) {
+        if (stack.hasNbt()) return stack;
+        var input = new net.minecraft.inventory.SimpleInventory(stack);
+        return world.getRecipeManager().getFirstMatch(net.minecraft.recipe.RecipeType.SMELTING, input, world)
+                .map(recipe -> recipe.craft(input, world.getRegistryManager())).orElse(ItemStack.EMPTY);
+    }
+
     private GameVersion() {
     }
 }

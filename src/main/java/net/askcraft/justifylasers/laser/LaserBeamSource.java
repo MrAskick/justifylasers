@@ -21,4 +21,6 @@ public interface LaserBeamSource {
     /** Current visible flux; only opticalBudget may be consumed by the network. */
     long luminousFlux();
     long opticalBudget();
+    default long moduleFluxCost() { return 0; }
+    default BeamBehavior beamBehavior() { return BeamBehavior.NONE; }
 }

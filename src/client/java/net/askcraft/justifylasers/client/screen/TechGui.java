@@ -33,22 +33,30 @@ final class TechGui {
     }
 
     static void button(DrawContext context, int x, int y, int width, int height, State state) {
+        button(context, x, y, width, height, state, false);
+    }
+
+    static void button(DrawContext context, int x, int y, int width, int height, State state, boolean warning) {
         boolean disabled = state == State.DISABLED;
         boolean bright = state == State.HOVERED || state == State.SELECTED;
         float cut = height >= 24 ? 4.5F : 3;
-        int accent = state.accent();
+        int accent = accent(state, warning);
         int top = disabled ? 0xB4172B38 : state == State.PRESSED ? 0xDB03283D : bright ? 0xD70D5E7C : 0xCD084862;
         int bottom = disabled ? 0xB410202B : state == State.PRESSED ? 0xDB0A425C : 0xCE032034;
+        if (warning && !disabled) {
+            top = bright ? 0xE57E2930 : 0xD85C2029;
+            bottom = 0xD12C111B;
+        }
         gradient(context, contour(x + 1, y + 1, width - 2, height - 2, cut), top, bottom, y + 1, y + height - 1);
         outline(context, contour(x + 0.8F, y + 0.8F, width - 1.6F, height - 1.6F, cut), 1.5F, 0xEA021523);
         outline(context, contour(x + 1.9F, y + 1.9F, width - 3.8F, height - 3.8F, cut - 0.7F),
                 bright ? 1.6F : 1.15F, accent);
         outline(context, contour(x + 3.1F, y + 3.1F, width - 6.2F, height - 6.2F, Math.max(1, cut - 1.6F)),
-                0.6F, disabled ? 0x70516B78 : 0xB008799C);
+                0.6F, disabled ? 0x70516B78 : warning ? 0xB098303D : 0xB008799C);
         line(context, x + cut + 2, y + 1.45F, x + width - cut - 2, y + 1.45F, 0.65F,
-                disabled ? 0xFF496775 : state == State.PRESSED ? 0xFF127795 : 0xFF7DEFFF);
+                disabled ? 0xFF496775 : warning ? 0xFFFFA6A0 : state == State.PRESSED ? 0xFF127795 : 0xFF7DEFFF);
         line(context, x + cut + 2, y + height - 2.8F, x + width - cut - 2, y + height - 2.8F, 0.6F,
-                disabled ? 0x80516B78 : 0xFF0B5879);
+                disabled ? 0x80516B78 : warning ? 0xFF80313D : 0xFF0B5879);
         if (height >= 24) {
             for (int side = 0; side < 2; side++) for (int end = 0; end < 2; end++) {
                 float left = side == 0 ? x : x + width;
@@ -69,16 +77,51 @@ final class TechGui {
     }
 
     static void slider(DrawContext context, int x, int y, int width, int height, double value, State state) {
-        button(context, x, y, width, height, state);
+        slider(context, x, y, width, height, value, state, false);
+    }
+
+    static int accent(State state, boolean warning) {
+        return warning && state != State.DISABLED ? 0xFFFF6268 : state.accent();
+    }
+
+    static void slider(DrawContext context, int x, int y, int width, int height, double value, State state, boolean warning) {
+        button(context, x, y, width, height, state, warning);
         int left = x + 5, right = x + width - 5, bottom = y + height - 4;
         int thumb = left + (int) Math.round((right - left) * Math.max(0, Math.min(1, value)));
         context.fill(left, bottom, right, bottom + 1, 0xED01141F);
-        context.fill(left, bottom, thumb, bottom + 1, state.accent());
-        context.fill(thumb - 2, bottom - 1, thumb + 2, bottom + 2, state == State.DISABLED ? 0xFF547785 : 0xFF42C9E1);
-        context.fill(thumb - 1, bottom - 1, thumb + 1, bottom + 1, state == State.DISABLED ? 0xFF67828C : 0xFFD3FBFF);
+        context.fill(left, bottom, thumb, bottom + 1, accent(state, warning));
+        context.fill(thumb - 2, bottom - 1, thumb + 2, bottom + 2, state == State.DISABLED ? 0xFF547785 : warning ? 0xFFFF6268 : 0xFF42C9E1);
+        context.fill(thumb - 1, bottom - 1, thumb + 1, bottom + 1, state == State.DISABLED ? 0xFF67828C : warning ? 0xFFFFD4D1 : 0xFFD3FBFF);
     }
 
     enum Icon {
+        COPY(g -> {
+            g.path(1.6F, 6, 17, 3, 17, 3, 2, 15, 2, 15, 5);
+            g.path(1.8F, 8, 7, 21, 7, 21, 22, 8, 22, 8, 7);
+            g.line(11, 11, 18, 11, 1.2F); g.line(11, 15, 18, 15, 1.2F);
+        }),
+        PASTE(g -> {
+            g.path(1.8F, 7, 4, 3, 4, 3, 22, 21, 22, 21, 4, 17, 4);
+            g.path(1.8F, 8, 2, 16, 2, 16, 6, 8, 6, 8, 2);
+            g.path(2, 7, 14, 10, 17, 17, 10);
+        }),
+        AIM(g -> {
+            g.arc(12, 12, 7, 0, 360, 1.5F);
+            g.line(12, 1, 12, 6, 1.5F); g.line(12, 18, 12, 23, 1.5F);
+            g.line(1, 12, 6, 12, 1.5F); g.line(18, 12, 23, 12, 1.5F);
+            g.circle(12, 12, 1.6F);
+        }),
+        ROTATE(g -> {
+            g.arc(12, 12, 9, -150, 105, 1.8F);
+            g.polygon(3, 2, 9, 5, 3, 8);
+            g.path(1.7F, 7, 12, 12, 7, 17, 12, 12, 17, 7, 12);
+        }),
+        BATTERY(g -> {
+            g.path(1.6F, 7, 3, 17, 3, 17, 22, 7, 22, 7, 3);
+            g.rect(10, 0, 14, 3);
+            g.polygon(13, 6, 13, 13, 9, 13);
+            g.polygon(12, 11, 16, 11, 11, 19);
+        }),
         MODULES(g -> {
             g.path(2, 5.5F, 5.5F, 18.5F, 5.5F, 18.5F, 18.5F, 5.5F, 18.5F, 5.5F, 5.5F);
             for (int p = 8; p <= 16; p += 4) {
@@ -155,16 +198,21 @@ final class TechGui {
         List<Quad> mesh() { return mesh; }
 
         void draw(DrawContext context, float x, float y, float size, State state) {
+            draw(context, x, y, size, state, 1, state.accent());
+        }
+
+        void draw(DrawContext context, float x, float y, float size, State state, float opacity, int accent) {
             var matrices = context.getMatrices();
             matrices.push();
             matrices.translate(x, y, 0);
             matrices.scale(size / 24, size / 24, 1);
             for (Quad quad : mesh) {
                 int color = switch (quad.tone) {
-                    case ACCENT -> state.accent();
+                    case ACCENT -> accent;
                     case HIGHLIGHT -> state == State.DISABLED ? 0xFF597987 : 0xFFC3FDFF;
                     case INK -> state == State.DISABLED ? 0xFF192D3A : 0xFF07415B;
                 };
+                color = ((int) ((color >>> 24) * opacity) << 24) | (color & 0xFFFFFF);
                 drawQuad(context, quad.a, quad.b, quad.c, quad.d, color, color, color, color);
             }
             context.draw();
@@ -246,9 +294,18 @@ final class TechGui {
                 new Point(x2 - dx, y2 - dy), new Point(x1 - dx, y1 - dy), tone);
     }
 
-    private static void line(DrawContext context, float x1, float y1, float x2, float y2, float width, int color) {
+    static void line(DrawContext context, float x1, float y1, float x2, float y2, float width, int color) {
         Quad q = stroke(x1, y1, x2, y2, width, Tone.ACCENT);
         drawQuad(context, q.a, q.b, q.c, q.d, color, color, color, color);
+    }
+
+    static void annulus(DrawContext context, float x, float y, float inner, float outer, float start, float end, int inside, int outside) {
+        int segments = Math.max(1, (int) Math.ceil((end - start) / 3));
+        for (int i = 0; i < segments; i++) {
+            float a = start + (end - start) * i / segments, b = start + (end - start) * (i + 1) / segments;
+            drawQuad(context, radial(x, y, inner, a), radial(x, y, inner, b), radial(x, y, outer, b), radial(x, y, outer, a),
+                    inside, inside, outside, outside);
+        }
     }
 
     private static void outline(DrawContext context, Point[] points, float width, int color) {

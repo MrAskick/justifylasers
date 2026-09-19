@@ -85,15 +85,15 @@ public class LaserControlGameTests implements FabricGameTest {
                     && emitter.crystal().color() == LaserColor.BLUE && emitter.canManageSecurity(player),
                     "Rotation preserves the existing block entity, energy, crystal and owner");
         }
-        item.use(world, player, Hand.MAIN_HAND);
-        context.assertTrue(LaserConfiguratorItem.mode(tool) == 1, "Air use selects copy mode");
+        new net.askcraft.justifylasers.network.ConfiguratorModePacket(Hand.MAIN_HAND, player.getInventory().selectedSlot, 1).apply(player);
+        context.assertTrue(LaserConfiguratorItem.mode(tool) == 1, "Radial menu packet selects copy mode");
         var hit = new BlockHitResult(Vec3d.ofCenter(emitter.getPos()), Direction.UP, emitter.getPos(), false);
         context.assertTrue(item.useOnBlock(new ItemUsageContext(player, Hand.MAIN_HAND, hit)).isAccepted(), "Copy succeeds through item interaction");
         NbtCompound data = GameVersion.itemData(tool);
         context.assertTrue(data.contains("Settings") && data.getLong("Preview") == emitter.getPos().asLong()
                 && !data.getCompound("Settings").contains("Energy"), "Clipboard contains only settings and preview coordinates");
-        for (int mode : new int[]{2, 3, 0}) {
-            item.use(world, player, Hand.MAIN_HAND);
+        for (int mode : new int[]{2, 3, 4, 5, 0}) {
+            new net.askcraft.justifylasers.network.ConfiguratorModePacket(Hand.MAIN_HAND, player.getInventory().selectedSlot, mode).apply(player);
             context.assertTrue(LaserConfiguratorItem.mode(tool) == mode && GameVersion.itemData(tool).contains("Settings"),
                     "Changing mode keeps copied settings");
         }

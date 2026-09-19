@@ -17,6 +17,15 @@ import net.minecraft.util.Hand;
 import net.minecraft.util.math.Vec3d;
 
 public class LaserSaberGameTests implements FabricGameTest {
+    @Override
+    public void invokeTestMethod(TestContext context, java.lang.reflect.Method method) {
+        // Reused plots retain entities from previous batches; those bodies can intercept a blade.
+        var plot = new net.minecraft.util.math.Box(context.getAbsolute(Vec3d.ZERO), context.getAbsolute(new Vec3d(8, 8, 8)));
+        context.getWorld().getOtherEntities(null, plot, entity -> !(entity instanceof PlayerEntity))
+                .forEach(net.minecraft.entity.Entity::discard);
+        FabricGameTest.super.invokeTestMethod(context, method);
+    }
+
     @GameTest(templateName = EMPTY_STRUCTURE)
     public void returningStaffBladeAddsHorizontalCoverage(TestContext context) {
         var player = player(context, true);

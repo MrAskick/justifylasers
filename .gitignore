@@ -7,13 +7,14 @@ backups/
 logs/
 publish/
 ref/
+/tools/
 src/main/materials/**/*.png
+!src/main/materials/mirror-surface-swatches.png
+!src/main/materials/optical-hardware-swatches.png
 
 # Local authoring records and machine-specific launch helpers.
 /docs/development/
 /src/main/materials/README.md
-/tools/ReferenceContactSheets.ps1
-/tools/RunInstalledClientSmoke.ps1
 .env
 .env.*
 *.hprof

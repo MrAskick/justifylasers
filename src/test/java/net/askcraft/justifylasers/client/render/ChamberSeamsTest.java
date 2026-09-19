@@ -8,6 +8,23 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 class ChamberSeamsTest {
+    @Test void newProcessMachinesHaveSeparatedSurfaces() {
+        verify(ChemicalSynthesizerModel.BODY, "chemical synthesizer");
+        verify(ChemicalSynthesizerModel.GAUGE, "synthesizer gauges");
+        verify(LaserCutterModel.CASING, "laser cutter casing");
+        verify(LaserCutterModel.FRAME, "laser cutter frame");
+    }
+    @Test void bridgeWidthsHaveNoCoplanarOverlaps() {
+        for (int width=1;width<=3;width++) verify(LightBridgeModel.MODELS[width-1], "hard light bridge " + width);
+        verify(LightBridgeModel.CORNER, "corner hard light bridge");
+    }
+    @Test void bridgePortsFaceOutwardInsteadOfBeingCulledInsideTheChassis() {
+        var port=ComponentAtlas.load("light_bridge","base").region("port");
+        for(var mesh:LightBridgeModel.MODELS)for(var face:mesh.faces())if(port.contains(face.ua())) {
+            var center=face.a().add(face.b()).add(face.c()).add(face.d()).multiply(.25);
+            assertTrue(center.dotProduct(face.normal())>0,"Input port must face outward: "+center);
+        }
+    }
     @Test void largeCollectorPanelsUseOneContinuousSquareUvField() {
         var grid=ComponentAtlas.load("solar_concentrator","base").region("grid");
         int panels=0;

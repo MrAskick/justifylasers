@@ -3,10 +3,12 @@ import groovy.json.JsonSlurper
 
 def outputDirectory = layout.buildDirectory.dir('generated/laserParts')
 def colors = ['red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'violet', 'magenta', 'white']
-def modules = [silk_touch: 'minecraft:cobweb', block_drops: 'minecraft:hopper',
+def modules = [silk_touch: 'minecraft:cobweb', block_drops: 'minecraft:hopper', block_collection: 'minecraft:chest',
                scorch_marks: 'minecraft:flint_and_steel', ignition: 'minecraft:blaze_powder',
                block_destruction: 'minecraft:diamond_pickaxe', entity_damage: 'minecraft:diamond_sword',
-               range: 'minecraft:ender_pearl', thickness: 'minecraft:amethyst_block', target_filter: 'minecraft:ender_eye']
+               range: 'minecraft:ender_pearl', thickness: 'minecraft:amethyst_block', target_filter: 'minecraft:ender_eye',
+               entity_heal: 'minecraft:glistering_melon_slice', entity_lift: 'minecraft:phantom_membrane', entity_lower: 'minecraft:slime_ball', spectrum:'minecraft:quartz']
+def particleFor = { String id -> id == 'advanced_thickness_module' ? 'thickness_module' : id in ['entity_heal_module', 'entity_lift_module', 'entity_lower_module', 'block_collection_module'] ? 'control_circuit' : id }
 
 tasks.register('generateLaserParts') {
     inputs.file(rootProject.file('gradle/laser-parts.gradle'))
@@ -60,8 +62,8 @@ tasks.register('generateLaserParts') {
         }
         modules.each { module, component ->
             json("assets/justifylasers/models/item/${module}_module.json",
-                    [parent: 'justifylasers:item/module', textures: [particle: "justifylasers:block/particle/${module}_module"]])
-            json("data/justifylasers/recipes/${module}_module.json",
+                    [parent: 'justifylasers:item/module', textures: [particle: "justifylasers:block/particle/${particleFor(module + '_module')}"]])
+            if (module != 'spectrum') json("data/justifylasers/recipes/${module}_module.json",
                     [*: (module == 'target_filter' ? [:] : ['justifylasers:technical': true]), type: 'minecraft:crafting_shaped', category: 'misc',
                      pattern: ['IRI', 'DCD', 'IRI'], key: [I: [item: 'minecraft:iron_ingot'], R: [item: 'minecraft:redstone'],
                                                         D: [item: 'minecraft:diamond'], C: [item: component]],
@@ -81,11 +83,16 @@ tasks.register('generateLaserParts') {
                 ['justifylasers:technical': true, type: 'minecraft:crafting_shaped', category: 'misc',
                  pattern: ['RRR', 'RCR', 'RRR'], key: [R: [item: 'justifylasers:range_module'], C: [item: 'justifylasers:control_circuit']],
                  result: [item: 'justifylasers:advanced_range_module']])
+        json('assets/justifylasers/models/item/advanced_thickness_module.json',
+                [parent:'justifylasers:item/module',textures:[particle:'justifylasers:block/particle/thickness_module']])
+        json('data/justifylasers/recipes/advanced_thickness_module.json',
+                ['justifylasers:technical':true,type:'minecraft:crafting_shaped',category:'misc',pattern:['TTT','TCT','TTT'],
+                 key:[T:[item:'justifylasers:thickness_module'],C:[item:'justifylasers:control_circuit']],result:[item:'justifylasers:advanced_thickness_module']])
         def decorations = colors.collect { it + '_crystal' } + modules.keySet().collect { it + '_module' } +
-                ['advanced_range_module', 'control_circuit']
+                ['advanced_range_module', 'advanced_thickness_module', 'control_circuit']
         decorations.each { part ->
             json("assets/justifylasers/models/block/${part}.json",
-                    [textures: [particle: "justifylasers:block/particle/${part}"], elements: []])
+                    [textures: [particle: "justifylasers:block/particle/${particleFor(part)}"], elements: []])
             json("assets/justifylasers/blockstates/${part}.json",
                     [variants: ['': [model: "justifylasers:block/${part}"]]])
             json("data/justifylasers/loot_tables/blocks/${part}.json",
@@ -103,7 +110,7 @@ processResources {
             if (entry.path.startsWith('data/')) {
                 entry.path = entry.path.replace('/recipes/', '/recipe/').replace('/loot_tables/', '/loot_table/')
                         .replace('/advancements/', '/advancement/').replace('/tags/blocks/', '/tags/block/')
-                        .replace('/tags/items/', '/tags/item/')
+                        .replace('/tags/items/', '/tags/item/').replace('/tags/fluids/', '/tags/fluid/')
             }
         }
     }

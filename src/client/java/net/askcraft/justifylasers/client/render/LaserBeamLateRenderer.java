@@ -68,7 +68,7 @@ public final class LaserBeamLateRenderer {
             Matrix4f worldProjection
     ) {
         if (QUEUED_BEAMS.isEmpty() && QUEUED_CORES.isEmpty() && VANILLA_BEAMS.isEmpty() && SABERS.isEmpty()
-                && !SolarLightShaftRenderer.queued() && !LaserScorchRenderer.hasVisibleMarks()) {
+                && !SolarLightShaftRenderer.queued() && !LightBridgeRenderer.queued() && !LaserScorchRenderer.hasVisibleMarks()) {
             return;
         }
 
@@ -109,6 +109,7 @@ public final class LaserBeamLateRenderer {
                     consumers.draw();
                 }
                 if (QUEUED_BEAMS.isEmpty() && QUEUED_CORES.isEmpty() && SABERS.isEmpty() && !SolarLightShaftRenderer.queued()
+                        && !LightBridgeRenderer.queued()
                         && (!IrisCompatibility.isShaderPackInUse() || !LaserScorchRenderer.hasVisibleMarks())) return;
                 LaserRenderLayers.SHADER_BEAM_HALO.startDrawing();
                 try {
@@ -117,6 +118,7 @@ public final class LaserBeamLateRenderer {
 
                     if (IrisCompatibility.isShaderPackInUse()) LaserScorchRenderer.renderLate(builder, cameraPos);
                     SolarLightShaftRenderer.render(builder,cameraPos);
+                    LightBridgeRenderer.render(builder,cameraPos);
                     for (QueuedBeam beam : QUEUED_BEAMS.values()) {
                         Vec3d side = screenSide(beam, cameraPos);
                         renderGradientRibbon(builder, beam, side, cameraPos, false);
@@ -141,6 +143,7 @@ public final class LaserBeamLateRenderer {
             VANILLA_BEAMS.clear();
             SABERS.clear();
             SolarLightShaftRenderer.clear();
+            LightBridgeRenderer.clear();
             LaserScorchRenderer.endFrame();
         }
     }

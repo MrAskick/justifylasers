@@ -11,13 +11,19 @@ import net.minecraft.recipe.Ingredient;
 import java.util.List;
 
 public record MachineRecipeData(String key, MachineKind kind, String blueprint, List<Ingredient> inputs,
-                                List<Integer> counts, ItemStack result, int ticks, int energy, int water) {
+                                List<Integer> counts, ItemStack result, int ticks, int energy, int water, RecipeProcess process) {
+    public MachineRecipeData(String key, MachineKind kind, String blueprint, List<Ingredient> inputs,
+                             List<Integer> counts, ItemStack result, int ticks, int energy, int water) {
+        this(key, kind, blueprint, inputs, counts, result, ticks, energy, water, RecipeProcess.BASIC);
+    }
     public MachineRecipeData {
         inputs = List.copyOf(inputs); counts = List.copyOf(counts); result = result.copy();
         if (key.isBlank() || inputs.isEmpty() || inputs.size() > 4 || inputs.size() != counts.size()
                 || counts.stream().anyMatch(count -> count < 1 || count > 64) || result.isEmpty()
                 || ticks < 0 || ticks > 72_000 || energy < 0 || water < 0 || water > 64_000
-                || kind != MachineKind.CRYSTAL_GROWER && water != 0 || kind == MachineKind.FUEL_GENERATOR)
+                || !kind.fluidTank() && water != 0 || kind == MachineKind.FUEL_GENERATOR
+                || process == null || process.crystal() != null && kind != MachineKind.CRYSTAL_GROWER
+                || !process.product().isEmpty() && kind != MachineKind.CHEMICAL_SYNTHESIZER)
             throw new IllegalArgumentException("Invalid industrial recipe: " + key);
     }
     public int duration() {
@@ -30,6 +36,11 @@ public record MachineRecipeData(String key, MachineKind kind, String blueprint, 
     }
     public int waterCost() { return kind == MachineKind.CRYSTAL_GROWER && water == 0 ? net.askcraft.justifylasers.config.LaserConfig.get().crystalWaterPerRecipe : water; }
     public boolean matches(Inventory inventory) {
+        if (process.crystal() != null) {
+            ItemStack active = inventory.getStack(2);
+            return process.crystal().stage(active.isEmpty() ? inventory.getStack(0) : active) >= 0
+                    && inventory.getStack(1).isEmpty() && inventory.getStack(3).isEmpty();
+        }
         for (int slot = 0; slot < 4; slot++) {
             ItemStack stack = inventory.getStack(slot);
             if (slot >= inputs.size() ? !stack.isEmpty() : !inputs.get(slot).test(stack) || stack.getCount() < counts.get(slot)) return false;
@@ -42,6 +53,7 @@ public record MachineRecipeData(String key, MachineKind kind, String blueprint, 
     }
     public ItemStack output(Inventory inventory) {
         ItemStack output = result.copy();
+        if (kind == MachineKind.LASER_CUTTER && process.cuttingFlux() > 0) CrystalSeed.syntheticResult(output);
         if (output.isOf(ModBlocks.POWERED_LASER_EMITTER_ITEM)) {
             var data = GameVersion.itemData(output);
             data.putInt(IndustryRecipes.INSTALLED_CRYSTAL, color(inventory));

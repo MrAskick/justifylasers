@@ -14,6 +14,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Pseudo
 @Mixin(targets = "net.irisshaders.iris.pathways.HandRenderer", remap = false)
 public abstract class IrisHandRendererMixin {
+    @Inject(method = {"renderSolid", "renderTranslucent"}, at = @At("HEAD"), cancellable = true, remap = false, require = 0)
+    private void justifylasers$noHandsInSecondaryCamera(CallbackInfo ci) {
+        if (net.askcraft.justifylasers.client.render.MirrorRenderer.rendering()) ci.cancel();
+    }
     @Inject(method = "renderTranslucent", at = @At("RETURN"), remap = false, require = 0)
     private void justifylasers$captureHandAwareDepth(CallbackInfo ci) {
         IrisCompatibility.captureFinalDepthWithHand();

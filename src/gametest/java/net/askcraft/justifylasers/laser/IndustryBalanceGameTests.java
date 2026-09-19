@@ -18,7 +18,7 @@ public class IndustryBalanceGameTests implements FabricGameTest {
     @GameTest(templateName = EMPTY_STRUCTURE)
     public void everySchematicHasItsOwnTimeAndEnergyCost(TestContext context) {
         var recipes = IndustryRecipe.all(context.getWorld()).stream().filter(r -> r.kind() == MachineKind.ASSEMBLY_CHAMBER).toList();
-        context.assertTrue(recipes.size() == 30, "All 30 assembly designs remain available");
+        context.assertTrue(recipes.size() == 40, "Previous designs, synthesizer, cutter and spectrum module are available");
         context.assertTrue(recipes.stream().map(r -> r.duration()).distinct().count() == recipes.size(), "Each design has its own assembly duration");
         context.assertTrue(recipes.stream().map(r -> r.rate()).distinct().count() == recipes.size(), "Each design has its own FE/t");
         var housing = recipes.stream().filter(r -> r.blueprint().equals("reinforced_laser_housing")).findFirst().orElseThrow();

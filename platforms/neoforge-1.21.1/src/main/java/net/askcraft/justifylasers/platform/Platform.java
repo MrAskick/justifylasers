@@ -138,7 +138,13 @@ public final class Platform {
 
     public static void registerSettingsReceiver() {
         modBus.addListener((RegisterPayloadHandlersEvent event) -> {
-            var registrar = event.registrar("4");
+            var registrar = event.registrar("9");
+            registrar.playToServer(net.askcraft.justifylasers.network.MirrorAimPayload.ID, net.askcraft.justifylasers.network.MirrorAimPayload.CODEC,
+                    (payload, context) -> payload.packet().apply(context.player()));
+            registrar.playToClient(net.askcraft.justifylasers.network.LightBridgePayload.ID, net.askcraft.justifylasers.network.LightBridgePayload.CODEC,
+                    (payload, context) -> payload.packet().deliver());
+            registrar.playToServer(net.askcraft.justifylasers.network.ConfiguratorModePayload.ID, net.askcraft.justifylasers.network.ConfiguratorModePayload.CODEC,
+                    (payload, context) -> payload.packet().apply(context.player()));
             registrar.playToServer(net.askcraft.justifylasers.network.SaberTogglePayload.ID, net.askcraft.justifylasers.network.SaberTogglePayload.CODEC,
                     (payload, context) -> payload.packet().apply((ServerPlayerEntity) context.player()));
             registrar.playToClient(net.askcraft.justifylasers.network.SaberStatePayload.ID, net.askcraft.justifylasers.network.SaberStatePayload.CODEC,
@@ -148,7 +154,7 @@ public final class Platform {
             registrar.playToServer(SettingsPayload.ID, SettingsPayload.CODEC,
                     (payload, context) -> payload.packet().apply((ServerPlayerEntity) context.player()));
             registrar.playToClient(PolicyPayload.ID, PolicyPayload.CODEC,
-                    (payload, context) -> LaserConfig.applyServerMode(payload.packet().technicalMode()));
+                    (payload, context) -> payload.packet().apply());
         });
         NeoForge.EVENT_BUS.addListener((PlayerEvent.PlayerLoggedInEvent event) -> {
             if (event.getEntity() instanceof ServerPlayerEntity player) {
@@ -161,10 +167,16 @@ public final class Platform {
         onRegister(NeoForgeRegistries.CONDITION_SERIALIZERS.getKey(), () ->
                 register(NeoForgeRegistries.CONDITION_SERIALIZERS, JustifyLasers.id("energy_mode"), EnergyModeCondition.CODEC));
         modBus.addListener((RegisterCapabilitiesEvent event) -> {
+                event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, ModBlockEntities.LASER_EMITTER, (block, side) ->
+                        new net.neoforged.neoforge.items.wrapper.SidedInvWrapper(block, side == null ? net.minecraft.util.math.Direction.UP : side));
+                event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, ModBlockEntities.LASER_PART, (block, side) ->
+                        new net.neoforged.neoforge.items.wrapper.SidedInvWrapper(block, side == null ? net.minecraft.util.math.Direction.UP : side));
+                event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, ModBlockEntities.LASER_TURRET, (block, side) ->
+                        new net.neoforged.neoforge.items.wrapper.SidedInvWrapper(block, side == null ? net.minecraft.util.math.Direction.UP : side));
                 event.registerItem(Capabilities.EnergyStorage.ITEM, (stack, context) -> new PlatformTabletEnergy(stack),
-                        net.askcraft.justifylasers.registry.ModIndustry.EXTRATERRESTRIAL_TABLET);
+                net.askcraft.justifylasers.registry.ModIndustry.EXTRATERRESTRIAL_TABLET, net.askcraft.justifylasers.registry.ModBlocks.CONFIGURATOR);
                 event.registerBlockEntity(Capabilities.FluidHandler.BLOCK, ModBlockEntities.INDUSTRIAL_MACHINE, (machine, side) ->
-                        machine.kind() == net.askcraft.justifylasers.industry.MachineKind.CRYSTAL_GROWER ? new PlatformWaterStorage(machine) : null);
+                        machine.kind().fluidTank() ? new PlatformWaterStorage(machine) : null);
                 event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, ModBlockEntities.INDUSTRIAL_MACHINE, (machine, side) ->
                         new net.neoforged.neoforge.items.wrapper.SidedInvWrapper(machine, side == null ? net.minecraft.util.math.Direction.UP : side));
                 event.registerBlockEntity(Capabilities.EnergyStorage.BLOCK, ModBlockEntities.INDUSTRIAL_MACHINE, (machine, side) -> machine.energyPort());
@@ -235,6 +247,10 @@ public final class Platform {
 
     public static Path configDirectory() {
         return FMLPaths.CONFIGDIR.get();
+    }
+
+    public static void sendLightBridges(ServerPlayerEntity player, net.askcraft.justifylasers.network.LightBridgePacket packet) {
+        PacketDistributor.sendToPlayer(player, new net.askcraft.justifylasers.network.LightBridgePayload(packet));
     }
 
     private Platform() {

@@ -4,6 +4,114 @@ import java.awt.image.BufferedImage
 import javax.imageio.ImageIO
 
 def atlasOutput = layout.buildDirectory.dir('generated/componentAtlases')
+tasks.register('generatePrompt7Materials') {
+    def swatches = rootProject.file('src/main/materials/optical-hardware-swatches.png')
+    def planFile = rootProject.file('src/main/materials/optical-hardware-parts.json')
+    def destination = layout.buildDirectory.dir('generated/prompt7Materials')
+    inputs.files(swatches, planFile, rootProject.file('gradle/component-atlases.gradle'))
+    inputs.files(['amethyst','diamond','emerald','photonite'].collect { rootProject.file("src/main/resources/assets/justifylasers/textures/component/grown_${it}_crystal/base.png") })
+    outputs.dir(destination)
+    doLast {
+        def plan = new JsonSlurper().parse(planFile)
+        def sheet = ImageIO.read(swatches)
+        def patches = plan.collectEntries { name, spec -> [(name):ComponentAtlasBaker.extract(sheet, spec)] }
+        int size = 256
+        def packed = ComponentAtlasBaker.pack(patches, size)
+        if (packed == null) throw new GradleException('Optical hardware atlas exceeds 256px')
+        ['spectrum_module', 'laser_cutter'].each { kind ->
+            def images = ['base','base_n','base_s','glow','glow_n','glow_s','indicator','indicator_n','indicator_s'].collectEntries {
+                [(it):new BufferedImage(size,size,BufferedImage.TYPE_INT_ARGB)]
+            }
+            packed.each { name, rect ->
+                for (int y=-4;y<rect[3]+4;y++) for(int x=-4;x<rect[2]+4;x++) {
+                    int pixel = patches[name].getRGB(Math.max(0,Math.min(rect[2]-1,x)),Math.max(0,Math.min(rect[3]-1,y))) | (int)0xFF000000L
+                    boolean lit = plan[name].emission == true
+                    int dx=rect[0]+x, dy=rect[1]+y
+                    images.base.setRGB(dx,dy,lit && !plan[name].colored ? (int)0xFF364048L : pixel)
+                    images.base_s.setRGB(dx,dy,(int)(name in ['glass','prism'] ? 0xFFC90800L : 0xFF608000L))
+                    ['base_n','glow_n','indicator_n'].each { images[it].setRGB(dx,dy,(int)0xFF7F7FFFL) }
+                    ['glow','indicator'].each { images[it].setRGB(dx,dy,lit ? (plan[name].colored ? pixel : (int)0xFFEEEEEE) : 0) }
+                    images.glow_s.setRGB(dx,dy,lit ? (int)0xCF602000L : 0)
+                    images.indicator_s.setRGB(dx,dy,(int)0xFF602000L)
+                }
+            }
+            def output = new File(destination.get().asFile,kind); output.mkdirs()
+            images.each { name, img -> ImageIO.write(img,'png',new File(output,name+'.png')) }
+            def regions = packed + [beam:packed.column,core:packed.joint,ring:packed.metal,steel:packed.metal]
+            new File(output,'base.json').setText(JsonOutput.toJson([size:size,regions:regions])+'\n','UTF-8')
+            def r=packed.armor
+            ImageIO.write(images.base.getSubimage(r[0],r[1],r[2],r[3]),'png',new File(output,'particle.png'))
+        }
+        ['amethyst','diamond','emerald','photonite'].each { name ->
+            def source = ImageIO.read(rootProject.file("src/main/resources/assets/justifylasers/textures/component/grown_${name}_crystal/base.png"))
+            def normal = new BufferedImage(128,128,BufferedImage.TYPE_INT_ARGB)
+            def specular = new BufferedImage(128,128,BufferedImage.TYPE_INT_ARGB)
+            for(int y=0;y<128;y++) for(int x=0;x<128;x++) {
+                int pixel = source.getRGB(x,y)
+                int brightness = Math.max(pixel>>16&255,Math.max(pixel>>8&255,pixel&255))
+                int emission = Math.min(225, Math.max(0, brightness - 40))
+                normal.setRGB(x,y,(int)0xFF7F7FFFL)
+                specular.setRGB(x,y,(emission<<24)|0xC60800)
+            }
+            def output = new File(destination.get().asFile,"grown_${name}_crystal"); output.mkdirs()
+            ImageIO.write(normal,'png',new File(output,'base_n.png'))
+            ImageIO.write(specular,'png',new File(output,'base_s.png'))
+            ImageIO.write(source.getSubimage(4,4,24,40),'png',new File(output,'particle.png'))
+        }
+    }
+}
+tasks.register('generateSteeredMirrorMaterials') {
+    def swatches = rootProject.file('src/main/materials/mirror-surface-swatches.png')
+    def destination = layout.buildDirectory.dir('generated/steeredMirrorMaterials')
+    inputs.files(swatches, rootProject.file('src/main/materials/steered-mirror-parts.json'))
+    inputs.file(rootProject.file('gradle/component-atlases.gradle'))
+    outputs.dir(destination)
+    doLast {
+        def plan = new JsonSlurper().parse(rootProject.file('src/main/materials/steered-mirror-parts.json'))
+        def source = ImageIO.read(swatches)
+        def patches = plan.collectEntries { name, spec -> [(name):ComponentAtlasBaker.extract(source, spec)] }
+        int size = 512
+        def packed = ComponentAtlasBaker.pack(patches, size)
+        if (packed == null) throw new GradleException('Mirror atlas exceeds 512px')
+        def images = ['base','base_n','base_s','glow','glow_n','glow_s','indicator','indicator_n','indicator_s'].collectEntries {
+            [(it):new BufferedImage(size,size,BufferedImage.TYPE_INT_ARGB)]
+        }
+        packed.each { name, rect ->
+            for (int y=-4;y<rect[3]+4;y++) for(int x=-4;x<rect[2]+4;x++) {
+                int pixel = patches[name].getRGB(Math.max(0,Math.min(rect[2]-1,x)),Math.max(0,Math.min(rect[3]-1,y)))
+                boolean lit = plan[name].emission == true
+                int dx=rect[0]+x, dy=rect[1]+y
+                images.base.setRGB(dx,dy,lit ? (int)0xFF40484EL : pixel | (int)0xFF000000L)
+                images.base_s.setRGB(dx,dy,(int)(name=='mirror' ? 0xFFF3DA00L : 0xFF709000L))
+                ['base_n','glow_n','indicator_n'].each { images[it].setRGB(dx,dy,(int)0xFF7F7FFFL) }
+                ['glow','indicator'].each { images[it].setRGB(dx,dy,lit ? (int)0xFFEEEEEE : 0) }
+                images.glow_s.setRGB(dx,dy,lit ? (int)0xE1602000L : 0)
+                images.indicator_s.setRGB(dx,dy,(int)0xFF602000L)
+            }
+        }
+        def output = destination.get().asFile
+        output.mkdirs()
+        images.each { name, img -> ImageIO.write(img,'png',new File(output,name+'.png')) }
+        new File(output,'base.json').setText(JsonOutput.toJson([size:size,regions:packed])+'\n','UTF-8')
+        def metal = packed.metal
+        ImageIO.write(images.base.getSubimage(metal[0],metal[1],metal[2],metal[3]),'png',new File(output,'particle.png'))
+    }
+}
+tasks.register('generateMotorMaterials') {
+    inputs.file(rootProject.file('ref/electric_engine/ElectricMotor_UV.png'))
+    inputs.file(rootProject.file('src/main/materials/motor-parts.json'))
+    def destination = layout.buildDirectory.dir('generated/motorMaterials')
+    outputs.dir(destination)
+    doLast {
+        def output = destination.get().asFile
+        output.mkdirs()
+        def plan = new JsonSlurper().parse(rootProject.file('src/main/materials/motor-parts.json'))
+        ComponentAtlasBaker.bake(rootProject.file('ref/electric_engine'), 'ElectricMotor_UV.png', output, 'default', plan)
+        def atlas = new JsonSlurper().parse(new File(output, 'default.json'))
+        def r = atlas.regions.metal
+        ImageIO.write(ImageIO.read(new File(output, 'default.png')).getSubimage(r[0], r[1], r[2], r[3]), 'png', new File(output, 'particle.png'))
+    }
+}
 tasks.register('generateSaberMaterials') {
     def references = rootProject.file('ref/modules/LightSaber/new')
     inputs.files(['Once_LightSaber_UV.png', 'Double_LightSaber_UV.png', 'Once_LightSaber_UV_GLOW.png', 'Double_LightSaber_UV_GLOW.png'].collect { new File(references, it) })

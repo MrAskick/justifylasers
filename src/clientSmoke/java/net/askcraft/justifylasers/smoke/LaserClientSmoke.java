@@ -28,6 +28,10 @@ public final class LaserClientSmoke {
     private static boolean reloading;
 
     public static void tick(MinecraftClient client) {
+        if (Boolean.getBoolean("justifylasers.smokePrompt7")) { OpticsWorldSmoke.tick(client); return; }
+        if (Boolean.getBoolean("justifylasers.smokePrompt6")) { OpticsWorldSmoke.tick(client); return; }
+        if (Boolean.getBoolean("justifylasers.smokePrompt5")) { OpticsWorldSmoke.tick(client); return; }
+        if (Boolean.getBoolean("justifylasers.smokeLightBridge")) { OpticsWorldSmoke.tick(client); return; }
         if (Boolean.getBoolean("justifylasers.smokeAlpha25") || Boolean.getBoolean("justifylasers.smokeAlpha26")) { OpticsWorldSmoke.tick(client); return; }
         if (Boolean.getBoolean("justifylasers.smokeAlpha24")) { OpticsWorldSmoke.tick(client); return; }
         if (Boolean.getBoolean("justifylasers.smokeSolar")) { OpticsWorldSmoke.tick(client); return; }
@@ -156,8 +160,10 @@ public final class LaserClientSmoke {
             for (int i = 0; i < defaults.length; i++) handler.setProperty(i, defaults[i]);
             handler.setProperty(26, 511);
             handler.setProperty(46, 7);
+            handler.setProperty(52, net.askcraft.justifylasers.laser.LaserEntityMode.DAMAGE.ordinal());
             handler.getSlot(0).setStack(new ItemStack(ModLaserParts.CRYSTALS.get(LaserColor.RED)));
-            for (LaserModule module : LaserModule.values()) handler.getSlot(module.slot()).setStack(new ItemStack(ModLaserParts.MODULES.get(module)));
+            for (LaserModule module : LaserModule.values()) if (module.ordinal() <= LaserModule.TARGET_FILTER.ordinal())
+                handler.getSlot(module.slot()).setStack(new ItemStack(ModLaserParts.MODULES.get(module)));
             handler.getSlot(LaserModule.RANGE.slot()).setStack(new ItemStack(ModLaserParts.ADVANCED_RANGE_MODULE, 8));
             handler.getSlot(LaserModule.THICKNESS.slot()).setStack(new ItemStack(ModLaserParts.MODULES.get(LaserModule.THICKNESS), 32));
             String owner = "MrAskick";
@@ -179,7 +185,7 @@ public final class LaserClientSmoke {
 
         private void energy() {
             named("modules");
-            if (handler.slots.stream().filter(slot -> slot.isEnabled()).count() != 36 + LaserEmitterBlockEntity.MODULE_SLOT_COUNT) throw new AssertionError("Missing module/player inventory slots");
+            if (handler.slots.stream().filter(slot -> slot.isEnabled()).count() != 36 + LaserEmitterBlockEntity.MODULE_SLOT_COUNT - 2) throw new AssertionError("Missing module/player inventory slots");
         }
 
         private void named(String name) {
@@ -204,7 +210,7 @@ public final class LaserClientSmoke {
 
         private void enterModules() {
             if (!menu.keyPressed(GLFW.GLFW_KEY_ENTER, 0, 0)) throw new AssertionError("Keyboard activation was not handled");
-            if (handler.slots.stream().filter(slot -> slot.isEnabled()).count() != 36 + LaserEmitterBlockEntity.MODULE_SLOT_COUNT)
+            if (handler.slots.stream().filter(slot -> slot.isEnabled()).count() != 36 + LaserEmitterBlockEntity.MODULE_SLOT_COUNT - 2)
                 throw new AssertionError("Keyboard activation did not open the module page");
         }
 
@@ -213,6 +219,7 @@ public final class LaserClientSmoke {
             handler.getSlot(LaserModule.BLOCK_DESTRUCTION.slot()).setStack(ItemStack.EMPTY);
             handler.getSlot(LaserModule.ENTITY_DAMAGE.slot()).setStack(ItemStack.EMPTY);
             handler.getSlot(LaserModule.TARGET_FILTER.slot()).setStack(ItemStack.EMPTY);
+            handler.setProperty(52, net.askcraft.justifylasers.laser.LaserEntityMode.NONE.ordinal());
             init();
         }
 
@@ -255,9 +262,9 @@ public final class LaserClientSmoke {
                 if (widget.getX() < 0 || widget.getY() < 0 || widget.getX() + widget.getWidth() > width
                         || widget.getY() + widget.getHeight() > height) throw new AssertionError("Widget outside screen");
             }
-            long playerSlots = handler.slots.stream().filter(slot -> slot.id >= LaserEmitterBlockEntity.MODULE_SLOT_COUNT && slot.isEnabled()).count();
+            long playerSlots = handler.slots.stream().filter(slot -> slot.id >= LaserEmitterBlockEntity.INVENTORY_SIZE && slot.isEnabled()).count();
             if (playerSlots != 36) throw new AssertionError("Player inventory must stay visible on every page");
-            var slots = handler.slots.stream().filter(slot -> slot.id >= LaserEmitterBlockEntity.MODULE_SLOT_COUNT).toList();
+            var slots = handler.slots.stream().filter(slot -> slot.id >= LaserEmitterBlockEntity.INVENTORY_SIZE).toList();
             for (var slot : slots) {
                 if (slot.x - 2 < 40 || slot.x + 18 > 280 || slot.y - 2 < 132 || slot.y + 18 > 217)
                     throw new AssertionError("Inventory slot crosses the inner GUI frame: " + slot.id);

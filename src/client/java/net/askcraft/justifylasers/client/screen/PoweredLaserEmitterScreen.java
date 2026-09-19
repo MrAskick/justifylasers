@@ -7,6 +7,7 @@ import net.askcraft.justifylasers.client.screen.TechGui.Icon;
 import net.askcraft.justifylasers.energy.LaserModule;
 import net.askcraft.justifylasers.laser.LaserDamage;
 import net.askcraft.justifylasers.laser.LaserMining;
+import net.askcraft.justifylasers.laser.LaserEntityMode;
 import net.askcraft.justifylasers.network.LaserSettingsPacket;
 import net.askcraft.justifylasers.platform.ClientPlatform;
 import net.askcraft.justifylasers.platform.Platform;
@@ -46,8 +47,11 @@ public final class PoweredLaserEmitterScreen extends HandledScreen<LaserEmitterS
     private boolean rotating;
     private float previewYaw = -30;
     private TextFieldWidget filterPlayer;
+    private EntityFilterPanel entityTypes;
+    private SpectrumPanel spectrum;
+    private LaserEntityMode displayedMode = LaserEntityMode.NONE;
 
-    private enum Page { MAIN, MODULES, MINING, DAMAGE, FILTER, SECURITY, REDSTONE }
+    private enum Page { MAIN, MODULES, MINING, DAMAGE, FILTER, FILTER_TYPES, STORAGE, SECURITY, REDSTONE, SPECTRUM }
 
     public PoweredLaserEmitterScreen(LaserEmitterScreenHandler handler, PlayerInventory inventory, Text title) {
         super(handler, inventory, title);
@@ -59,14 +63,25 @@ public final class PoweredLaserEmitterScreen extends HandledScreen<LaserEmitterS
     protected void init() {
         String playerName = filterPlayer == null ? "" : filterPlayer.getText();
         filterPlayer = null;
+        entityTypes = null;
+        spectrum = null;
+        displayedMode = handler.entityMode();
         sliders.forEach(SettingSlider::submit);
         buttons.clear();
         sliders.clear();
         super.init();
-        handler.setInventoryVisible(page == Page.MODULES);
+        var inventoryPage = switch (page) {
+            case MODULES -> LaserEmitterScreenHandler.InventoryPage.MODULES;
+            case MINING -> LaserEmitterScreenHandler.InventoryPage.MINING;
+            case DAMAGE -> LaserEmitterScreenHandler.InventoryPage.DAMAGE;
+            case STORAGE -> LaserEmitterScreenHandler.InventoryPage.STORAGE;
+            default -> LaserEmitterScreenHandler.InventoryPage.NONE;
+        };
+        handler.setInventoryPage(inventoryPage);
+        send(LaserEmitterScreenHandler.PAGE_BUTTON_BASE + inventoryPage.ordinal());
         button(8, 31, 41, 28, page == Page.MAIN ? Icon.MODULES : Icon.BACK,
                 () -> label(page == Page.MAIN ? "modules" : "back"), () -> true,
-                () -> open(page == Page.MAIN ? Page.MODULES : page == Page.MINING || page == Page.DAMAGE || page == Page.FILTER ? Page.MODULES : Page.MAIN));
+                () -> open(page == Page.MAIN ? Page.MODULES : previousPage()));
         button(8, 64, 41, 28, Icon.LIGHT, () -> label("block_light"), () -> true,
                 () -> send(LaserEmitterScreenHandler.BUTTON_MINECRAFT_LIGHTING))
                 .indicator = handler::isMinecraftLightingEnabled;
@@ -80,12 +95,17 @@ public final class PoweredLaserEmitterScreen extends HandledScreen<LaserEmitterS
                 .selected = () -> page == Page.REDSTONE;
 
         switch (page) {
-            case MAIN -> button(65, 108, 78, 14, Icon.POWER, () -> toggle("switch", handler.isEnabled()), () -> true,
-                    () -> send(LaserEmitterScreenHandler.BUTTON_ENABLED)).selected = handler::isEnabled;
+            case MAIN -> {
+                button(65, 108, 47, 14, Icon.POWER, () -> toggle("switch", handler.isEnabled()), () -> true,
+                        () -> send(LaserEmitterScreenHandler.BUTTON_ENABLED)).selected = handler::isEnabled;
+                button(116, 108, 28, 14, Icon.MODULES, Text::empty, () -> true, () -> open(Page.STORAGE))
+                        .setTooltip(Tooltip.of(label("storage")));
+            }
             case MODULES -> {
-                moduleSettings(163, LaserModule.BLOCK_DESTRUCTION, Page.MINING);
-                moduleSettings(201, LaserModule.ENTITY_DAMAGE, Page.DAMAGE);
-                moduleSettings(239, LaserModule.TARGET_FILTER, Page.FILTER);
+                button(101, 53, 15, 18, Icon.SETTINGS, Text::empty, () -> handler.hasModule(LaserModule.SPECTRUM), () -> open(Page.SPECTRUM))
+                        .setTooltip(Tooltip.of(Text.translatable("gui.justifylasers.powered.spectrum")));
+                moduleSettings(132, LaserModule.ENTITY_DAMAGE, Page.DAMAGE);
+                moduleSettings(220, LaserModule.TARGET_FILTER, Page.FILTER);
             }
             case MINING -> {
                 slider(64, 49, 126, 0, LaserMining.MAX_SPEED_STEP, handler::getMiningSpeedStep,
@@ -93,30 +113,29 @@ public final class PoweredLaserEmitterScreen extends HandledScreen<LaserEmitterS
                                 step == 0 ? label("minimum") : step == LaserMining.MAX_SPEED_STEP ? label("maximum") : Text.literal(step + "%")), "mining_speed");
                 button(198, 49, 56, 16, null, () -> toggle("mining", handler.breaksBlocks()), () -> true,
                         () -> send(LaserEmitterScreenHandler.BUTTON_BREAK_BLOCKS));
-                moduleToggle(64, 70, 60, "silk", LaserModule.SILK_TOUCH, handler::hasSilkTouch, LaserEmitterScreenHandler.BUTTON_SILK_TOUCH, "silk_touch");
-                moduleToggle(129, 70, 60, "drops", LaserModule.BLOCK_DROPS, handler::dropsBlocks, LaserEmitterScreenHandler.BUTTON_DROP_BLOCKS, "drop_blocks");
-                moduleToggle(194, 70, 60, "scorch", LaserModule.SCORCH_MARKS, handler::showsScorchMarks, LaserEmitterScreenHandler.BUTTON_SCORCH_MARKS, "scorch_marks");
-                button(64, 96, 76, 16, Icon.RESET, () -> label("reset"), () -> true, () -> {
+                button(198, 105, 56, 12, Icon.MODULES, () -> label("storage"), () -> true, () -> open(Page.STORAGE));
+                button(64, 105, 76, 12, Icon.RESET, () -> label("reset"), () -> true, () -> {
                     sliders.forEach(SettingSlider::submit);
                     send(LaserEmitterScreenHandler.BUTTON_RESET_MINING_SETTINGS);
                     sliders.forEach(SettingSlider::forgetPending);
                 });
             }
             case DAMAGE -> {
-                slider(64, 49, 126, LaserDamage.MIN_DAMAGE_STEP, LaserDamage.MAX_DAMAGE_STEP, handler::getDamageStep,
+                if (handler.entityMode() != LaserEntityMode.HEAL) slider(64, 49, 126, LaserDamage.MIN_DAMAGE_STEP, handler.entityMode().movesEntities() ? 50 : LaserDamage.MAX_DAMAGE_STEP, handler::getDamageStep,
                         LaserEmitterScreenHandler.DAMAGE_BUTTON_BASE,
-                        step -> Text.translatable("gui.justifylasers.damage_per_hit", decimal(LaserDamage.damageForStep(step))), "damage_per_hit");
-                slider(64, 70, 126, 0, LaserDamage.MAX_KNOCKBACK_STEP, handler::getKnockbackStep,
+                        step -> handler.entityMode().movesEntities() ? Text.translatable("gui.justifylasers.movement_speed",
+                                decimal(net.askcraft.justifylasers.laser.LaserBeamEffects.movementSpeed(step) * 20))
+                                : Text.translatable(handler.entityMode() == LaserEntityMode.HEAL ? "gui.justifylasers.heal_per_hit" : "gui.justifylasers.damage_per_hit",
+                                decimal(LaserDamage.damageForStep(step))), "damage_per_hit");
+                if (handler.entityMode() == LaserEntityMode.DAMAGE) slider(64, 70, 126, 0, LaserDamage.MAX_KNOCKBACK_STEP, handler::getKnockbackStep,
                         LaserEmitterScreenHandler.KNOCKBACK_BUTTON_BASE,
                         step -> Text.translatable("gui.justifylasers.knockback", decimal(LaserDamage.knockbackForStep(step)) + "×"), "knockback");
-                slider(64, 91, 126, 1, LaserDamage.MAX_HITS_PER_SECOND, handler::getHitsPerSecond,
+                if (handler.entityMode() == LaserEntityMode.DAMAGE) slider(64, 91, 126, 1, LaserDamage.MAX_HITS_PER_SECOND, handler::getHitsPerSecond,
                         LaserEmitterScreenHandler.HIT_RATE_BUTTON_BASE,
                         step -> Text.translatable("gui.justifylasers.hits_per_second", step), "hits_per_second");
-                button(198, 49, 56, 16, null, () -> toggle("damage", handler.damagesEntities()), () -> true,
+                button(198, 49, 56, 16, null, () -> toggle("effect", handler.damagesEntities()), () -> true,
                         () -> send(LaserEmitterScreenHandler.BUTTON_DAMAGE_ENTITIES));
-                moduleToggle(198, 70, 56, "ignite", LaserModule.IGNITION, handler::ignitesEntities,
-                        LaserEmitterScreenHandler.BUTTON_IGNITE_ENTITIES, "ignite_entities");
-                button(198, 91, 56, 16, Icon.RESET, () -> label("reset"), () -> true, () -> {
+                if (handler.entityMode() != LaserEntityMode.HEAL) button(226, 84, 28, 16, Icon.RESET, Text::empty, () -> true, () -> {
                     sliders.forEach(SettingSlider::submit);
                     send(LaserEmitterScreenHandler.BUTTON_RESET_DAMAGE_SETTINGS);
                     sliders.forEach(SettingSlider::forgetPending);
@@ -139,7 +158,15 @@ public final class PoweredLaserEmitterScreen extends HandledScreen<LaserEmitterS
                 button(183, 92, 71, 17, Icon.SHIELD, () -> label("exclude_toggle"),
                         () -> filterPlayer.getText().matches("[A-Za-z0-9_]{1,16}"),
                         () -> ClientPlatform.sendSettings(new LaserSettingsPacket(handler.syncId, LaserEmitterScreenHandler.BUTTON_FILTER_PLAYER, filterPlayer.getText())));
+                button(183, 112, 71, 12, null, () -> Text.translatable("gui.justifylasers.filter.mob_list"),
+                        () -> handler.hasModule(LaserModule.TARGET_FILTER), () -> open(Page.FILTER_TYPES));
             }
+            case FILTER_TYPES -> entityTypes = new EntityFilterPanel(x + 64, y + 44, widget -> addDrawableChild(widget),
+                    () -> client.world != null && client.world.getBlockEntity(handler.getBlockPos()) instanceof LaserEmitterBlockEntity emitter ? emitter.targetFilter() : null,
+                    id -> ClientPlatform.sendSettings(new LaserSettingsPacket(handler.syncId, LaserEmitterScreenHandler.BUTTON_FILTER_TYPE, id)),
+                    () -> send(LaserEmitterScreenHandler.BUTTON_FILTER_MODE));
+            case SPECTRUM -> spectrum = new SpectrumPanel(x + 64, y + 48, handler::beamRgb, widget -> addDrawableChild(widget),
+                    value -> ClientPlatform.sendSettings(new LaserSettingsPacket(handler.syncId, LaserEmitterScreenHandler.BUTTON_SPECTRUM, value)));
             case SECURITY -> button(65, 73, 189, 18, Icon.SHIELD,
                     () -> Text.translatable("gui.justifylasers.powered.access", label(handler.isPrivate() ? "private" : "public")),
                     handler::canManageSecurity, () -> send(LaserEmitterScreenHandler.BUTTON_SECURITY));
@@ -151,7 +178,9 @@ public final class PoweredLaserEmitterScreen extends HandledScreen<LaserEmitterS
     }
 
     private void moduleSettings(int left, LaserModule module, Page target) {
-        TechButton button = button(left, 95, 15, 18, Icon.SETTINGS, Text::empty, () -> handler.hasModule(module), () -> open(target));
+        TechButton button = button(left, 95, 15, 18, Icon.SETTINGS, Text::empty,
+                () -> module.isEntityMode() ? handler.hasEntityMode() : handler.hasModule(module),
+                () -> open(target == Page.DAMAGE && handler.entityMode() == LaserEntityMode.MINING ? Page.MINING : target));
         button.setTooltip(Tooltip.of(Text.translatable(target == Page.MINING ? "gui.justifylasers.mining_settings"
                 : target == Page.FILTER ? "gui.justifylasers.powered.filter" : "gui.justifylasers.damage_settings")));
     }
@@ -182,6 +211,14 @@ public final class PoweredLaserEmitterScreen extends HandledScreen<LaserEmitterS
         clearAndInit();
     }
 
+    private Page previousPage() {
+        return switch (page) {
+            case FILTER_TYPES -> Page.FILTER;
+            case MINING, DAMAGE, FILTER, SPECTRUM -> Page.MODULES;
+            default -> Page.MAIN;
+        };
+    }
+
     private void send(int id) {
         if (client != null && client.interactionManager != null) ClientPlatform.sendSettings(new LaserSettingsPacket(handler.syncId, id));
     }
@@ -190,10 +227,12 @@ public final class PoweredLaserEmitterScreen extends HandledScreen<LaserEmitterS
     protected void handledScreenTick() {
         super.handledScreenTick();
         if (page == Page.MINING && !handler.hasModule(LaserModule.BLOCK_DESTRUCTION)
-                || page == Page.DAMAGE && !handler.hasModule(LaserModule.ENTITY_DAMAGE)
-                || page == Page.FILTER && !handler.hasModule(LaserModule.TARGET_FILTER)) {
+                || page == Page.DAMAGE && !handler.hasEntityMode() || page == Page.SPECTRUM && !handler.hasModule(LaserModule.SPECTRUM)
+                || (page == Page.FILTER || page == Page.FILTER_TYPES) && !handler.hasModule(LaserModule.TARGET_FILTER)) {
             open(Page.MODULES);
         }
+        if (page == Page.DAMAGE && displayedMode != handler.entityMode()) open(handler.entityMode() == LaserEntityMode.MINING ? Page.MINING : Page.DAMAGE);
+        if (spectrum != null) spectrum.tick();
         sliders.forEach(SettingSlider::tick);
         updateControls();
     }
@@ -218,6 +257,7 @@ public final class PoweredLaserEmitterScreen extends HandledScreen<LaserEmitterS
         if (page == Page.MODULES) {
             for (int index = 0; index < SLOT_NAMES.length; index++) {
                 var slot = handler.getSlot(index);
+                if (!slot.isEnabled()) continue;
                 if (inside(mouseX, mouseY, slot.x - 2, slot.y - 2, 20, 20) && !slot.hasStack()) {
                     Text hint = Text.translatable("gui.justifylasers.powered.slot_hint." + SLOT_NAMES[index], Platform.ENERGY_UNIT);
                     context.drawOrderedTooltip(textRenderer, textRenderer.wrapLines(hint, 220), mouseX, mouseY);
@@ -257,6 +297,8 @@ public final class PoweredLaserEmitterScreen extends HandledScreen<LaserEmitterS
         }
         panel(context, x + 56, y + 31, 208, 94, false);
         if (page == Page.FILTER) panel(context, x + 64, y + 92, 115, 17, false);
+        if (spectrum != null) spectrum.render(context);
+        if (entityTypes != null) entityTypes.render(context);
         for (var slot : handler.slots) {
             if (slot.isEnabled()) slot(context, x + slot.x, y + slot.y, slot.id < SLOT_NAMES.length && slot.hasStack());
         }
@@ -278,7 +320,7 @@ public final class PoweredLaserEmitterScreen extends HandledScreen<LaserEmitterS
             text(context, label("consumption"), 154, 42, 100, MUTED, false, 0.8F);
             text(context, Text.literal(compact(handler.getEnergyCost()) + " " + Platform.ENERGY_UNIT + "/t"), 154, 53, 100, ACCENT, false, 1);
             text(context, Text.literal(compact(handler.getEnergy()) + " / " + compact(handler.getEnergyCapacity()) + " " + Platform.ENERGY_UNIT), 154, 71, 100, TEXT, false, 0.75F);
-            text(context, Text.literal(net.askcraft.justifylasers.laser.LuminousFlux.format(handler.luminousFlux())), 154, 96, 100, ACCENT, false, 0.8F);
+            text(context, Text.literal(net.askcraft.justifylasers.laser.LuminousFlux.format(Math.max(0, handler.luminousFlux() - handler.moduleFluxCost()))), 154, 96, 100, ACCENT, false, 0.8F);
             text(context, label("status." + status()), 154, 108, 100, handler.isActive() ? ACCENT : TEXT, false, 0.8F);
             return;
         }
@@ -287,32 +329,41 @@ public final class PoweredLaserEmitterScreen extends HandledScreen<LaserEmitterS
             case MINING -> "mining_settings";
             case DAMAGE -> "damage_settings";
             case FILTER -> "filter";
+            case FILTER_TYPES -> "filter";
+            case STORAGE -> "storage";
             case SECURITY -> "security";
             case REDSTONE -> "redstone_title";
+            case SPECTRUM -> "spectrum";
             default -> "";
         };
-        text(context, label(titleKey), 64, 35, 191, ACCENT, false, 0.85F);
+        text(context, page == Page.DAMAGE ? Text.translatable(handler.entityMode().translationKey()) : label(titleKey), 64, 35, page == Page.MINING ? 98 : 191, ACCENT, false, 0.85F);
         switch (page) {
             case MODULES -> {
                 for (int index = 0; index < SLOT_NAMES.length; index++) {
                     var slot = handler.getSlot(index);
+                    if (!slot.isEnabled()) continue;
                     text(context, label("slot." + SLOT_NAMES[index]), slot.x + 8, slot.y - 10, 36, TEXT, true, 0.7F);
                 }
                 text(context, Text.translatable("gui.justifylasers.powered.module_stats", handler.getBeamRange(), decimal(handler.getBeamWidthScale())),
                         160, 116, 191, MUTED, true, 0.65F);
+                text(context, label("slot.amplifier"), 164, 85, 43, TEXT, true, .7F);
             }
             case MINING -> {
-                text(context, Text.translatable("gui.justifylasers.powered.stone_time",
-                        String.format(Locale.ROOT, "%.2f", LaserMining.ticksToBreak(1.5F, sliders.get(0).step()) / 20.0)), 147, 101, 107, MUTED, false, 0.7F);
-                cost(context);
+                String[] names = {"collect", "silk", "drops", "smelt"};
+                for (int i = 0; i < names.length; i++) text(context, label(names[i]), 74 + i * 46, 71, 42, TEXT, true, .65F);
+                text(context, Text.translatable("gui.justifylasers.world_module.cost", net.askcraft.justifylasers.laser.LuminousFlux.format(handler.moduleFluxCost())),
+                        210, 35, 88, ACCENT, true, .65F);
             }
             case DAMAGE -> {
-                text(context, Text.literal(decimal(LaserDamage.damageForStep(sliders.get(0).step()) * sliders.get(2).step()) + " HP/s"),
+                if (handler.entityMode() == LaserEntityMode.DAMAGE) text(context, label("ignite"), 214, 71, 65, TEXT, true, .7F);
+                if (handler.entityMode() == LaserEntityMode.HEAL) text(context, Text.translatable("gui.justifylasers.healing_rate"), 64, 70, 126, TEXT, false, .8F);
+                if (handler.entityMode() == LaserEntityMode.DAMAGE) text(context, Text.literal(decimal(LaserDamage.damageForStep(sliders.get(0).step()) * handler.getHitsPerSecond()) + " HP/s"),
                         64, 115, 80, MUTED, false, 0.7F);
                 cost(context);
             }
             case FILTER -> text(context, Text.translatable("gui.justifylasers.powered.excluded_count", handler.excludedPlayerCount()),
-                    64, 115, 190, MUTED, false, 0.65F);
+                    64, 115, 110, MUTED, false, 0.65F);
+            case STORAGE -> text(context, label("overflow_hint"), 160, 114, 187, MUTED, true, .65F);
             case SECURITY -> {
                 text(context, label("owner"), 65, 51, 60, MUTED, false, 0.8F);
                 text(context, handler.getOwnerName().isEmpty() ? label("unowned") : Text.literal(handler.getOwnerName()), 121, 51, 132, TEXT, false, 0.9F);
@@ -337,6 +388,7 @@ public final class PoweredLaserEmitterScreen extends HandledScreen<LaserEmitterS
         if (!handler.isTechnicalMode()) return "disabled";
         if (!handler.isEnabled()) return "off";
         if (!handler.hasCrystal()) return "no_crystal";
+        if (handler.isActive() && handler.moduleFluxCost() >= handler.luminousFlux()) return "no_light";
         if (!handler.getRedstoneMode().allows(handler.hasRedstoneSignal())) return "redstone";
         return handler.isActive() ? "active" : handler.getEnergy() < handler.getEnergyCost() ? "no_power" : "ready";
     }
@@ -369,7 +421,7 @@ public final class PoweredLaserEmitterScreen extends HandledScreen<LaserEmitterS
         matrices.pop();
     }
 
-    private static void panel(DrawContext context, int left, int top, int width, int height, boolean selected) {
+    static void panel(DrawContext context, int left, int top, int width, int height, boolean selected) {
         int border = selected ? ACCENT : 0xFF25718A;
         context.fill(left + 2, top, left + width - 2, top + 2, border);
         context.fill(left + 2, top + height - 2, left + width - 2, top + height, border);
@@ -379,7 +431,7 @@ public final class PoweredLaserEmitterScreen extends HandledScreen<LaserEmitterS
         context.fill(left + 3, top + 1, left + width - 3, top + 2, selected ? 0xFFCBF9FF : 0xFF3A90A5);
     }
 
-    private static void slot(DrawContext context, int left, int top, boolean installed) {
+    static void slot(DrawContext context, int left, int top, boolean installed) {
         panel(context, left - 2, top - 2, 20, 20, installed);
         context.fill(left, top, left + 16, top + 16, 0x18092536);
         context.fill(left - 2, top - 2, left + 3, top - 1, 0xFF8EE7F5);
@@ -392,8 +444,9 @@ public final class PoweredLaserEmitterScreen extends HandledScreen<LaserEmitterS
 
     @Override
     public boolean keyPressed(int key, int scanCode, int modifiers) {
+        if (spectrum != null && spectrum.keyPressed(key, scanCode, modifiers)) return true;
         if (key == GLFW.GLFW_KEY_ESCAPE && page != Page.MAIN) {
-            open(page == Page.MINING || page == Page.DAMAGE || page == Page.FILTER ? Page.MODULES : Page.MAIN);
+            open(previousPage());
             return true;
         }
         return super.keyPressed(key, scanCode, modifiers);
@@ -410,6 +463,7 @@ public final class PoweredLaserEmitterScreen extends HandledScreen<LaserEmitterS
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dx, double dy) {
+        if (spectrum != null && spectrum.drag(mouseX, mouseY, button, dx, dy)) return true;
         if (rotating && button == 0) {
             previewYaw = MathHelper.clamp(previewYaw + (float) dx, -65, 30);
             return true;
@@ -420,6 +474,7 @@ public final class PoweredLaserEmitterScreen extends HandledScreen<LaserEmitterS
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (spectrum != null && spectrum.release(mouseX, mouseY, button)) { setDragging(false); return true; }
         if (rotating) { rotating = false; return true; }
         // HandledScreen routes releases to slots, so sliders need their own release path.
         if (button == 0 && getFocused() instanceof SettingSlider slider && slider.dragging) {

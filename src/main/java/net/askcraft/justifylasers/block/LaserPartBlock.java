@@ -77,9 +77,18 @@ public final class LaserPartBlock extends LaserBlock {
         return partId;
     }
 
-    public boolean isCrystal() {
-        return partId.endsWith("_crystal");
+    public net.askcraft.justifylasers.energy.LaserModule module() {
+        if (partId.equals("advanced_range_module")) return net.askcraft.justifylasers.energy.LaserModule.RANGE;
+        if (partId.equals("advanced_thickness_module")) return net.askcraft.justifylasers.energy.LaserModule.THICKNESS;
+        for (var module : net.askcraft.justifylasers.energy.LaserModule.values()) if (partId.equals(module.id())) return module;
+        return null;
     }
+
+    public boolean isCrystal() {
+        return !isRawMineral() && !partId.startsWith("grown_") && partId.endsWith("_crystal");
+    }
+
+    public boolean isRawMineral() { return partId.equals("raw_wolframite") || partId.equals("raw_photonic_crystal"); }
 
     public LaserColor crystalColor() {
         for (LaserColor color : LaserColor.values()) {
@@ -101,7 +110,7 @@ public final class LaserPartBlock extends LaserBlock {
     @Override
     public BlockState getPlacementState(ItemPlacementContext context) {
         return getDefaultState().with(FACING, context.getHorizontalPlayerFacing().getOpposite())
-                .with(MOUNT, isCrystal() ? context.getSide() : Direction.UP);
+                .with(MOUNT, context.getSide());
     }
 
     @Override
@@ -127,16 +136,38 @@ public final class LaserPartBlock extends LaserBlock {
 
     @Override
     public BlockRenderType getRenderType(BlockState state) {
-        return BlockRenderType.ENTITYBLOCK_ANIMATED;
+        return isRawMineral() ? BlockRenderType.MODEL : BlockRenderType.ENTITYBLOCK_ANIMATED;
     }
 
     @Override
     public BlockEntity createBlockEntity(BlockPos pos, BlockState state) {
-        return new LaserPartBlockEntity(pos, state);
+        return isRawMineral() ? null : new LaserPartBlockEntity(pos, state);
+    }
+
+    @Override public void onPlaced(World world, BlockPos pos, BlockState state, net.minecraft.entity.LivingEntity placer, net.minecraft.item.ItemStack stack) {
+        super.onPlaced(world, pos, state, placer, stack);
+        if (module() != null && world.getBlockEntity(pos) instanceof LaserPartBlockEntity entity) {
+            entity.initializeSpectrum(stack);
+            if (placer instanceof PlayerEntity player) entity.initializeOwner(player);
+        }
+        LaserBeamNetwork.invalidate(world);
+    }
+
+    @Override public void onStateReplaced(BlockState state, World world, BlockPos pos, BlockState next, boolean moved) {
+        if (!state.isOf(next.getBlock())) {
+            if (world.getBlockEntity(pos) instanceof LaserPartBlockEntity entity && entity.size() > 0)
+                net.minecraft.util.ItemScatterer.spawn(world, pos, entity);
+            LaserBeamNetwork.invalidate(world);
+        }
+        super.onStateReplaced(state, world, pos, next, moved);
     }
 
     @Override
     protected ActionResult useLaser(BlockState state, World world, BlockPos pos, PlayerEntity player, BlockHitResult hit) {
+        if (module() != null && !player.isSneaking() && world.getBlockEntity(pos) instanceof LaserPartBlockEntity entity) {
+            if (!world.isClient && entity.canPlayerUse(player)) net.askcraft.justifylasers.platform.Platform.openScreen(player, entity);
+            return ActionResult.SUCCESS;
+        }
         if (!isCrystal() || player.isSneaking()) return ActionResult.PASS;
         if (!world.isClient && player.canModifyBlocks()) {
             boolean mixing = !state.get(MIXING);
@@ -149,6 +180,7 @@ public final class LaserPartBlock extends LaserBlock {
     }
 
     private static VoxelShape shape(String id) {
+        if (id.startsWith("grown_") || id.equals("raw_wolframite") || id.equals("raw_photonic_crystal")) return createCuboidShape(2, 0, 2, 14, 12, 14);
         if (id.endsWith("_crystal") || id.equals("crystal_mount")) {
             return VoxelShapes.union(createCuboidShape(2.7, 0, 2.7, 13.3, 3.7, 13.3),
                     createCuboidShape(5, 3.7, 5, 11, 15.75, 11),
@@ -156,6 +188,9 @@ public final class LaserPartBlock extends LaserBlock {
                     createCuboidShape(6.8, 3.7, 3.4, 9.2, 10.05, 12.6));
         }
         return switch (id) {
+            case "block_collection_module" -> createCuboidShape(1, 0, 2, 15, 15.5, 15);
+            case "electric_motor" -> VoxelShapes.union(createCuboidShape(1.7, 0, 3.5, 14.3, 15.4, 15.4),
+                    createCuboidShape(6.6, 5.4, .15, 9.4, 8.2, 3.5));
             case "control_circuit" -> createCuboidShape(1, 0, 1, 15, 3, 15);
             case "range_module" -> VoxelShapes.union(createCuboidShape(3, 0, 1, 13, 8, 15),
                     createCuboidShape(7, 8, 11, 9, 14, 13));

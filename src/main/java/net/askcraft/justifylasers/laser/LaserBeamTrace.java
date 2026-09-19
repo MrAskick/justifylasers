@@ -24,8 +24,18 @@ public record LaserBeamTrace(
         @Nullable Direction hitSide,
         int rgb,
         double power,
-        @Nullable BlockPos combinedBy
+        @Nullable BlockPos combinedBy,
+        BeamBehavior behavior,
+        double workPower
 ) {
+    public LaserBeamTrace(Vec3d start, Vec3d end, Direction direction, BlockPos hitBlock, Direction hitSide,
+                          int rgb, double power, BlockPos combinedBy, BeamBehavior behavior) {
+        this(start, end, direction, hitBlock, hitSide, rgb, power, combinedBy, behavior, power);
+    }
+    public LaserBeamTrace(Vec3d start, Vec3d end, Direction direction, @Nullable BlockPos hitBlock,
+                          @Nullable Direction hitSide, int rgb, double power, @Nullable BlockPos combinedBy) {
+        this(start, end, direction, hitBlock, hitSide, rgb, power, combinedBy, BeamBehavior.NONE);
+    }
     public LaserBeamTrace(Vec3d start, Vec3d end, Direction direction, @Nullable BlockPos hitBlock,
                           @Nullable Direction hitSide, int rgb, double power) {
         this(start, end, direction, hitBlock, hitSide, rgb, power, null);
@@ -40,16 +50,29 @@ public record LaserBeamTrace(
     }
 
     public LaserBeamTrace withOptics(int color, double fraction) {
-        return new LaserBeamTrace(start, end, direction, hitBlock, hitSide, color & 0xFFFFFF, fraction, combinedBy);
+        return new LaserBeamTrace(start, end, direction, hitBlock, hitSide, color & 0xFFFFFF, fraction, combinedBy, behavior);
     }
 
     public LaserBeamTrace combinedBy(@Nullable BlockPos combiner) {
-        return new LaserBeamTrace(start, end, direction, hitBlock, hitSide, rgb, power, combiner);
+        return new LaserBeamTrace(start, end, direction, hitBlock, hitSide, rgb, power, combiner, behavior, workPower);
+    }
+
+    public LaserBeamTrace withBehavior(BeamBehavior value) {
+        return new LaserBeamTrace(start, end, direction, hitBlock, hitSide, rgb, power, combinedBy, value, workPower);
+    }
+    public LaserBeamTrace paid(double fraction) {
+        return new LaserBeamTrace(start, end, direction, hitBlock, hitSide, rgb, power * fraction, combinedBy, behavior, workPower);
+    }
+    public LaserBeamTrace withWorkPower(double value) {
+        return new LaserBeamTrace(start, end, direction, hitBlock, hitSide, rgb, power, combinedBy, behavior, value);
     }
 
     public Vec3d axis() {
         Vec3d delta = end.subtract(start);
-        return delta.lengthSquared() > 1.0E-12D ? delta.normalize() : Vec3d.of(direction.getVector());
+        // Vec3d.normalize() zeroes vectors shorter than 1e-4, including the gap
+        // between touching optical ports. Coalescing must keep that segment's axis.
+        double squaredLength = delta.lengthSquared();
+        return squaredLength > 1.0E-12D ? delta.multiply(1 / Math.sqrt(squaredLength)) : Vec3d.of(direction.getVector());
     }
 
     public double length() {
@@ -107,7 +130,12 @@ public record LaserBeamTrace(
                     if (shape.isEmpty()) {
                         return null;
                     }
-                    if (state.getBlock() instanceof LaserOpticBlock) {
+                    if (state.getBlock() instanceof net.askcraft.justifylasers.block.LaserPartBlock part && part.module() != null) {
+                        // Hollow module frames still process the light travelling through their aperture.
+                        BlockHitResult surface = Box.raycast(java.util.List.of(shape.getBoundingBox()), start, maxEnd, currentPos);
+                        if (surface != null) return surface;
+                    }
+                    if (state.getBlock() instanceof LaserOpticBlock || view.getBlockEntity(currentPos) instanceof LaserLightSink) {
                         // Vanilla's inside-shape probe advances by 0.1% of the entire ray, which
                         // can skip an adjacent optical input on long beams. Use the exact face first.
                         BlockHitResult surface = Box.raycast(shape.getBoundingBoxes(), start, maxEnd, currentPos);

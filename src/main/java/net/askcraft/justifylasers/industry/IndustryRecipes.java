@@ -13,12 +13,13 @@ public final class IndustryRecipes {
         return switch (kind) {
             case FUEL_GENERATOR -> fuelTicks(stack) > 0;
             case CRYSTAL_GROWER -> slot == 0 ? stack.isOf(ModIndustry.RAW_PHOTONIC_CRYSTAL) : stack.isOf(Items.QUARTZ);
-            case ASSEMBLY_CHAMBER -> false;
+            case ASSEMBLY_CHAMBER, CHEMICAL_SYNTHESIZER, LASER_CUTTER -> false;
         };
     }
 
     public static int fuelTicks(ItemStack stack) {
-        return stack.isEmpty() ? 0 : AbstractFurnaceBlockEntity.createFuelTimeMap().getOrDefault(stack.getItem(), 0);
+        int ticks = stack.isEmpty() ? 0 : AbstractFurnaceBlockEntity.createFuelTimeMap().getOrDefault(stack.getItem(), 0);
+        return stack.isOf(Items.LAVA_BUCKET) ? ticks / 3 : ticks;
     }
 
     private IndustryRecipes() { }

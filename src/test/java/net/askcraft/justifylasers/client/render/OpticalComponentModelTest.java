@@ -15,8 +15,13 @@ class OpticalComponentModelTest {
         verify("configurator", LaserConfiguratorModel.MESH, 1.45);
         verify("refocusing_cube", RefocusingCubeChassis.MESH, 0.451);
         verify("laser_mirror", LaserMirrorModel.PLATE, 0.5);
-        LaserMirrorModel.MOUNTS.values().forEach(mesh -> verify("laser_mirror", mesh, 0.5));
+        for (var mesh : List.of(LaserMirrorModel.BASE, LaserMirrorModel.STAND, LaserMirrorModel.GLASS)) verify("laser_mirror", mesh, 0.5);
         verify("beam_splitter", BeamSplitterModel.CHASSIS, 0.5);
+        verify("spectrum_module", SpectrumModuleModel.FRAME, .5);
+        verify("spectrum_module", SpectrumModuleModel.PRISM, .5);
+        SpectrumModuleModel.DIAL.forEach(mesh -> verify("spectrum_module", mesh, .5));
+        verify("laser_cutter", LaserCutterModel.FRAME, 1.01);
+        verify("laser_cutter", LaserCutterModel.CASING, .51);
         BeamSplitterModel.PORTS.values().forEach(modes -> modes.values().forEach(mesh -> verify("beam_splitter", mesh, 0.5)));
     }
 
@@ -31,7 +36,7 @@ class OpticalComponentModelTest {
 
     @Test
     void mirrorSupportLeavesTheRotatingApertureClear() {
-        for (var mount : LaserMirrorModel.MOUNTS.values()) for (var face : mount.faces()) {
+        for (var mount : List.of(LaserMirrorModel.BASE, LaserMirrorModel.STAND)) for (var face : mount.faces()) {
             for (int u = 0; u <= 8; u++) for (int v = 0; v <= 8; v++) {
                 var bottom = face.a().lerp(face.b(), u / 8d);
                 var top = face.d().lerp(face.c(), u / 8d);

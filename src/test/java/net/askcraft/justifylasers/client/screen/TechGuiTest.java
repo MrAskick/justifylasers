@@ -23,7 +23,7 @@ class TechGuiTest {
     @Test
     void everyIconHasDistinctBoundedGeometryFacingTheGuiCamera() {
         var meshes = new HashSet<>();
-        assertEquals(9, TechGui.Icon.values().length);
+        assertEquals(14, TechGui.Icon.values().length);
         for (var icon : TechGui.Icon.values()) {
             assertTrue(meshes.add(icon.mesh()), icon.name());
             assertFalse(icon.mesh().isEmpty(), icon.name());

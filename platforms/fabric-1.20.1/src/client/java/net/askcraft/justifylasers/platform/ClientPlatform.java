@@ -39,6 +39,17 @@ import java.util.function.Consumer;
 
 public final class ClientPlatform {
     public static void initialize() {
+        net.askcraft.justifylasers.registry.ModNutrients.STILL.forEach((kind, fluid) -> {
+            var flowing = net.askcraft.justifylasers.registry.ModNutrients.FLOWING.get(kind);
+            net.fabricmc.fabric.api.client.render.fluid.v1.FluidRenderHandlerRegistry.INSTANCE.register(fluid, flowing,
+                    new net.fabricmc.fabric.api.client.render.fluid.v1.SimpleFluidRenderHandler(
+                            GameVersion.id("minecraft", "block/water_still"), GameVersion.id("minecraft", "block/water_flow"), kind.rgb()));
+            net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap.INSTANCE.putFluids(net.minecraft.client.render.RenderLayer.getTranslucent(), fluid, flowing);
+        });
+        ClientPlayNetworking.registerGlobalReceiver(net.askcraft.justifylasers.network.LightBridgePacket.ID, (client, handler, buffer, sender) -> {
+            var packet = new net.askcraft.justifylasers.network.LightBridgePacket(buffer);
+            client.execute(packet::deliver);
+        });
         net.askcraft.justifylasers.network.SaberStatePacket.receiver = net.askcraft.justifylasers.client.SaberFencingClient::receive;
         ClientPlayNetworking.registerGlobalReceiver(net.askcraft.justifylasers.network.SaberStatePacket.ID, (client, handler, buffer, sender) -> {
             var packet = new net.askcraft.justifylasers.network.SaberStatePacket(buffer);
@@ -47,9 +58,10 @@ public final class ClientPlatform {
         net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback.EVENT.register((stack, context, lines) -> net.askcraft.justifylasers.client.SaberTooltips.append(stack, lines));
         net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper.registerKeyBinding(net.askcraft.justifylasers.client.ClientSettingsKey.OPEN);
         net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper.registerKeyBinding(net.askcraft.justifylasers.client.ClientSettingsKey.SABER_TOGGLE);
+        net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper.registerKeyBinding(net.askcraft.justifylasers.client.ClientSettingsKey.CONFIGURATOR);
         ClientPlayNetworking.registerGlobalReceiver(LaserPolicyPacket.ID, (client, handler, buffer, sender) -> {
             LaserPolicyPacket policy = new LaserPolicyPacket(buffer);
-            client.execute(() -> LaserConfig.applyServerMode(policy.technicalMode()));
+            client.execute(policy::apply);
         });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> LaserConfig.resetServerMode());
         ColorProviderRegistry.ITEM.register((stack, tint) -> ((LaserCrystalItem) stack.getItem()).color().rgb(),
@@ -63,6 +75,7 @@ public final class ClientPlatform {
         ClientTickEvents.END_CLIENT_TICK.register(net.askcraft.justifylasers.client.JustifyLasersClient::tick);
         HandledScreens.register(ModScreenHandlers.LASER_EMITTER, LaserEmitterScreen::new);
         HandledScreens.register(ModScreenHandlers.POWERED_LASER_EMITTER, PoweredLaserEmitterScreen::new);
+        HandledScreens.register(ModScreenHandlers.LASER_MODULE, net.askcraft.justifylasers.client.screen.LaserModuleScreen::new);
         HandledScreens.register(ModScreenHandlers.LASER_RECEIVER, LaserReceiverScreen::new);
         HandledScreens.register(ModScreenHandlers.INDUSTRIAL_MACHINE, net.askcraft.justifylasers.client.screen.IndustrialMachineScreen::new);
         HandledScreens.register(ModScreenHandlers.SOLAR_CONCENTRATOR, net.askcraft.justifylasers.client.screen.SolarConcentratorScreen::new);
@@ -76,6 +89,7 @@ public final class ClientPlatform {
         BlockEntityRendererFactories.register(ModBlockEntities.INDUSTRIAL_MACHINE, net.askcraft.justifylasers.client.render.IndustrialMachineRenderer::new);
         BlockEntityRendererFactories.register(ModBlockEntities.LASER_TURRET, net.askcraft.justifylasers.client.render.LaserTurretRenderer::new);
         BlockEntityRendererFactories.register(ModBlockEntities.LASER_OPTIC, net.askcraft.justifylasers.client.render.LaserOpticRenderer::new);
+        BlockEntityRendererFactories.register(ModBlockEntities.LIGHT_BRIDGE, net.askcraft.justifylasers.client.render.LightBridgeBlockRenderer::new);
         ModLaserParts.items().forEach(item -> BuiltinItemRendererRegistry.INSTANCE.register(item, LaserPartRenderer::renderItem));
         BuiltinItemRendererRegistry.INSTANCE.register(ModEntities.REFOCUSING_CUBE_ITEM,
                 (stack, mode, matrices, consumers, light, overlay) -> {
@@ -99,6 +113,18 @@ public final class ClientPlatform {
     }
 
     private ClientPlatform() {
+    }
+
+    public static void sendConfiguratorMode(net.askcraft.justifylasers.network.ConfiguratorModePacket packet) {
+        var buffer = PacketByteBufs.create();
+        packet.write(buffer);
+        ClientPlayNetworking.send(net.askcraft.justifylasers.network.ConfiguratorModePacket.ID, buffer);
+    }
+
+    public static void sendMirrorAim(net.askcraft.justifylasers.network.MirrorAimPacket packet) {
+        var buffer = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
+        packet.write(buffer);
+        ClientPlayNetworking.send(net.askcraft.justifylasers.network.MirrorAimPacket.ID, buffer);
     }
 
     public static void sendSaberToggle(net.askcraft.justifylasers.network.SaberTogglePacket packet) {

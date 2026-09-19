@@ -26,16 +26,19 @@ public final class JustifyLasers {
 
     public static void initialize() {
         LaserConfig.initialize();
+        net.askcraft.justifylasers.registry.ModNutrients.initialize();
         Platform.onRegister(RegistryKeys.BLOCK, () -> {
             ModBlocks.initialize();
             net.askcraft.justifylasers.registry.ModIndustry.initializeBlocks();
             ModLaserParts.initializeBlocks();
+            net.askcraft.justifylasers.registry.ModNutrients.blocks();
         });
         Platform.onRegister(RegistryKeys.ITEM, () -> {
             ModBlocks.initializeItems();
             ModEntities.initializeItems();
             ModLaserParts.initialize();
             net.askcraft.justifylasers.registry.ModIndustry.initializeItems();
+            net.askcraft.justifylasers.registry.ModNutrients.items();
         });
         Platform.onRegister(RegistryKeys.ENTITY_TYPE, ModEntities::initialize);
         Platform.onRegister(RegistryKeys.BLOCK_ENTITY_TYPE, ModBlockEntities::initialize);
@@ -45,8 +48,10 @@ public final class JustifyLasers {
         Platform.registerSettingsReceiver();
         Platform.registerEnergy();
         net.askcraft.justifylasers.industry.IndustryRecipe.initialize();
+        net.askcraft.justifylasers.industry.AmplifierUpgradeRecipe.initialize();
         Platform.registerExplorationLoot();
         LaserBeamNetwork.initialize();
+        Platform.onEndWorldTick(net.askcraft.justifylasers.bridge.LightBridgeNetwork::tick);
         Platform.onEndWorldTick(net.askcraft.justifylasers.laser.SaberCombat::tick);
         Platform.onEndWorldTick(net.askcraft.justifylasers.item.LaserGunItem::tick);
 

@@ -14,6 +14,7 @@ import java.util.Locale;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.DoubleConsumer;
+import java.util.function.DoublePredicate;
 
 public final class ClientSettingsScreen extends Screen {
     private final Screen parent;
@@ -31,10 +32,10 @@ public final class ClientSettingsScreen extends Screen {
         left = (width - panelWidth) / 2;
         top = Math.max(4, (height - 244) / 2);
         rowWidth = panelWidth - 24;
-        String[] tabs = {"optics", "effects", "audio"};
+        String[] tabs = {"optics", "effects", "audio", "mirrors", "machines"};
         for (int i = 0; i < tabs.length; i++) {
             int selected = i;
-            addDrawableChild(new SettingButton(left + 12 + i * (rowWidth / 3), top + 31, rowWidth / 3 - 2,
+            addDrawableChild(new SettingButton(left + 12 + i * (rowWidth / tabs.length), top + 31, rowWidth / tabs.length - 2,
                     label(tabs[i]), b -> { tab = selected; rebuild(); }, () -> tab == selected));
         }
         ClientSettings settings = ClientSettings.get();
@@ -50,9 +51,16 @@ public final class ClientSettingsScreen extends Screen {
             toggle(2, "weapon_sway", () -> settings.weaponSway, value -> settings.weaponSway = value);
             toggle(3, "saber_sparks", () -> settings.saberSparks, value -> settings.saberSparks = value);
             toggle(4, "solar_shafts", () -> settings.solarLightShafts, value -> settings.solarLightShafts = value);
-        } else {
+        } else if (tab == 2) {
             slider(0, "sound_volume", settings.soundVolume * 100, 0, 100, 5, value -> settings.soundVolume = value / 100);
             slider(1, "sound_limit", settings.maxSoundSources, 1, 64, 1, value -> settings.maxSoundSources = (int) value);
+        } else if (tab == 3) {
+            toggle(0, "mirror_reflections", () -> settings.mirrorReflections, value -> settings.mirrorReflections = value);
+            slider(1, "mirror_distance", settings.mirrorDistance, 8, 64, 8, value -> settings.mirrorDistance = (int) value);
+            slider(2, "mirror_limit", settings.maxMirrors, 1, 32, 1, value -> settings.maxMirrors = (int) value, value -> value > 4);
+            toggle(3, "mirror_shaders", () -> settings.mirrorShaders, value -> settings.mirrorShaders = value, true);
+        } else {
+            toggle(0, "machine_displays", () -> settings.machineDisplays, value -> settings.machineDisplays = value);
         }
         addDrawableChild(new SettingButton(left + 12, top + 210, rowWidth / 2 - 3,
                 label("reset"), b -> { ClientSettings.reset(); rebuild(); }, () -> false));
@@ -64,10 +72,14 @@ public final class ClientSettingsScreen extends Screen {
     private static Text label(String name) { return Text.translatable("gui.justifylasers.client." + name); }
 
     private void toggle(int row, String name, BooleanSupplier value, Consumer<Boolean> change) {
+        toggle(row, name, value, change, false);
+    }
+
+    private void toggle(int row, String name, BooleanSupplier value, Consumer<Boolean> change, boolean warnWhenEnabled) {
         var button = new SettingButton(left + 12, top + 61 + row * 26, rowWidth, toggleText(name, value.getAsBoolean()), b -> {
             change.accept(!value.getAsBoolean());
             b.setMessage(toggleText(name, value.getAsBoolean()));
-        }, value);
+        }, value, () -> warnWhenEnabled && value.getAsBoolean());
         button.setTooltip(Tooltip.of(label(name + ".tooltip")));
         addDrawableChild(button);
     }
@@ -77,6 +89,10 @@ public final class ClientSettingsScreen extends Screen {
     }
 
     private void slider(int row, String name, double initial, double min, double max, double step, DoubleConsumer change) {
+        slider(row, name, initial, min, max, step, change, value -> false);
+    }
+
+    private void slider(int row, String name, double initial, double min, double max, double step, DoubleConsumer change, DoublePredicate warning) {
         var slider = new SliderWidget(left + 12, top + 61 + row * 26, rowWidth, 20, Text.empty(), (initial - min) / (max - min)) {
             private double selected() { return Math.max(min, Math.min(max, min + Math.round(value * (max - min) / step) * step)); }
             @Override protected void updateMessage() {
@@ -88,7 +104,7 @@ public final class ClientSettingsScreen extends Screen {
             }
             public void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
                 TechGui.slider(context, getX(), getY(), getWidth(), getHeight(), value,
-                        TechGui.State.of(active, false, isHovered(), isFocused(), false));
+                        TechGui.State.of(active, false, isHovered(), isFocused(), false), warning.test(selected()));
                 context.drawCenteredTextWithShadow(textRenderer, getMessage(), getX() + getWidth() / 2, getY() + 5, 0xE7F4FC);
             }
             { updateMessage(); }
@@ -122,11 +138,17 @@ public final class ClientSettingsScreen extends Screen {
 
     private final class SettingButton extends ButtonWidget {
         private final BooleanSupplier selected;
+        private final BooleanSupplier warning;
         private long pressedUntil;
 
         SettingButton(int x, int y, int width, Text label, PressAction action, BooleanSupplier selected) {
+            this(x, y, width, label, action, selected, () -> false);
+        }
+
+        SettingButton(int x, int y, int width, Text label, PressAction action, BooleanSupplier selected, BooleanSupplier warning) {
             super(x, y, width, 20, label, action, DEFAULT_NARRATION_SUPPLIER);
             this.selected = selected;
+            this.warning = warning;
         }
 
         @Override public void onPress() {
@@ -142,7 +164,7 @@ public final class ClientSettingsScreen extends Screen {
         public void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
             boolean pressed = Util.getMeasuringTimeMs() < pressedUntil;
             TechGui.button(context, getX(), getY(), getWidth(), getHeight(),
-                    TechGui.State.of(active, pressed, isHovered(), isFocused(), selected.getAsBoolean()));
+                    TechGui.State.of(active, pressed, isHovered(), isFocused(), selected.getAsBoolean()), warning.getAsBoolean());
             context.drawCenteredTextWithShadow(textRenderer, getMessage(), getX() + getWidth() / 2,
                     getY() + 6 + (pressed ? 1 : 0), active ? 0xE7F4FC : 0x6D8A98);
         }

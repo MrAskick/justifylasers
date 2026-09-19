@@ -38,6 +38,7 @@ public class LaserEmitterScreen extends HandledScreen<LaserEmitterScreenHandler>
     private SettingSlider knockbackSlider;
     private SettingSlider hitRateSlider;
     private SettingSlider miningSpeedSlider;
+    private SettingSlider fluxSlider;
     private ButtonWidget lightEmissionButton;
     private ButtonWidget minecraftLightingButton;
     private ButtonWidget breakBlocksButton;
@@ -82,7 +83,7 @@ public class LaserEmitterScreen extends HandledScreen<LaserEmitterScreenHandler>
         int buttonX = x + 22;
         int buttonWidth = backgroundWidth - 44;
         poweredLayout = handler.isPoweredEmitter();
-        int rowStep = Math.min(22, (backgroundHeight - (poweredLayout ? 100 : 84)) / 9);
+        int rowStep = Math.min(22, (backgroundHeight - (poweredLayout ? 100 : 84)) / 10);
         int buttonHeight = rowStep - 2;
         enabledButton = addDrawableChild(makeButton(buttonX, y + 48, buttonWidth, buttonHeight,
                 LaserEmitterScreenHandler.BUTTON_ENABLED));
@@ -124,6 +125,12 @@ public class LaserEmitterScreen extends HandledScreen<LaserEmitterScreenHandler>
                 .dimensions(buttonX + buttonWidth - 20, y + 48 + rowStep * 8, 20, buttonHeight)
                 .tooltip(Tooltip.of(Text.translatable("gui.justifylasers.damage_settings")))
                 .build());
+
+        fluxSlider = addDrawableChild(new SettingSlider(buttonX, y + 48 + rowStep * 9, buttonWidth, buttonHeight,
+                0, net.askcraft.justifylasers.laser.CreativeFlux.STEPS, handler.creativeFluxStep(), handler::creativeFluxStep,
+                LaserEmitterScreenHandler.FLUX_BUTTON_BASE,
+                step -> Text.translatable("gui.justifylasers.creative_flux", net.askcraft.justifylasers.laser.LuminousFlux.format(net.askcraft.justifylasers.laser.CreativeFlux.lumens(step)))));
+        fluxSlider.setTooltip(Tooltip.of(Text.translatable("gui.justifylasers.creative_flux.tooltip")));
 
         ButtonWidget closeButton = addDrawableChild(ButtonWidget.builder(
                         Text.translatable("gui.justifylasers.close"),
@@ -211,11 +218,11 @@ public class LaserEmitterScreen extends HandledScreen<LaserEmitterScreenHandler>
 
         mainControls = List.of(enabledButton, redstoneButton, colorButton, thicknessSlider, rangeSlider,
                 lightEmissionButton, minecraftLightingButton, breakBlocksButton, miningSettingsButton,
-                damageEntitiesButton, damageSettingsButton, closeButton, energySettingsButton);
+                damageEntitiesButton, damageSettingsButton, closeButton, energySettingsButton, fluxSlider);
         damageControls = List.of(damageSlider, knockbackSlider, hitRateSlider, igniteEntitiesButton, resetButton, backButton);
         miningControls = List.of(miningSpeedSlider, silkTouchButton, dropBlocksButton, scorchMarksButton, miningResetButton, miningBackButton);
         energyControls = List.of(energyBackButton);
-        sliders = List.of(thicknessSlider, rangeSlider, damageSlider, knockbackSlider, hitRateSlider, miningSpeedSlider);
+        sliders = List.of(thicknessSlider, rangeSlider, damageSlider, knockbackSlider, hitRateSlider, miningSpeedSlider, fluxSlider);
         setPage(page);
 
         updateButtonMessages();
@@ -395,12 +402,16 @@ public class LaserEmitterScreen extends HandledScreen<LaserEmitterScreenHandler>
             return;
         }
 
-        int previewY = bottom - 41;
+        int previewTop = fluxSlider.getY() + fluxSlider.getHeight() + 1;
+        int previewBottom = bottom - 27;
+        if (previewBottom - previewTop < 14) return;
+        int previewY = (previewTop + previewBottom) / 2;
         float widthScale = thicknessSlider == null
                 ? handler.getBeamWidthScale()
                 : LaserEmitterBlockEntity.beamWidthScale(thicknessSlider.getStep());
         float previewWidth = MathHelper.sqrt(widthScale);
-        int haloRadius = MathHelper.clamp(Math.round(2.0F + previewWidth * 3.0F), 2, 13);
+        int haloRadius = MathHelper.clamp(Math.round(2.0F + previewWidth * 3.0F), 2,
+                Math.min(13, (previewBottom - previewTop - 1) / 2));
         int colorRadius = Math.max(1, Math.round(haloRadius * 0.52F));
         int coreRadius = Math.max(1, Math.round(previewWidth * 0.48F));
 

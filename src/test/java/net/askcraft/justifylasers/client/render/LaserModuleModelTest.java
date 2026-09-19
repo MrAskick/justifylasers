@@ -9,10 +9,16 @@ import java.util.HashSet;
 import static org.junit.jupiter.api.Assertions.*;
 
 class LaserModuleModelTest {
+    @Test void thicknessTierTwoIsNotTierOneWithAnAddedOverlay() {
+        var basic = new HashSet<>(LaserModuleModel.meshes().get("thickness_module"));
+        var advanced = LaserModuleModel.meshes().get("advanced_thickness_module");
+        assertTrue(advanced.stream().filter(basic::contains).count() < advanced.size() / 10);
+        assertTrue(advanced.stream().anyMatch(face -> face.material() == LaserModuleModel.Material.GOLD));
+    }
     @Test
     void everyModuleHasItsOwnSolidMeshWithValidNormalsAndBounds() {
         var meshes = LaserModuleModel.meshes();
-        assertEquals(11, meshes.size());
+        assertEquals(17, meshes.size()); // Spectrum uses the separate glass/prism renderer.
         var unique = new HashSet<>();
         for (var entry : meshes.entrySet()) {
             String id = entry.getKey();

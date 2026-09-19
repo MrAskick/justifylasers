@@ -25,6 +25,52 @@ import java.util.List;
 public class BeamCombinerGameTests implements FabricGameTest {
     private static final BlockPos CENTER = new BlockPos(4, 3, 3), A = new BlockPos(1, 3, 3), B = new BlockPos(4, 3, 1);
 
+    @GameTest(templateName = EMPTY_STRUCTURE, batchId = "combiner_energy", tickLimit = 20)
+    public void touchingChainSumsNewInputsAndDeliversFluxThroughATurn(TestContext context) {
+        var red = powered(context, A, Direction.EAST, LaserColor.RED);
+        var blue = powered(context, B, Direction.SOUTH, LaserColor.BLUE);
+        optic(context, CENTER, ModBlocks.BEAM_COMBINER, Direction.EAST);
+        optic(context, CENTER.east(), ModBlocks.BEAM_COMBINER, Direction.SOUTH);
+        var greenPos = CENTER.east(3);
+        var green = powered(context, greenPos, Direction.WEST, LaserColor.GREEN);
+        var sink = optic(context, CENTER.east().south(), ModBlocks.ENERGY_RECEIVER, Direction.NORTH);
+        context.runAtTick(4, () -> {
+            long expected = LuminousFlux.share(red.luminousFlux(), .95 * .95)
+                    + LuminousFlux.share(blue.luminousFlux(), .95 * .95) + LuminousFlux.share(green.luminousFlux(), .95);
+            context.assertTrue(sink.lastFlux() == expected, "Touching combiners sum every contribution with one loss per traversed combiner: "
+                    + sink.lastFlux() + " / " + expected + "; red=" + LaserBeamNetwork.path(red, 1).last()
+                    + "; blue=" + LaserBeamNetwork.path(blue, 1).last() + "; green=" + LaserBeamNetwork.path(green, 1).last());
+            context.assertTrue(sink.lastInput() == LuminousFlux.toEnergyRate(expected, LaserConfig.get().lumensPerEnergyUnit,
+                    LaserConfig.get().energyTransmissionEfficiency), "The adjacent receiver converts the summed flux, not separate rounded shares");
+            context.removeBlock(A); context.removeBlock(B); context.removeBlock(greenPos); context.complete();
+        });
+    }
+
+    @GameTest(templateName = EMPTY_STRUCTURE, batchId = "combiner_energy", tickLimit = 25)
+    public void touchingCombinersAcceptTheSharedFaceInAllSixDirections(TestContext context) {
+        var first = optic(context, CENTER, ModBlocks.BEAM_COMBINER, Direction.EAST);
+        context.runAtTick(3, () -> {
+            for (Direction facing : Direction.values()) {
+                var active = facing == Direction.WEST ? powered(context, B, Direction.SOUTH, LaserColor.RED)
+                        : powered(context, A, Direction.EAST, LaserColor.RED);
+                first.setPortMode(facing, OpticPortMode.OUTPUT);
+                var second = optic(context, CENTER.offset(facing), ModBlocks.BEAM_COMBINER, facing);
+                var sink = optic(context, CENTER.offset(facing, 2), ModBlocks.ENERGY_RECEIVER, facing.getOpposite());
+                tick(active);
+                var ray = LaserBeamNetwork.path(active, 1).last();
+                context.assertTrue(sink.getPos().equals(ray.hitBlock()), "Touching chain reaches sink toward " + facing + ": " + ray);
+                context.assertTrue(Math.abs(ray.power() - .95 * .95) < 1e-9, "Both losses apply exactly once");
+                second.setPortMode(facing.getOpposite(), OpticPortMode.DISABLED);
+                tick(active);
+                context.assertTrue(second.getPos().equals(LaserBeamNetwork.path(active, 1).last().hitBlock()), "Disabled adjacent input still stops light");
+                context.removeBlock(CENTER.offset(facing)); context.removeBlock(CENTER.offset(facing, 2));
+                context.removeBlock(A); context.removeBlock(B);
+            }
+            context.removeBlock(A); context.removeBlock(B); context.complete();
+        });
+    }
+
+
     @GameTest(templateName = EMPTY_STRUCTURE)
     public void oneOutputInvariantAndDisabledFacesSurviveNbt(TestContext context) {
         var combiner = optic(context, CENTER, ModBlocks.BEAM_COMBINER, Direction.EAST);

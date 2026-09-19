@@ -29,6 +29,26 @@ public class LaserOpticsGameTests implements FabricGameTest {
     private static final BlockPos OPTIC = new BlockPos(4, 3, 3);
 
     @GameTest(templateName = EMPTY_STRUCTURE)
+    public void mirrorsCanLinkBeforeAnyBeamExistsAndReacquireItAfterReload(TestContext context) {
+        context.setBlockState(OPTIC, ModBlocks.LASER_MIRROR.getDefaultState().with(LaserOpticBlock.FACING, Direction.UP));
+        context.setBlockState(OPTIC.south(3), ModBlocks.LASER_MIRROR.getDefaultState().with(LaserOpticBlock.FACING, Direction.UP));
+        var mirror=(LaserOpticBlockEntity)context.getBlockEntity(OPTIC);
+        var target=context.getAbsolutePos(OPTIC.south(3));
+        mirror.linkTo(target);
+        context.assertTrue(mirror.normal().dotProduct(new Vec3d(0,0,1))>.9999,"Unpowered mirror faces the selected destination");
+        var saved=mirror.createNbt(); mirror.aim(new Vec3d(1,0,0)); mirror.readNbt(saved);
+        context.assertTrue(target.equals(mirror.linkedMirror()),"Link survives world reload");
+        var emitter=emitter(context); tick(emitter);
+        var path=LaserBeamNetwork.path(emitter,1);
+        context.assertTrue(path.segments().stream().anyMatch(ray -> target.equals(ray.hitBlock())),"First powered ray reaches linked destination");
+        context.assertTrue(mirror.aimManually(mirror.yaw()+5,mirror.pitch()),"Small manual adjustment accepted");
+        context.assertTrue(mirror.linkedMirror()==null,"Manual adjustment releases automatic target");
+        context.assertFalse(mirror.aimManually(mirror.yaw()+5,mirror.pitch()),"Repeated same-tick packets are rate-limited");
+        context.assertFalse(mirror.aimManually(Double.NaN,0),"Invalid angles rejected");
+        context.removeBlock(SOURCE); context.complete();
+    }
+
+    @GameTest(templateName = EMPTY_STRUCTURE)
     public void crystalsRecolorOnlyTheirOutgoingSegmentAndDoNotTunnelThroughWalls(TestContext context) {
         var emitter = emitter(context);
         var crystal = ModLaserParts.DECORATIONS.get("blue_crystal");
@@ -231,8 +251,8 @@ public class LaserOpticsGameTests implements FabricGameTest {
         var receiver = (LaserOpticBlockEntity) context.getBlockEntity(OPTIC);
         receiver.energy().restore(1234);
         context.runAtTick(3, () -> {
-            context.assertTrue(receiver.rgb() == LaserColor.RED.rgb() && receiver.emitsShaderLight(), "Creative beam lights the input without producing energy");
-            context.assertTrue(receiver.energy().stored() == 1234, "Color tracking cannot generate FE");
+            context.assertTrue(receiver.rgb() == LaserColor.RED.rgb() && receiver.emitsShaderLight(), "Creative beam lights the input");
+            context.assertTrue(receiver.energy().stored() > 1234, "Creative optical power is convertible to FE");
             receiver.setPortMode(Direction.WEST, OpticPortMode.DISABLED);
         });
         context.runAtTick(6, () -> {
@@ -337,7 +357,7 @@ public class LaserOpticsGameTests implements FabricGameTest {
             creative.getPropertyDelegate().set(13, 10);
         });
         context.runAtTick(9, () -> {
-            context.assertTrue(receiver.energy().stored() == frozen[0], "Creative emitters cannot generate energy");
+            context.assertTrue(receiver.energy().stored() > frozen[0], "Creative emitters supply adjustable test power");
             var splitSource = powered(context);
             context.setBlockState(OPTIC, ModBlocks.BEAM_SPLITTER.getDefaultState().with(LaserOpticBlock.FACING, Direction.WEST));
             context.setBlockState(OPTIC.east(2), ModBlocks.ENERGY_RECEIVER.getDefaultState().with(LaserOpticBlock.FACING, Direction.WEST));

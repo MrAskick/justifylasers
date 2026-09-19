@@ -39,6 +39,10 @@ public final class ClientPlatform {
     private static final java.util.List<ShaderRegistration> SHADERS = new java.util.ArrayList<>();
 
     public static void initialize() {
+        net.askcraft.justifylasers.registry.ModNutrients.STILL.values().forEach(fluid ->
+                net.minecraft.client.render.RenderLayers.setRenderLayer(fluid, net.minecraft.client.render.RenderLayer.getTranslucent()));
+        net.askcraft.justifylasers.registry.ModNutrients.FLOWING.values().forEach(fluid ->
+                net.minecraft.client.render.RenderLayers.setRenderLayer(fluid, net.minecraft.client.render.RenderLayer.getTranslucent()));
         net.askcraft.justifylasers.network.SaberStatePacket.receiver = net.askcraft.justifylasers.client.SaberFencingClient::receive;
         net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.player.ItemTooltipEvent event) -> net.askcraft.justifylasers.client.SaberTooltips.append(event.getItemStack(), event.getToolTip()));
         MinecraftForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut event) -> LaserConfig.resetServerMode());
@@ -62,6 +66,7 @@ public final class ClientPlatform {
         });
         HandledScreens.register(ModScreenHandlers.LASER_EMITTER, LaserEmitterScreen::new);
         HandledScreens.register(ModScreenHandlers.POWERED_LASER_EMITTER, PoweredLaserEmitterScreen::new);
+        HandledScreens.register(ModScreenHandlers.LASER_MODULE, net.askcraft.justifylasers.client.screen.LaserModuleScreen::new);
         HandledScreens.register(ModScreenHandlers.LASER_RECEIVER, LaserReceiverScreen::new);
         HandledScreens.register(ModScreenHandlers.INDUSTRIAL_MACHINE, net.askcraft.justifylasers.client.screen.IndustrialMachineScreen::new);
         HandledScreens.register(ModScreenHandlers.SOLAR_CONCENTRATOR, net.askcraft.justifylasers.client.screen.SolarConcentratorScreen::new);
@@ -131,6 +136,14 @@ public final class ClientPlatform {
     }
 
     private ClientPlatform() {
+    }
+
+    public static void sendConfiguratorMode(net.askcraft.justifylasers.network.ConfiguratorModePacket packet) {
+        Platform.NETWORK.sendToServer(packet);
+    }
+
+    public static void sendMirrorAim(net.askcraft.justifylasers.network.MirrorAimPacket packet) {
+        Platform.NETWORK.sendToServer(packet);
     }
 
     public static void sendSaberToggle(net.askcraft.justifylasers.network.SaberTogglePacket packet) {

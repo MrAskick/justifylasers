@@ -173,6 +173,7 @@ public final class IrisCompatibility {
     }
 
     public static boolean isShaderPackInUse() {
+        if (net.askcraft.justifylasers.client.render.MirrorRenderer.rendering() && !IrisMirrorPass.shaders()) return false;
         return invokeBoolean(SHADER_PACK_IN_USE);
     }
 

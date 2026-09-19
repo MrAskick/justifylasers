@@ -23,14 +23,21 @@ public final class ModLaserParts {
     public static final Map<LaserColor, LaserCrystalItem> CRYSTALS = new EnumMap<>(LaserColor.class);
     public static final Map<LaserModule, LaserModuleItem> MODULES = new EnumMap<>(LaserModule.class);
     public static LaserModuleItem ADVANCED_RANGE_MODULE;
+    public static LaserModuleItem ADVANCED_THICKNESS_MODULE;
     public static Item CONTROL_CIRCUIT;
+    public static net.askcraft.justifylasers.item.LaserAmplifierItem AMPLIFIER;
 
     public static void initializeBlocks() {
         for (LaserColor color : LaserColor.values()) registerDecoration(color.asString() + "_crystal");
         for (LaserModule module : LaserModule.values()) registerDecoration(module.id());
         registerDecoration("advanced_range_module");
+        registerDecoration("advanced_thickness_module");
+        registerDecoration("electric_motor");
         registerDecoration("control_circuit");
         registerDecoration("crystal_mount");
+        registerDecoration("raw_wolframite");
+        registerDecoration("raw_photonic_crystal");
+        for (var crystal : net.askcraft.justifylasers.industry.CrystalGrowth.values()) registerDecoration("grown_" + crystal.id() + "_crystal");
     }
 
     private static void registerDecoration(String id) {
@@ -44,6 +51,7 @@ public final class ModLaserParts {
     }
 
     public static void initialize() {
+        AMPLIFIER = Platform.register(Registries.ITEM, JustifyLasers.id("amplifier_module"), new net.askcraft.justifylasers.item.LaserAmplifierItem(new Item.Settings()));
         for (LaserColor color : LaserColor.values()) {
             CRYSTALS.put(color, Platform.register(Registries.ITEM, JustifyLasers.id(color.asString() + "_crystal"),
                     Platform.crystalItem(new Item.Settings().maxCount(1), color)));
@@ -54,6 +62,8 @@ public final class ModLaserParts {
         }
         ADVANCED_RANGE_MODULE = Platform.register(Registries.ITEM, JustifyLasers.id("advanced_range_module"),
                 Platform.moduleItem(new Item.Settings(), LaserModule.RANGE, 8));
+        ADVANCED_THICKNESS_MODULE = Platform.register(Registries.ITEM, JustifyLasers.id("advanced_thickness_module"),
+                Platform.moduleItem(new Item.Settings(), LaserModule.THICKNESS, 8));
         CONTROL_CIRCUIT = Platform.register(Registries.ITEM, JustifyLasers.id("control_circuit"), Platform.partItem(new Item.Settings(), "control_circuit"));
     }
 

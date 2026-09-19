@@ -30,8 +30,12 @@ final class ChamberModel {
         boolean grower = machine.kind() == MachineKind.CRYSTAL_GROWER;
         boolean active = machine.status() == IndustrialMachineBlockEntity.Status.WORKING || machine.calibration() > 0;
         float progress = machine.completion(delta), time = machine.getWorld().getTime() + delta;
-        int rgb = grower ? 0x78CBFF : 0xACECF9;
-        (grower ? GROWER : ASSEMBLER).render(matrices, consumers, light, rgb, active, true);
+        int rgb = grower ? machine.lightRgb() : 0xACECF9;
+        if (grower) {
+            float pulse = .75F + .15F * (float)Math.sin(time * .18) + .10F * (float)Math.sin(time * .47);
+            rgb = ((int)((rgb >> 16 & 255) * pulse) << 16) | ((int)((rgb >> 8 & 255) * pulse) << 8) | (int)((rgb & 255) * pulse);
+        }
+        (grower ? GROWER : ASSEMBLER).render(matrices, consumers, light, rgb, grower ? machine.lightFlux() > 0 : active, true);
         if (grower) {
             if (progress > 0 || !machine.getStack(IndustrialMachineBlockEntity.OUTPUT).isEmpty()) {
                 float size = machine.getStack(IndustrialMachineBlockEntity.OUTPUT).isEmpty() ? .20F + .78F * progress : .98F;
@@ -39,11 +43,18 @@ final class ChamberModel {
                 matrices.translate(0, -.49, 0);
                 matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(time * .65F));
                 matrices.scale(size, size, size);
-                matrices.translate(-.5, -.20, -.5);
-                LaserCrystalModel.renderBare(ModelTransformationMode.NONE, matrices, consumers, light, overlay);
+                var recipe = machine.recipe();
+                if (recipe != null && recipe.process().crystal() != null) {
+                    matrices.translate(0, .2, 0);
+                    MinecraftClient.getInstance().getItemRenderer().renderItem(recipe.result(), ModelTransformationMode.FIXED,
+                            light, overlay, matrices, consumers, machine.getWorld(), 0);
+                } else {
+                    matrices.translate(-.5, -.20, -.5);
+                    LaserCrystalModel.renderBare(ModelTransformationMode.NONE, matrices, consumers, light, overlay);
+                }
                 matrices.pop();
             }
-            if (machine.water() > 0) water(matrices, consumers, light, machine.water() / (float)machine.tankCapacity());
+            if (machine.water() > 0) water(matrices, consumers, light, machine.water() / (float)machine.tankCapacity(), machine.fluid(0).rgb());
             glass(matrices, consumers, light);
         } else {
             for (int side : new int[]{-1, 1}) {
@@ -80,6 +91,10 @@ final class ChamberModel {
 
     static OpticalComponentMesh chassis(boolean grower, boolean casing) {
         String atlas = (grower ? "crystal_chamber" : "assembly_chamber") + (casing ? "_casing" : "");
+        return chassis(atlas, grower, casing);
+    }
+
+    static OpticalComponentMesh chassis(String atlas, boolean grower, boolean casing) {
         var body = new OpticalComponentMesh.Builder(atlas);
         double extent = casing ? 8 : 16, foot = casing ? -5 : -10, roof = casing ? 5 : 12;
         body.bevel("dark", -extent + .1, -extent + .06, -extent + .1, extent - .1, foot - .06, extent - .1, .5);
@@ -132,9 +147,16 @@ final class ChamberModel {
             }
             body.add(face.build(), side);
         }
-        var top = new OpticalComponentMesh.Builder(atlas);
-        top.trimmedPanel("core", true, -3.4, -3.4, 3.4, 3.4, -extent + .03);
-        body.add(top.build(), Direction.UP);
+        // Service lids have separate UV islands, not a magnified corner of a column.
+        for (Direction side : new Direction[]{Direction.UP, Direction.DOWN}) {
+            var cap = new OpticalComponentMesh.Builder(atlas);
+            double edge = extent - 2.3;
+            for (int sign : new int[]{-1, 1}) {
+                double left = sign < 0 ? -edge : .14, right = sign < 0 ? -.14 : edge;
+                cap.panel("lid", false, left, -edge, right, edge, -extent - .012);
+            }
+            body.add(cap.build(), side);
+        }
         return body.build();
     }
 
@@ -153,16 +175,16 @@ final class ChamberModel {
         return jaw.build();
     }
 
-    private static void water(MatrixStack matrices, VertexConsumerProvider consumers, int light, float amount) {
+    private static void water(MatrixStack matrices, VertexConsumerProvider consumers, int light, float amount, int rgb) {
         Sprite sprite = MinecraftClient.getInstance().getSpriteAtlas(SpriteAtlasTexture.BLOCK_ATLAS_TEXTURE).apply(GameVersion.id("minecraft", "block/water_still"));
         double low = -.586, high = low + 1.24 * amount, side = .737;
         var buffer = consumers.getBuffer(LaserCrystalModel.EmissiveLayers.lens(SpriteAtlasTexture.BLOCK_ATLAS_TEXTURE));
         // Vanilla water already carries alpha 180/255 (~70%); do not attenuate it a second time.
-        quad(matrices, buffer, sprite, light, 0x649CEE, 255, new Vec3d(-side,high,-side),new Vec3d(-side,high,side),new Vec3d(side,high,side),new Vec3d(side,high,-side));
-        walls(matrices, buffer, sprite, light, 0x649CEE, 255, side, low, high);
+        quad(matrices, buffer, sprite, light, rgb, 255, new Vec3d(-side,high,-side),new Vec3d(-side,high,side),new Vec3d(side,high,side),new Vec3d(side,high,-side));
+        walls(matrices, buffer, sprite, light, rgb, 255, side, low, high);
     }
 
-    private static void glass(MatrixStack matrices, VertexConsumerProvider consumers, int light) {
+    static void glass(MatrixStack matrices, VertexConsumerProvider consumers, int light) {
         Sprite sprite = MinecraftClient.getInstance().getBlockRenderManager().getModel(net.minecraft.block.Blocks.GLASS.getDefaultState()).getParticleSprite();
         var buffer = consumers.getBuffer(LaserCrystalModel.EmissiveLayers.lens(SpriteAtlasTexture.BLOCK_ATLAS_TEXTURE));
         walls(matrices, buffer, sprite, light, 0xD8EEFF, 42, .75, -.60, .735);

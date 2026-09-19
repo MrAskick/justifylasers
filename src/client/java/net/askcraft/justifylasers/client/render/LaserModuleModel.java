@@ -32,23 +32,31 @@ public final class LaserModuleModel {
 
     public static void render(String id, ModelTransformationMode mode, MatrixStack matrices,
                               VertexConsumerProvider consumers, int light, int overlay) {
+        if (id.equals("spectrum_module")) { SpectrumModuleModel.render(mode, matrices, consumers, light); return; }
         List<Face> mesh = MESHES.get(id);
         if (mesh == null) return;
         matrices.push();
         try {
             if (mode == ModelTransformationMode.GUI) BOUNDS.get(id).fitGui(matrices);
             else matrices.scale(1 / 16.0F, 1 / 16.0F, 1 / 16.0F);
-            var texture = ComponentAtlas.texture("module/" + id, "default");
+            var texture = ComponentAtlas.texture("module/" + atlasId(id), "default");
+            int accent = switch (id) {
+                case "entity_heal_module" -> 0x50FF99;
+                case "entity_lift_module" -> 0x66DDFF;
+                case "entity_lower_module" -> 0xCB8CFF;
+                default -> 0xFFFFFF;
+            };
             for (Material material : Material.values()) {
                 VertexConsumer buffer = consumers.getBuffer(material.emissive && mode == ModelTransformationMode.GUI
                         ? LaserCrystalModel.EmissiveLayers.get(texture) : RenderLayer.getEntitySolid(texture));
                 int illumination = material.emissive ? LightmapTextureManager.MAX_LIGHT_COORDINATE : light;
                 for (Face face : mesh) {
                     if (face.material != material) continue;
-                    vertex(buffer, matrices, face, face.a, face.ua, illumination, overlay);
-                    vertex(buffer, matrices, face, face.b, face.ub, illumination, overlay);
-                    vertex(buffer, matrices, face, face.c, face.uc, illumination, overlay);
-                    vertex(buffer, matrices, face, face.d, face.ud, illumination, overlay);
+                    int rgb = material.emissive ? accent : 0xFFFFFF;
+                    vertex(buffer, matrices, face, face.a, face.ua, illumination, overlay, rgb);
+                    vertex(buffer, matrices, face, face.b, face.ub, illumination, overlay, rgb);
+                    vertex(buffer, matrices, face, face.c, face.uc, illumination, overlay, rgb);
+                    vertex(buffer, matrices, face, face.d, face.ud, illumination, overlay, rgb);
                 }
             }
         } finally {
@@ -60,12 +68,18 @@ public final class LaserModuleModel {
         return MESHES;
     }
 
+    static String atlasId(String id) {
+        if (id.equals("advanced_thickness_module")) return "thickness_module";
+        if (id.equals("block_collection_module")) return "block_drops_module";
+        return id.equals("entity_heal_module") || id.equals("entity_lift_module") || id.equals("entity_lower_module") ? "entity_damage_module" : id;
+    }
+
     private static void vertex(VertexConsumer buffer, MatrixStack matrices, Face face, Vec3d point,
-                               ComponentAtlas.Uv uv, int light, int overlay) {
+                               ComponentAtlas.Uv uv, int light, int overlay, int rgb) {
         Vec3d normal = face.normal;
         RenderVersion.endVertex(RenderVersion.normal(buffer.vertex(matrices.peek().getPositionMatrix(),
                         (float) point.x, (float) point.y, (float) point.z)
-                .color(255, 255, 255, 255).texture(uv.u(), uv.v()).overlay(overlay).light(light),
+                .color(rgb >> 16 & 255, rgb >> 8 & 255, rgb & 255, 255).texture(uv.u(), uv.v()).overlay(overlay).light(light),
                 matrices.peek().getNormalMatrix(), (float) normal.x, (float) normal.y, (float) normal.z));
     }
 
@@ -73,12 +87,18 @@ public final class LaserModuleModel {
         Map<String, List<Face>> result = new LinkedHashMap<>();
         result.put("block_destruction_module", drill());
         result.put("entity_damage_module", damage());
+        result.put("entity_heal_module", effect(0));
+        result.put("entity_lift_module", effect(1));
+        result.put("entity_lower_module", effect(-1));
         result.put("range_module", range(false));
         result.put("advanced_range_module", range(true));
         result.put("thickness_module", lens());
+        result.put("advanced_thickness_module", advancedLens());
+        result.put("electric_motor", motor());
         result.put("control_circuit", circuit());
         result.put("silk_touch_module", silk());
-        result.put("block_drops_module", collector());
+        result.put("block_drops_module", collector(false));
+        result.put("block_collection_module", cargoCollector());
         result.put("scorch_marks_module", thermal(false));
         result.put("ignition_module", thermal(true));
         result.put("target_filter_module", targetFilter());
@@ -248,6 +268,37 @@ public final class LaserModuleModel {
         return b.faces;
     }
 
+    private static List<Face> effect(int arrow) {
+        // Reuse neutral metal and white luminous atlas regions, not a recolored red texture.
+        Builder b = new Builder("entity_damage_module");
+        b.box(Material.FRAME, 3, .5, 4, 13, 13.4, 12.5);
+        for (double x : new double[]{1, 13}) for (double z : new double[]{1.8, 11.3}) {
+            b.box(Material.FRAME, x, 0, z, x + 2, 14, z + 2.3);
+            b.box(Material.STEEL, x, 0, z - .2, x + 2, 2.3, z + .2);
+            b.box(Material.STEEL, x, 11.7, z - .2, x + 2, 14, z + .2);
+            b.box(Material.WHITE, x + .7, 2.5, z - .05, x + 1.3, 11.5, z - .02);
+        }
+        b.ring(Material.STEEL, 8, 7, 2.7, 3.7, 5.25, 4.4);
+        b.ring(Material.WHITE, 8, 7, 2.64, 2.7, 4.4, 4.05);
+        b.cylinder(Material.FRAME, 8, 7, 2.72, 3.9, 4.05, 4.05);
+        if (arrow == 0) {
+            b.box(Material.WHITE, 7.2, 4.3, 2.52, 8.8, 9.7, 2.7);
+            b.box(Material.WHITE, 5.3, 6.2, 2.52, 10.7, 7.8, 2.7);
+        } else {
+            for (int step = 0; step < 3; step++) {
+                double y = 7 + arrow * (2 - step);
+                for (int side : new int[]{-1, 1}) {
+                    double x = 8 + side * step;
+                    b.box(Material.WHITE, x - .65, y - .65, 2.52, x + .65, y + .65, 2.7);
+                }
+            }
+            b.box(Material.WHITE, 7.4, 5, 2.52, 8.6, 8.4, 2.7);
+        }
+        for (double x : new double[]{4, 11}) b.box(Material.STEEL, x, 13.4, 4.1, x + 1, 14, 12.2);
+        for (int i = 0; i < 3; i++) b.box(Material.WHITE, 6 + i * 1.4, 13.41, 6.1, 6.65 + i * 1.4, 13.6, 10.3);
+        return b.faces;
+    }
+
     private static List<Face> range(boolean advanced) {
         Builder b = new Builder(advanced ? "advanced_range_module" : "range_module");
         if (advanced) {
@@ -333,6 +384,117 @@ public final class LaserModuleModel {
         return b.faces;
     }
 
+    private static List<Face> advancedLens() {
+        Builder b = new Builder("thickness_module");
+        // Twin optical cartridges and a square amplifier frame distinguish tier II at inventory scale.
+        b.box(Material.FRAME, .5, 0, 2, 15.5, 2, 15.5);
+        b.box(Material.STEEL, 1, 2, 12.8, 15, 13.8, 15.2);
+        b.box(Material.FRAME, 2, 3, 11.6, 14, 12.8, 12.8);
+        for (double x : new double[]{4.7, 11.3}) {
+            b.skin = b.atlas.trim("metal").back(b.atlas.region("back"));
+            b.wrap = b.atlas.region("wrap");
+            b.cylinder(Material.FRAME, x, 8.1, 3, 12.6, 2.8, 2.8);
+            b.skin = null; b.wrap = null;
+            for (double z : new double[]{3.2, 6.6, 10.1}) {
+                b.ring(Material.GOLD, x, 8.1, z, z + .55, 3.12, 2.72);
+                b.ring(Material.CYAN, x, 8.1, z + .6, z + .86, 2.97, 2.7);
+            }
+            b.ring(Material.STEEL, x, 8.1, 1.45, 3.19, 3.2, 2.55);
+            b.skin = b.atlas.surface("front");
+            b.capRadius = 2.55;
+            b.ring(Material.BLUE, x, 8.1, 1.40, 2.1, 2.55, 2.1);
+            b.cylinder(Material.CYAN, x, 8.1, 1.32, 1.4, 2.1, 2.1);
+            b.skin = null; b.capRadius = 0;
+            b.cylinder(Material.BLUE, x, 8.1, 1.28, 1.32, 1.6, 1.6);
+            b.cylinder(Material.WHITE, x, 8.1, 1.23, 1.28, .62, .62);
+        }
+        for (double x : new double[]{.4, 14.2}) {
+            b.box(Material.STEEL, x, 2, 2.1, x + 1.4, 14.4, 3.5);
+            b.box(Material.GOLD, x + .25, 3, 2.02, x + 1.15, 13.8, 2.1);
+            b.box(Material.FRAME, x, 13, 3.5, x + 1.4, 14.4, 14.7);
+        }
+        b.box(Material.FRAME, 1.8, 13, 2.1, 14.2, 14.4, 3.5);
+        for (double x : new double[]{6, 9}) b.box(Material.WHITE, x, 13.15, 2.03, x + 1, 14.2, 2.09);
+        b.box(Material.FRAME, 3, 2, 3.4, 13, 3.8, 11.6);
+        for (int i = 0; i < 5; i++) b.box(Material.CYAN, 3.5 + i * 2, 2.3, 3.3, 4.5 + i * 2, 3.5, 3.39);
+        return b.faces;
+    }
+
+    private static List<Face> cargoCollector() {
+        Builder b = new Builder("block_drops_module");
+        b.box(Material.FRAME, 1, 0, 2, 15, 2, 15);
+        b.skin = b.body();
+        b.box(Material.FRAME, 2, 2, 6, 14, 12, 14.5);
+        b.skin = null;
+        // A rectangular storage cassette with three drawers is distinct from the round Drops funnel.
+        for (int row = 0; row < 3; row++) {
+            double y = 2.4 + row * 3.1;
+            b.box(Material.STEEL, 2.7, y, 5.3, 13.3, y + 2.5, 6.1);
+            b.box(Material.FRAME, 4, y + .6, 5.05, 12, y + 1.9, 5.29);
+            b.box(Material.CYAN, 4.2, y + .75, 5.01, 5.8, y + 1.75, 5.04);
+            b.box(Material.STEEL, 7, y + .9, 4.7, 10.5, y + 1.5, 5.04);
+        }
+        for (double x : new double[]{1.5, 13.4}) {
+            b.box(Material.STEEL, x, 1.3, 3.1, x + 1.1, 12.8, 4.2);
+            b.box(Material.YELLOW, x + .15, 3.5, 3.01, x + .95, 10.6, 3.1);
+        }
+        b.box(Material.FRAME, 3, 12, 7, 13, 13.1, 13.5);
+        b.box(Material.STEEL, 4, 13.1, 8, 5, 14.8, 11);
+        b.box(Material.STEEL, 11, 13.1, 8, 12, 14.8, 11);
+        b.box(Material.STEEL, 4, 14.8, 8, 12, 15.5, 11);
+        for (int i = 0; i < 5; i++) b.box(Material.CYAN, 4.4 + i * 1.5, 12.01, 6, 5.1 + i * 1.5, 12.1, 6.8);
+        return b.faces;
+    }
+
+    private static List<Face> motor() {
+        Builder b = new Builder("electric_motor");
+        b.skin = b.atlas.surface("front").back(b.atlas.region("back"));
+        b.wrap = b.atlas.region("wrap");
+        b.cylinder(Material.FRAME, 8, 6.8, 4, 14.5, 5.45, 5.45);
+        b.skin = null; b.wrap = null;
+        for (double z : new double[]{3.9, 13.1}) b.ring(Material.STEEL, 8, 6.8, z, z + .65, 5.7, 5.15);
+        b.skin = b.atlas.surface("copper");
+        b.ring(Material.GOLD, 8, 6.8, 3.82, 3.88, 4.3, 2.4);
+        b.skin = b.atlas.surface("front");
+        b.ring(Material.FRAME, 8, 6.8, 3.7, 3.81, 5.4, 2.35);
+        b.skin = null;
+        b.ring(Material.STEEL, 8, 6.8, 3.1, 4, 2.4, 1.5);
+        b.cylinder(Material.STEEL, 8, 6.8, .2, 3.15, 1.35, 1.35);
+        b.ring(Material.FRAME, 8, 6.8, .15, .2, .8, .55);
+        for (int i = 0; i < 8; i++) {
+            double angle = i * Math.PI / 4;
+            double x = 8 + Math.cos(angle) * 4.9, y = 6.8 + Math.sin(angle) * 4.9;
+            b.skin = b.atlas.surface("bolt");
+            b.cylinder(Material.STEEL, x, y, 3.52, 3.69, .42, .42);
+            b.skin = null;
+            if (i % 2 != 0) b.cylinder(Material.STEEL, x, y, 4.56, 13.05, .22, .22);
+        }
+        for (double x : new double[]{1.7, 11.3}) for (double z : new double[]{4.6, 12.1}) {
+            b.box(Material.FRAME, x, 0, z, x + 3, .9, z + 3.3);
+            b.box(Material.STEEL, x + .65, .9, z + .45, x + 2.35, 3.6, z + 2.85);
+            b.skin = b.atlas.surface("bolt");
+            b.box(Material.STEEL, x + .8, .91, z + .1, x + 2.2, .95, z + .4);
+            b.skin = null;
+        }
+        b.skin = b.atlas.trim("metal").front(b.atlas.region("box_front")).top(b.atlas.region("box_top"));
+        b.box(Material.FRAME, 4.7, 11.5, 6, 11.3, 14.7, 11);
+        b.skin = null;
+        b.box(Material.CYAN, 5.2, 14.71, 6.1, 10.8, 14.78, 6.45);
+        for (double x : new double[]{5.7, 10.3}) {
+            b.skin = b.atlas.surface("cable");
+            Vec3d last = new Vec3d(x, 13.5, 10.9);
+            for (int i = 1; i <= 8; i++) {
+                double t = i / 8.0;
+                Vec3d next = new Vec3d(x, 13.5 + Math.sin(t * Math.PI) * 1.6 - t * 2, 10.9 + t * 3.5);
+                b.tube(Material.FRAME, last, next, .38);
+                last = next;
+            }
+            b.skin = null;
+            b.cylinder(Material.CYAN, x, 13.5, 10.95, 11.2, .48, .48);
+        }
+        return b.faces;
+    }
+
     private static List<Face> circuit() {
         Builder b = new Builder("control_circuit");
         b.skin = b.atlas.surface("side").top(b.atlas.region("top")).bottom(b.atlas.region("bottom"));
@@ -392,7 +554,7 @@ public final class LaserModuleModel {
         return b.faces;
     }
 
-    private static List<Face> collector() {
+    private static List<Face> collector(boolean storage) {
         Builder b = new Builder("block_drops_module");
         b.skin = b.body();
         b.wrap = b.atlas.region("wrap");
@@ -421,6 +583,14 @@ public final class LaserModuleModel {
         b.box(Material.CYAN, 7.2, 13.6, 10.3, 8.8, 13.7, 11.9);
         b.box(Material.STEEL, 6.5, 5.5, 3.1, 7.4, 6.4, 4);
         b.box(Material.STEEL, 9.2, 7.8, 4, 9.9, 8.5, 4.7);
+        if (storage) {
+            b.box(Material.FRAME, 2.6, .2, 9.4, 13.4, 3.1, 15.2);
+            for (double x : new double[]{3, 12.2}) {
+                b.box(Material.STEEL, x, 3.1, 12, x + .8, 14.2, 13.1);
+                b.box(Material.CYAN, x + .1, 4, 11.94, x + .7, 10.5, 11.99);
+            }
+            b.box(Material.STEEL, 3, 14.2, 12, 13, 15, 13.1);
+        }
         return b.faces;
     }
 
@@ -539,6 +709,20 @@ public final class LaserModuleModel {
             face(material, a, b, c, d); face(material, h, g, f, e);
             face(material, e, f, b, a); face(material, d, c, g, h);
             face(material, b, f, g, c); face(material, e, a, d, h);
+        }
+
+        private void tube(Material material, Vec3d start, Vec3d end, double radius) {
+            Vec3d axis = end.subtract(start).normalize();
+            Vec3d u = axis.crossProduct(new Vec3d(1, 0, 0)).normalize().multiply(radius);
+            Vec3d v = axis.crossProduct(u).normalize().multiply(radius);
+            min = new Vec3d(Math.min(start.x, end.x) - radius, Math.min(start.y, end.y) - radius, Math.min(start.z, end.z) - radius);
+            max = new Vec3d(Math.max(start.x, end.x) + radius, Math.max(start.y, end.y) + radius, Math.max(start.z, end.z) + radius);
+            for (int i = 0; i < 8; i++) {
+                double a = i * Math.PI / 4, c = (i + 1) * Math.PI / 4;
+                Vec3d p = u.multiply(Math.cos(a)).add(v.multiply(Math.sin(a)));
+                Vec3d q = u.multiply(Math.cos(c)).add(v.multiply(Math.sin(c)));
+                face(material, start.add(p), start.add(q), end.add(q), end.add(p));
+            }
         }
 
         private Vec3d[] circle(double x, double y, double z, double radius) {

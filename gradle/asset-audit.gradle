@@ -13,7 +13,7 @@ tasks.register('verifyPublishedAssets') {
                 ['Blocks', 'parts', 'Tablet', 'blueprints'].collectMany { folder -> fileTree("ref/${folder}") { include '**/*.png' }.files }
         def privateHashes = privateInputs.collect { hash(it.bytes) }.toSet()
         def forbidden = { String name ->
-            name =~ /(?i)(^|\/)(ref|publish|backups|private_material_sources|materials)\/|model_reference|uv_0[1f]|\.psd$|\.blend$|\.bbmodel$|\.(mp3|wav)$/
+            name =~ /(?i)(^|\/)(ref|publish|backups|private_material_sources|materials|tools)\/|model_reference|uv_0[1f]|\.psd$|\.blend$|\.bbmodel$|\.(mp3|wav)$/
         }
         def obsolete = { String name ->
             name.startsWith('assets/justifylasers/textures/block/industry/') ||

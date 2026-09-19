@@ -45,8 +45,15 @@ final class TabletDisplay {
         rect(matrices, consumers, 10, 39, 460, 1, -.04, 0x146781);
         var blueprints = screen == null ? List.copyOf(ModIndustry.BLUEPRINTS.values()) : screen.getScreenHandler().blueprints();
         int selected = screen == null ? 0 : screen.getScreenHandler().selected(), first = screen == null ? 0 : screen.firstVisible();
-        for (int row = 0; row < 6 && first + row < blueprints.size(); row++) {
-            int index = first + row, y = 50 + row * 31;
+        var matches = screen == null ? java.util.stream.IntStream.range(0, blueprints.size()).boxed().toList() : screen.matches();
+        panel(matrices, consumers, 12, 48, 156, 24, screen != null && screen.searching());
+        String query = screen == null ? "" : screen.query();
+        if (screen != null && screen.searching() && System.currentTimeMillis() / 500 % 2 == 0)
+            query = query.substring(0, screen.searchCursor()) + "|" + query.substring(screen.searchCursor());
+        text(matrices, consumers, query.isEmpty() ? label("search") : Text.literal(query), 18, 56, 144, query.isEmpty() ? 0x669CAC : 0xC8FAFF, .9F);
+        if (matches.isEmpty()) text(matrices, consumers, label("no_matches"), 18, 92, 144, 0x8DBBC8, .9F);
+        for (int row = 0; row < TabletScreen.PAGE_SIZE && first + row < matches.size(); row++) {
+            int index = matches.get(first + row), y = TabletScreen.LIST_TOP + row * 31;
             panel(matrices, consumers, 12, y, 156, 27, index == selected);
             var output = blueprints.get(index).output(client.world);
             item(matrices, consumers, output, 28, y + 13, 31, 0, 0);
@@ -73,8 +80,9 @@ final class TabletDisplay {
                 184, 263, 150, 0x8DBBC8, .9F);
         text(matrices, consumers, Text.literal(ExtraterrestrialTabletItem.WRITE_COST + " " + net.askcraft.justifylasers.platform.Platform.ENERGY_UNIT),
                 184, 277, 146, 0x4B8BA4, .8F);
-        panel(matrices, consumers, 344, 259, 124, 28, screen != null && screen.getScreenHandler().blanks() > 0 && charge >= ExtraterrestrialTabletItem.WRITE_COST);
-        text(matrices, consumers, label("record"), 354, 269, 106, 0xA2F2F8, 1);
+        boolean canRecord = !matches.isEmpty() && screen != null && screen.getScreenHandler().blanks() > 0 && charge >= ExtraterrestrialTabletItem.WRITE_COST;
+        panel(matrices, consumers, 344, 259, 124, 28, canRecord);
+        text(matrices, consumers, label("record"), 354, 269, 106, canRecord ? 0xA2F2F8 : 0x527783, 1);
     }
 
     private static Text label(String key) { return Text.translatable("gui.justifylasers.tablet." + key); }

@@ -42,6 +42,11 @@ public class LaserEmitterScreenHandler extends ScreenHandler {
     public static final int BUTTON_SECURITY = 13;
     public static final int FILTER_BUTTON_BASE = 14;
     public static final int BUTTON_FILTER_PLAYER = 18;
+    public static final int BUTTON_FILTER_MODE = 19;
+    public static final int BUTTON_FILTER_TYPE = 20;
+    public static final int BUTTON_COLLECT = 21;
+    public static final int BUTTON_SPECTRUM = 22;
+    public static final int PAGE_BUTTON_BASE = 100;
     public static final int BEAM_WIDTH_BUTTON_BASE = 1_000;
     public static final int BEAM_WIDTH_BUTTON_MAX = BEAM_WIDTH_BUTTON_BASE
             + LaserEmitterBlockEntity.BEAM_WIDTH_STEPS;
@@ -58,17 +63,20 @@ public class LaserEmitterScreenHandler extends ScreenHandler {
     public static final int RANGE_BUTTON_MAX = RANGE_BUTTON_BASE + LaserEmitterBlockEntity.MAX_RANGE;
     public static final int MINING_SPEED_BUTTON_BASE = 6_000;
     public static final int MINING_SPEED_BUTTON_MAX = MINING_SPEED_BUTTON_BASE + LaserMining.MAX_SPEED_STEP;
+    public static final int FLUX_BUTTON_BASE = 7_000;
+    public static final int FLUX_BUTTON_MAX = FLUX_BUTTON_BASE + net.askcraft.justifylasers.laser.CreativeFlux.STEPS;
 
     private final PropertyDelegate properties;
     private final ScreenHandlerContext context;
     private final BlockPos blockPos;
     @Nullable
     private final LaserEmitterBlockEntity blockEntity;
-    private boolean inventoryVisible;
+    public enum InventoryPage { NONE, MODULES, MINING, STORAGE, DAMAGE }
+    private InventoryPage inventoryPage = InventoryPage.NONE;
     private boolean securityEditable;
 
-    private static final int[] MODULE_X = {67, 105, 143, 181, 105, 143, 181, 219, 67, 219};
-    private static final int[] MODULE_Y = {53, 53, 53, 53, 95, 95, 95, 53, 95, 95};
+    private static final int[] MODULE_X = {80, 112, 158, 64, 204, 82, 112, 152, 224, 200};
+    private static final int[] MODULE_Y = {53, 83, 83, 95, 83, 95, 95, 53, 53, 95};
 
     public LaserEmitterScreenHandler(int syncId, PlayerInventory playerInventory, BlockPos pos) {
         this(syncId, playerInventory, pos, false);
@@ -136,13 +144,14 @@ public class LaserEmitterScreenHandler extends ScreenHandler {
             }
         });
         Inventory inventory = blockEntity != null && blockEntity.isPoweredEmitter()
-                ? blockEntity : new SimpleInventory(LaserEmitterBlockEntity.MODULE_SLOT_COUNT);
+                ? blockEntity : new SimpleInventory(LaserEmitterBlockEntity.INVENTORY_SIZE);
         for (int slot = 0; slot < LaserEmitterBlockEntity.MODULE_SLOT_COUNT; slot++) {
             final int index = slot;
             addSlot(new Slot(inventory, slot, MODULE_X[slot], MODULE_Y[slot]) {
                 @Override
                 public boolean canInsert(ItemStack stack) {
-                    return isPoweredEmitter() && (index == 0 ? stack.getItem() instanceof LaserCrystalItem
+                    return isPoweredEmitter() && index != LaserModule.SCORCH_MARKS.slot() && index != 5 && (index == 0 ? stack.getItem() instanceof LaserCrystalItem
+                            || stack.getItem() instanceof LaserModuleItem module && module.module() == LaserModule.SPECTRUM
                             : stack.getItem() instanceof LaserModuleItem item && item.module().slot() == index);
                 }
 
@@ -159,10 +168,33 @@ public class LaserEmitterScreenHandler extends ScreenHandler {
 
                 @Override
                 public boolean isEnabled() {
-                    return (blockEntity != null || inventoryVisible) && isPoweredEmitter();
+                    if (!isPoweredEmitter()) return false;
+                    if (blockEntity != null) return true;
+                    if (index == LaserModule.IGNITION.slot()) return inventoryPage == InventoryPage.MINING
+                            || inventoryPage == InventoryPage.DAMAGE && entityMode() == net.askcraft.justifylasers.laser.LaserEntityMode.DAMAGE;
+                    if (index == 5 || index == LaserModule.SCORCH_MARKS.slot()) return inventoryPage == InventoryPage.MODULES && hasStack();
+                    return index == LaserModule.SILK_TOUCH.slot() || index == LaserModule.BLOCK_DROPS.slot()
+                            ? inventoryPage == InventoryPage.MINING : inventoryPage == InventoryPage.MODULES;
                 }
             });
         }
+        for (int i = 0; i < LaserEmitterBlockEntity.STORAGE_SIZE; i++) {
+            addSlot(new Slot(inventory, LaserEmitterBlockEntity.STORAGE_START + i, 130 + i % 3 * 22, 49 + i / 3 * 22) {
+                @Override public boolean isEnabled() { return isPoweredEmitter() && (blockEntity != null || inventoryPage == InventoryPage.STORAGE); }
+            });
+        }
+        addSlot(new Slot(inventory, LaserEmitterBlockEntity.COLLECTION_SLOT, 66, 83) {
+            @Override public boolean isEnabled() { return isPoweredEmitter() && (blockEntity != null || inventoryPage == InventoryPage.MINING); }
+            @Override public boolean canInsert(ItemStack stack) { return stack.getItem() instanceof LaserModuleItem item && item.module() == LaserModule.BLOCK_COLLECTION; }
+            @Override public int getMaxItemCount() { return 1; }
+            @Override public void markDirty() { super.markDirty(); if (blockEntity != null) blockEntity.inventoryChanged(); }
+        });
+        addSlot(new Slot(inventory, LaserEmitterBlockEntity.AMPLIFIER_SLOT, 156, 95) {
+            @Override public boolean isEnabled() { return isPoweredEmitter() && (blockEntity != null || inventoryPage == InventoryPage.MODULES); }
+            @Override public boolean canInsert(ItemStack stack) { return net.askcraft.justifylasers.item.LaserAmplifierItem.tier(stack) > 0; }
+            @Override public int getMaxItemCount() { return 1; }
+            @Override public void markDirty() { super.markDirty(); if (blockEntity != null) blockEntity.inventoryChanged(); }
+        });
         for (int row = 0; row < 3; row++) {
             for (int column = 0; column < 9; column++) addPlayerSlot(playerInventory, column + row * 9 + 9, 44 + column * 27, 136 + row * 20);
         }
@@ -179,11 +211,17 @@ public class LaserEmitterScreenHandler extends ScreenHandler {
     }
 
     public void setInventoryVisible(boolean visible) {
-        inventoryVisible = visible;
+        inventoryPage = visible ? InventoryPage.MODULES : InventoryPage.NONE;
     }
+    public void setInventoryPage(InventoryPage page) { inventoryPage = page; }
 
     @Override
     public boolean onButtonClick(PlayerEntity player, int id) {
+        if (id >= PAGE_BUTTON_BASE && id < PAGE_BUTTON_BASE + InventoryPage.values().length) {
+            if (blockEntity == null || !player.isAlive() || player.isSpectator() || !canUse(player) || !isPoweredEmitter()) return false;
+            inventoryPage = InventoryPage.values()[id - PAGE_BUTTON_BASE];
+            return true;
+        }
         if (blockEntity == null || !player.isAlive() || player.isSpectator() || !canUse(player) || !blockEntity.allowsSetting(id)) {
             return false;
         }
@@ -192,14 +230,15 @@ public class LaserEmitterScreenHandler extends ScreenHandler {
             if (changed) sendContentUpdates();
             return changed;
         }
-        boolean regularButton = id >= BUTTON_ENABLED && id < BUTTON_FILTER_PLAYER;
+        boolean regularButton = id >= BUTTON_ENABLED && id < BUTTON_FILTER_PLAYER || id == BUTTON_COLLECT || id == BUTTON_FILTER_MODE;
         boolean beamWidthButton = id >= BEAM_WIDTH_BUTTON_BASE && id <= BEAM_WIDTH_BUTTON_MAX;
         boolean damageButton = id >= DAMAGE_BUTTON_MIN && id <= DAMAGE_BUTTON_MAX;
         boolean knockbackButton = id >= KNOCKBACK_BUTTON_BASE && id <= KNOCKBACK_BUTTON_MAX;
         boolean hitRateButton = id >= HIT_RATE_BUTTON_MIN && id <= HIT_RATE_BUTTON_MAX;
         boolean rangeButton = id >= RANGE_BUTTON_MIN && id <= RANGE_BUTTON_MAX;
         boolean miningSpeedButton = id >= MINING_SPEED_BUTTON_BASE && id <= MINING_SPEED_BUTTON_MAX;
-        if (!regularButton && !beamWidthButton && !damageButton && !knockbackButton && !hitRateButton && !rangeButton && !miningSpeedButton) {
+        boolean fluxButton = id >= FLUX_BUTTON_BASE && id <= FLUX_BUTTON_MAX;
+        if (!regularButton && !beamWidthButton && !damageButton && !knockbackButton && !hitRateButton && !rangeButton && !miningSpeedButton && !fluxButton) {
             return false;
         }
         blockEntity.handleButton(id);
@@ -209,6 +248,20 @@ public class LaserEmitterScreenHandler extends ScreenHandler {
 
     public int targetFlags() { return properties.get(46); }
     public int excludedPlayerCount() { return properties.get(47); }
+    public boolean collectsDrops() { return properties.get(53) != 0; }
+    public int creativeFluxStep() { return net.askcraft.justifylasers.laser.CreativeFlux.clamp(properties.get(54)); }
+    public net.askcraft.justifylasers.laser.LaserEntityMode entityMode() {
+        int mode = properties.get(52);
+        return mode >= 0 && mode < net.askcraft.justifylasers.laser.LaserEntityMode.values().length
+                ? net.askcraft.justifylasers.laser.LaserEntityMode.values()[mode] : net.askcraft.justifylasers.laser.LaserEntityMode.NONE;
+    }
+    public boolean hasEntityMode() { return entityMode() != net.askcraft.justifylasers.laser.LaserEntityMode.NONE; }
+    public boolean toggleEntityType(PlayerEntity player, String id) {
+        if (blockEntity == null || !canUse(player)) return false;
+        boolean changed = blockEntity.toggleEntityType(player, id);
+        if (changed) sendContentUpdates();
+        return changed;
+    }
 
     public boolean toggleExcludedPlayer(PlayerEntity player, String name) {
         if (blockEntity == null || !canUse(player)) return false;
@@ -235,12 +288,17 @@ public class LaserEmitterScreenHandler extends ScreenHandler {
         if (!source.hasStack()) return ItemStack.EMPTY;
         ItemStack stack = source.getStack();
         ItemStack original = stack.copy();
-        if (slot < LaserEmitterBlockEntity.MODULE_SLOT_COUNT) {
-            if (!insertItem(stack, LaserEmitterBlockEntity.MODULE_SLOT_COUNT, slots.size(), true)) return ItemStack.EMPTY;
+        if (slot < LaserEmitterBlockEntity.INVENTORY_SIZE) {
+            if (!insertItem(stack, LaserEmitterBlockEntity.INVENTORY_SIZE, slots.size(), true)) return ItemStack.EMPTY;
         } else {
-            int target = stack.getItem() instanceof LaserCrystalItem ? 0
+            int target = stack.getItem() instanceof net.askcraft.justifylasers.item.LaserAmplifierItem ? LaserEmitterBlockEntity.AMPLIFIER_SLOT
+                    : stack.getItem() instanceof LaserCrystalItem ? 0
                     : stack.getItem() instanceof LaserModuleItem item ? item.module().slot() : -1;
-            if (target < 0 || !insertItem(stack, target, target + 1, false)) return ItemStack.EMPTY;
+            if (target == LaserModule.SCORCH_MARKS.slot()) target = -1;
+            if (target < 0 || !insertItem(stack, target, target + 1, false)) {
+                if (inventoryPage != InventoryPage.STORAGE
+                        || !insertItem(stack, LaserEmitterBlockEntity.STORAGE_START, LaserEmitterBlockEntity.STORAGE_START + LaserEmitterBlockEntity.STORAGE_SIZE, false)) return ItemStack.EMPTY;
+            }
         }
         if (stack.isEmpty()) source.setStack(ItemStack.EMPTY);
         else source.markDirty();
@@ -331,6 +389,11 @@ public class LaserEmitterScreenHandler extends ScreenHandler {
     public boolean isPoweredEmitter() {
         return properties.get(18) != 0;
     }
+    public int beamRgb() { return (properties.get(59) & 0xFFFF) | (properties.get(60) & 255) << 16; }
+    public boolean setSpectrum(PlayerEntity player, String value) {
+        if (blockEntity == null || !blockEntity.setSpectrum(player, value)) return false;
+        sendContentUpdates(); return true;
+    }
 
     public boolean isTechnicalMode() {
         return properties.get(19) != 0;
@@ -351,6 +414,11 @@ public class LaserEmitterScreenHandler extends ScreenHandler {
     public long luminousFlux() {
         long value = 0;
         for (int part = 0; part < 4; part++) value |= (long) (properties.get(48 + part) & 0xFFFF) << (part * 16);
+        return net.askcraft.justifylasers.laser.LuminousFlux.clamp(value);
+    }
+    public long moduleFluxCost() {
+        long value = 0;
+        for (int part = 0; part < 4; part++) value |= (long) (properties.get(55 + part) & 0xFFFF) << (part * 16);
         return net.askcraft.justifylasers.laser.LuminousFlux.clamp(value);
     }
 

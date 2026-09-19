@@ -16,6 +16,8 @@ tasks.register('generateIndustryMaterials') {
     doLast {
         def plans = new JsonSlurper().parse(rootProject.file('src/main/materials/industry-parts.json'))
         plans.each { name, plan ->
+            if (name in ['crystal_chamber', 'assembly_chamber', 'crystal_chamber_casing', 'assembly_chamber_casing'])
+                plan.parts.lid = [sheet:'assembling_chamber/assembly_chamber_UV.png', rect:[206,27,104,110], size:[96,104]]
             int size = plan.size
             def images = ['base','base_n','base_s','glow','glow_n','glow_s','indicator','indicator_n','indicator_s'].collectEntries {
                 [(it): new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB)]
@@ -34,6 +36,11 @@ tasks.register('generateIndustryMaterials') {
                 for (int y = -4; y < height + 4; y++) for (int x = -4; x < width + 4; x++) {
                     int sx = rect[0] + (int)((Math.max(0, Math.min(width-1, x)) + .5) * rect[2] / width)
                     int sy = rect[1] + (int)((Math.max(0, Math.min(height-1, y)) + .5) * rect[3] / height)
+                    // This reference was supplied at 2048px; its original crop plan used a 1600px preview.
+                    if (name == 'crystal_chamber' && !spec.sheet) {
+                        sx = (int)(sx * source.width / 1600d)
+                        sy = (int)(sy * source.height / 1600d)
+                    }
                     int pixel = source.getRGB(sx, sy)
                     int r = pixel >> 16 & 255, g = pixel >> 8 & 255, b = pixel & 255
                     if (plan.neutralAccents && r > Math.max(g, b) + 25) {

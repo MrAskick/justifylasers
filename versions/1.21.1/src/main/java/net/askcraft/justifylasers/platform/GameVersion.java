@@ -43,6 +43,14 @@ public final class GameVersion {
 
     public static void setItemData(ItemStack stack, NbtCompound data) { stack.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(data)); }
 
+    public static ItemStack smelt(ItemStack stack, ServerWorld world) {
+        if (stack.contains(net.minecraft.component.DataComponentTypes.CUSTOM_DATA)
+                || stack.contains(net.minecraft.component.DataComponentTypes.CUSTOM_NAME)) return stack;
+        var input = new net.minecraft.recipe.input.SingleStackRecipeInput(stack);
+        return world.getRecipeManager().getFirstMatch(net.minecraft.recipe.RecipeType.SMELTING, input, world)
+                .map(entry -> entry.value().craft(input, world.getRegistryManager())).orElse(ItemStack.EMPTY);
+    }
+
     private GameVersion() {
     }
 }

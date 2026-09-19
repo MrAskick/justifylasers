@@ -30,14 +30,15 @@ class LaserPartResourcesTest {
         for (var module : LaserModule.values()) parts.add(module.id());
         parts.add("advanced_range_module");
         parts.add("control_circuit");
-        assertEquals(20, parts.size());
+        assertEquals(25, parts.size());
         assertEquals("builtin/entity", resource("assets/justifylasers/models/item/module.json").get("parent").getAsString());
         for (String part : parts) {
             assertEquals("justifylasers:block/" + part, resource("assets/justifylasers/blockstates/" + part + ".json")
                     .getAsJsonObject("variants").getAsJsonObject("").get("model").getAsString());
-            assertEquals("justifylasers:block/particle/" + part,
+            String particle = part.equals("entity_heal_module") || part.equals("entity_lift_module") || part.equals("entity_lower_module") || part.equals("block_collection_module") ? "control_circuit" : part;
+            assertEquals("justifylasers:block/particle/" + particle,
                     resource("assets/justifylasers/models/block/" + part + ".json").getAsJsonObject("textures").get("particle").getAsString());
-            try (var stream = getClass().getResourceAsStream("/assets/justifylasers/textures/block/particle/" + part + ".png")) {
+            try (var stream = getClass().getResourceAsStream("/assets/justifylasers/textures/block/particle/" + particle + ".png")) {
                 assertNotNull(stream, part);
                 var sprite = ImageIO.read(stream);
                 for(int y=0;y<sprite.getHeight();y++) for(int x=0;x<sprite.getWidth();x++)
@@ -58,7 +59,13 @@ class LaserPartResourcesTest {
         assertEquals(3, LaserModule.SCORCH_MARKS.slot());
         assertEquals(4, LaserModule.IGNITION.slot());
         assertEquals(9, LaserModule.TARGET_FILTER.slot());
-        assertEquals(9, LaserModule.values().length);
+        assertEquals(14, LaserModule.values().length);
+        assertEquals(0, LaserModule.SPECTRUM.slot());
+        assertEquals(6, LaserModule.BLOCK_DESTRUCTION.slot());
+        assertEquals(19, LaserModule.BLOCK_COLLECTION.slot());
+        assertEquals(6, LaserModule.ENTITY_HEAL.slot());
+        assertEquals(6, LaserModule.ENTITY_LIFT.slot());
+        assertEquals(6, LaserModule.ENTITY_LOWER.slot());
         for (LaserModule module : LaserModule.values()) {
             assertEquals(module == LaserModule.RANGE || module == LaserModule.THICKNESS ? 64 : 1, module.maxCount());
         }
@@ -69,7 +76,7 @@ class LaserPartResourcesTest {
         JsonObject english = resource("assets/justifylasers/lang/en_us.json");
         JsonObject russian = resource("assets/justifylasers/lang/ru_ru.json");
         assertEquals(english.keySet(), russian.keySet(), "Localization keys must stay in sync");
-        for (String item : new String[]{"block_destruction_module", "entity_damage_module", "range_module", "advanced_range_module", "thickness_module", "target_filter_module", "control_circuit"}) {
+        for (String item : new String[]{"block_destruction_module", "entity_damage_module", "entity_heal_module", "entity_lift_module", "entity_lower_module", "range_module", "advanced_range_module", "thickness_module", "target_filter_module", "control_circuit"}) {
             assertTrue(english.has("item.justifylasers." + item));
             assertTrue(resource("assets/justifylasers/models/item/" + item + ".json").has("textures"));
             boolean circuit = item.equals("control_circuit");
@@ -115,7 +122,8 @@ class LaserPartResourcesTest {
         for (LaserModule module : LaserModule.values()) assertTrue(english.has("guide.justifylasers." + module.id()));
         var sounds = resource("assets/justifylasers/sounds.json");
         assertEquals(java.util.Set.of("laser_start", "laser_idle", "laser_stop", "laser_contact", "saber_idle", "saber_ignite", "saber_retract", "saber_swing", "saber_clash",
-                "saber_catch", "saber_fire", "staff_ignite", "staff_retract"), sounds.keySet());
+                "saber_catch", "saber_fire", "staff_ignite", "staff_retract", "light_bridge_step"), sounds.keySet());
+        assertEquals(8, sounds.getAsJsonObject("light_bridge_step").getAsJsonArray("sounds").size());
         for (String id : sounds.keySet()) {
             assertTrue(english.has("subtitles.justifylasers." + id));
             for (var sound : sounds.getAsJsonObject(id).getAsJsonArray("sounds")) {

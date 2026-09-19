@@ -1,10 +1,13 @@
 # Assembly costs
 
-Defaults for 2.0.0-alpha.25. Small Solar Concentrator replaces Laser-Absorbing Glass in the assembly catalog; glass now uses the workbench. Times assume 20 ticks/second; FE and Fabric E use the same numeric values.
+Defaults for 2.0.0-alpha.35, including chemical synthesis, spectral conditioning and laser cutting. Laser-Absorbing Glass uses the workbench. Times assume 20 ticks/second; FE and Fabric E use the same numeric values.
 These are the direct costs of one operation, excluding the materials' own processing costs.
 
 | Schematic | Seconds | Energy/tick | Total energy |
 | --- | ---: | ---: | ---: |
+| Chemical Synthesizer | 41 | 128 | 104,960 |
+| Spectrum Module | 37 | 160 | 118,400 |
+| Laser Cutter (4 casings) | 62 | 304 | 376,960 |
 | Reinforced Laser Housing | 12 | 48 | 11,520 |
 | Focusing Lens Assembly | 16 | 72 | 23,040 |
 | Beam Controller | 20 | 112 | 44,800 |
@@ -13,6 +16,8 @@ These are the direct costs of one operation, excluding the materials' own proces
 | Solar Absorber | 15 | 88 | 26,400 |
 | Small Solar Concentrator | 44 | 64 | 56,320 |
 | Powered Laser Emitter | 60 | 320 | 384,000 |
+| Hard Light Bridge Emitter | 64 | 336 | 430,080 |
+| Corner Hard Light Bridge Emitter | 26 | 136 | 70,720 |
 | Laser Gun | 50 | 256 | 256,000 |
 | LightSaber | 40 | 192 | 153,600 |
 | Light Staff | 70 | 384 | 537,600 |
@@ -27,13 +32,18 @@ These are the direct costs of one operation, excluding the materials' own proces
 | Configurator | 9 | 28 | 5,040 |
 | Block Destruction Module | 36 | 200 | 144,000 |
 | Entity Damage Module | 38 | 208 | 158,080 |
+| Healing Module | 45 | 232 | 208,800 |
+| Lift Module | 39 | 216 | 168,480 |
+| Lowering Module | 35 | 196 | 137,200 |
 | Block Drops Module | 8 | 32 | 5,120 |
+| Loot Collector Module | 21 | 96 | 40,320 |
 | Silk Touch Module | 42 | 224 | 188,160 |
 | Scorch Marks Module | 6 | 24 | 2,880 |
 | Ignition Module | 10 | 40 | 8,000 |
 | Range Module | 18 | 80 | 28,800 |
 | Advanced Range Module | 48 | 248 | 238,080 |
 | Thickness Module | 22 | 104 | 45,760 |
+| Thickness Module II | 54 | 280 | 302,400 |
 | Target Filter Module | 34 | 184 | 125,120 |
 
 Basic housings and passive optics are cheaper than electronics, resonators and complete weapons.

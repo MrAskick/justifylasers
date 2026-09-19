@@ -18,10 +18,12 @@ import net.minecraft.util.TypedActionResult;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.world.World;
 
-public class ExtraterrestrialTabletItem extends Item {
+public class ExtraterrestrialTabletItem extends Item implements net.askcraft.justifylasers.energy.RechargeableItem {
     public static final int CAPACITY = 50_000, TRANSFER = 256, WRITE_COST = 1_000, SCREEN_COST = 1;
 
     public ExtraterrestrialTabletItem(Settings settings) { super(settings); }
+    @Override public int energyCapacity() { return CAPACITY; }
+    @Override public int energyTransfer() { return TRANSFER; }
 
     public int readEnergy(ItemStack stack) { return MathHelper.clamp(GameVersion.itemData(stack).getInt("TabletEnergy"), 0, CAPACITY); }
     public void writeEnergy(ItemStack stack, int amount) {

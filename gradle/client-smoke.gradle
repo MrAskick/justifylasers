@@ -3,7 +3,7 @@ if (!project.hasProperty('clientSmoke')) return
 def fabric = project.property('loom.platform') == 'fabric'
 def smoke = sourceSets.create('clientSmoke') {
     java.srcDirs = [rootProject.file('src/clientSmoke/java'), new File(loaderSources, 'src/clientSmoke/java')]
-    resources.srcDirs = [new File(loaderSources, 'src/clientSmoke/resources')]
+    resources.srcDirs = [rootProject.file('src/clientSmoke/resources'), new File(loaderSources, 'src/clientSmoke/resources')]
     compileClasspath += sourceSets.main.output + (fabric ? sourceSets.client.output : files()) +
             (fabric ? sourceSets.client.compileClasspath : sourceSets.main.compileClasspath)
     runtimeClasspath += sourceSets.main.output + (fabric ? sourceSets.client.output : files()) +
@@ -33,6 +33,7 @@ loom.runs.create('clientSmoke') {
     if (project.hasProperty('smokeAlpha24')) vmArg '-Djustifylasers.smokeAlpha24=true'
     if (project.hasProperty('smokeAlpha25')) vmArg '-Djustifylasers.smokeAlpha25=true'
     if (project.hasProperty('smokeAlpha26')) vmArg '-Djustifylasers.smokeAlpha26=true'
+    if (project.hasProperty('smokeLightBridge')) vmArg '-Djustifylasers.smokeLightBridge=true'
     if (project.hasProperty('smokeOres')) vmArg '-Djustifylasers.smokeOres=true'
     if (project.hasProperty('smokeTablet')) vmArg '-Djustifylasers.smokeTablet=true'
     if (project.hasProperty('smokeDualWeapons')) vmArg '-Djustifylasers.smokeDualWeapons=true'
@@ -82,6 +83,8 @@ if (project.hasProperty('publishedSmoke')) {
     def smokeJar = tasks.register('clientSmokeJar', Jar) {
         from smoke.output
         archiveClassifier = 'client-smoke-dev'
+        if (project.property('loom.platform') == 'forge')
+            manifest.attributes('MixinConfigs': 'justifylasers.smoke.mixins.json')
     }
     def mappedSmoke = tasks.register('remapClientSmokeJar', remapType) {
         inputFile = smokeJar.flatMap { it.archiveFile }

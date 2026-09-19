@@ -17,6 +17,15 @@ import net.minecraft.util.Identifier;
 
 @JeiPlugin
 public final class JustifyLasersJeiPlugin implements IModPlugin {
+    @Override public void registerItemSubtypes(mezz.jei.api.registration.ISubtypeRegistration registration) {
+        registration.registerSubtypeInterpreter(ModLaserParts.AMPLIFIER,
+                (mezz.jei.api.ingredients.subtypes.IIngredientSubtypeInterpreter<ItemStack>)(stack, context) -> Integer.toString(net.askcraft.justifylasers.item.LaserAmplifierItem.tier(stack)));
+    }
+
+    @Override public void registerExtraIngredients(mezz.jei.api.registration.IExtraIngredientRegistration registration) {
+        registration.addExtraItemStacks(java.util.stream.IntStream.rangeClosed(2, net.askcraft.justifylasers.energy.AmplifierTier.MAX)
+                .mapToObj(net.askcraft.justifylasers.item.LaserAmplifierItem::stack).toList());
+    }
     @Override
     public Identifier getPluginUid() { return JustifyLasers.id("guide"); }
 
@@ -26,13 +35,15 @@ public final class JustifyLasersJeiPlugin implements IModPlugin {
         var ingredients = runtime.getIngredientManager();
         var legacy = ingredients.getAllIngredients(VanillaTypes.ITEM_STACK).stream()
                 .filter(stack -> stack.isOf(net.askcraft.justifylasers.registry.ModIndustry.LASER_CHASSIS)
-                        || stack.isOf(net.askcraft.justifylasers.registry.ModIndustry.OPTICAL_ASSEMBLY)).toList();
+                        || stack.isOf(net.askcraft.justifylasers.registry.ModIndustry.OPTICAL_ASSEMBLY)
+                        || stack.getItem() instanceof net.askcraft.justifylasers.item.LegacyCrystalSeedItem).toList();
         if (!legacy.isEmpty()) ingredients.removeIngredientsAtRuntime(VanillaTypes.ITEM_STACK, legacy);
     }
 
     @Override public void onRuntimeUnavailable() { RecipeNavigation.install(null, null); }
 
     @Override public void registerCategories(mezz.jei.api.registration.IRecipeCategoryRegistration registration) {
+        registration.addRecipeCategories(new AmplifierJeiCategory(registration.getJeiHelpers()));
         registration.addRecipeCategories(new MultiblockJeiCategory(registration.getJeiHelpers()));
         for (var kind : net.askcraft.justifylasers.industry.MachineKind.values())
             if (kind != net.askcraft.justifylasers.industry.MachineKind.FUEL_GENERATOR)
@@ -40,6 +51,7 @@ public final class JustifyLasersJeiPlugin implements IModPlugin {
     }
 
     @Override public void registerRecipeCatalysts(mezz.jei.api.registration.IRecipeCatalystRegistration registration) {
+        registration.addRecipeCatalyst(new ItemStack(net.minecraft.item.Items.CRAFTING_TABLE), AmplifierJeiCategory.TYPE);
         for (var construction : MultiblockConstruction.all()) {
             registration.addRecipeCatalyst(construction.result(), MultiblockJeiCategory.TYPE);
         }
@@ -68,6 +80,9 @@ public final class JustifyLasersJeiPlugin implements IModPlugin {
 
     @Override
     public void registerRecipes(IRecipeRegistration registration) {
+        registration.addRecipes(AmplifierJeiCategory.TYPE, java.util.stream.IntStream.rangeClosed(2, net.askcraft.justifylasers.energy.AmplifierTier.MAX)
+                .mapToObj(AmplifierJeiCategory.Upgrade::new).toList());
+        info(registration, ModLaserParts.AMPLIFIER, "amplifier_module");
         registration.addRecipes(MultiblockJeiCategory.TYPE, MultiblockConstruction.all());
         info(registration, net.askcraft.justifylasers.registry.ModIndustry.BLUEPRINTS.get("extraterrestrial_tablet"), "tablet_schematic");
         var world = net.minecraft.client.MinecraftClient.getInstance().world;

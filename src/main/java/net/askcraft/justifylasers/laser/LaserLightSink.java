@@ -9,4 +9,6 @@ public interface LaserLightSink {
 
     /** Unused flux is lost; a consumer must not also forward this allocation to another sink. */
     void receiveLight(long lumens, int rgb);
+
+    default void receiveLight(long lumens, int rgb, long spectralLumens, int spectrum) { receiveLight(lumens, rgb); }
 }

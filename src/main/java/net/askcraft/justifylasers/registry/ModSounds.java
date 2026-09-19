@@ -19,8 +19,10 @@ public final class ModSounds {
     public static SoundEvent SABER_FIRE;
     public static SoundEvent STAFF_IGNITE;
     public static SoundEvent STAFF_RETRACT;
+    public static SoundEvent LIGHT_BRIDGE_STEP;
 
     public static void initialize() {
+        LIGHT_BRIDGE_STEP = register("light_bridge_step");
         LASER_START = register("laser_start");
         LASER_IDLE = register("laser_idle");
         LASER_STOP = register("laser_stop");

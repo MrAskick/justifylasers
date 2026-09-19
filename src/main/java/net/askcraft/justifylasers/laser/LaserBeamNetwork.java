@@ -39,7 +39,7 @@ public final class LaserBeamNetwork {
                                 && receiver.acceptsLaser(ray.hitSide(), ray.end())) {
                             long share = Math.min(remaining, LuminousFlux.share(budget, ray.power()));
                             remaining -= share;
-                            if (share > 0) deliveries.computeIfAbsent(ray.hitBlock(), ignored -> new LightDelivery()).add(share, ray.rgb());
+                            if (share > 0) deliveries.computeIfAbsent(ray.hitBlock(), ignored -> new LightDelivery()).add(share, ray.rgb(), ray.behavior().spectral());
                         }
                     }
                 });
@@ -47,7 +47,7 @@ public final class LaserBeamNetwork {
                 // must not disappear through per-source FE rounding. No optic stores/replays flux.
                 deliveries.forEach((pos, delivery) -> {
                     if (world.getBlockEntity(pos) instanceof LaserLightSink sink)
-                        sink.receiveLight(delivery.lumens, delivery.color.rgb());
+                        sink.receiveLight(delivery.lumens, delivery.color.rgb(), delivery.spectralLumens, delivery.spectrum.rgb());
                 });
             }
             // Resolving a pending block entity or changing its lit state can register
@@ -123,9 +123,9 @@ public final class LaserBeamNetwork {
         World world = emitter.beamWorld();
         registerEmitter(world, emitter.beamPosition());
         LaserBeamPath result = snapshot(world, tickDelta).paths.get(emitter.beamPosition());
-        return result != null ? result : new LaserBeamPath(List.of(
+        return result != null ? result : emitter.moduleFluxCost() >= emitter.luminousFlux() && emitter.moduleFluxCost() > 0 ? new LaserBeamPath(List.of()) : new LaserBeamPath(List.of(
                 LaserBeamTrace.traceFrom(world, emitter.beamOrigin(), emitter.beamDirection(), emitter.getBeamRange(), emitter.beamPosition())
-                        .withOptics(emitter.beamRgb(), 1)));
+                        .withOptics(emitter.beamRgb(), 1).withBehavior(emitter.beamBehavior())));
     }
 
     public static Map<BlockPos, LaserBeamPath> paths(World world, float tickDelta) {
@@ -159,13 +159,24 @@ public final class LaserBeamNetwork {
         Map<Integer, LaserBeamPath.CubeRoute> owners = new HashMap<>();
         Map<Integer, CubeInput> inputs = new HashMap<>();
         Map<BlockPos, OpticInput> optics = new HashMap<>();
-        for (BlockPos pos : state.emitters.stream().sorted(Comparator.comparingLong(BlockPos::asLong)).toList()) {
-            if (world.isChunkLoaded(pos) && world.getBlockEntity(pos) instanceof LaserBeamSource emitter
-                    && emitter.isBeamActive()) {
-                paths.put(pos, LaserBeamPath.trace(world, emitter, tickDelta, owners, inputs, optics));
+        var sources = state.emitters.stream().sorted(Comparator.comparingLong(BlockPos::asLong)).toList();
+        var exhausted = new HashSet<LaserBeamPath.CubeRoute>();
+        for (int attempt = 0; attempt <= LaserBeamPath.MAX_REFOCUSES; attempt++) {
+            paths.clear(); owners.clear(); inputs.clear(); optics.clear();
+            var budget = new BeamModuleBudget();
+            for (BlockPos pos : sources) {
+                if (world.isChunkLoaded(pos) && world.getBlockEntity(pos) instanceof LaserBeamSource emitter && emitter.isBeamActive()) {
+                    paths.put(pos, LaserBeamPath.traceRaw(world, emitter, tickDelta, owners, inputs, optics, budget, exhausted));
+                }
             }
+            budget.solve();
+            paths.replaceAll((pos, path) -> budget.apply(path));
+            tintCombinedInputs(world, paths, optics, inputs, owners);
+            boolean retry = false;
+            // An unfunded upstream module cannot reserve a cube's single input ahead of a live ray.
+            for (var entry : owners.entrySet()) if (!inputs.containsKey(entry.getKey())) retry |= exhausted.add(entry.getValue());
+            if (!retry) break;
         }
-        tintCombinedInputs(world, paths, optics, inputs, owners);
         state.time = world.getTime();
         state.tickDelta = tickDelta;
         state.snapshot = new Snapshot(paths, inputs, optics);
@@ -188,8 +199,8 @@ public final class LaserBeamNetwork {
         paths.forEach((pos, path) -> {
             if (!(world.getBlockEntity(pos) instanceof LaserBeamSource source)) return;
             for (var ray : path.segments()) {
-                if (ray.combinedBy() != null) owners.forEach((id, route) -> {
-                    if (cubes.containsKey(id) && ray.combinedBy().equals(route.combiner())
+                owners.forEach((id, route) -> {
+                    if (cubes.containsKey(id) && java.util.Objects.equals(ray.combinedBy(), route.combiner())
                             && ray.end().squaredDistanceTo(route.entry()) < 1e-10 && ray.axis().dotProduct(route.axis()) > .999999) {
                         cubeColors.computeIfAbsent(id, ignored -> new LightMixture()).add(ray.rgb(), Math.max(1, source.luminousFlux()) * ray.power());
                         cubeEmission.merge(id, source.isLightEmissionEnabled(), Boolean::logicalOr);
@@ -198,22 +209,25 @@ public final class LaserBeamNetwork {
                 // Redirected segments do not retain a block hit, so recover the optical port at the endpoint.
                 BlockPos endpoint = BlockPos.ofFloored(ray.end().add(ray.axis().multiply(OpticalGeometry.EPSILON)));
                 if (!optics.containsKey(endpoint)) continue;
-                if (ray.combinedBy() == null && (!(world.getBlockEntity(endpoint) instanceof LaserOpticBlockEntity optic)
-                        || optic.kind() != net.askcraft.justifylasers.block.LaserOpticBlock.Kind.COMBINER)) continue;
                 mixtures.computeIfAbsent(endpoint, ignored -> new LightMixture()).add(ray.rgb(), Math.max(1, source.luminousFlux()) * ray.power());
                 emission.merge(endpoint, source.isLightEmissionEnabled(), Boolean::logicalOr);
             }
         });
+        optics.keySet().retainAll(mixtures.keySet());
+        cubes.keySet().retainAll(cubeColors.keySet());
         mixtures.forEach((pos, color) -> optics.put(pos, new OpticInput(color.rgb(), emission.get(pos), color.weight())));
         cubeColors.forEach((id, color) -> cubes.put(id, new CubeInput(LaserColor.nearest(color.rgb()), cubeEmission.get(id), color.rgb())));
     }
 
     private static final class LightDelivery {
         private long lumens;
+        private long spectralLumens;
         private final LightMixture color = new LightMixture();
-        void add(long amount, int rgb) {
+        private final LightMixture spectrum = new LightMixture();
+        void add(long amount, int rgb, boolean spectral) {
             color.add(rgb, amount);
             lumens = LuminousFlux.clamp(lumens + amount);
+            if (spectral) { spectrum.add(rgb, amount); spectralLumens = LuminousFlux.clamp(spectralLumens + amount); }
         }
     }
 

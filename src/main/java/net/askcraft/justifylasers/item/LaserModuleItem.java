@@ -11,7 +11,7 @@ public class LaserModuleItem extends LaserPartItem {
     }
 
     public LaserModuleItem(Settings settings, LaserModule module, int rangePerItem) {
-        super(settings, module == LaserModule.RANGE && rangePerItem == 8 ? "advanced_range_module" : module.id());
+        super(settings, rangePerItem == 8 && (module == LaserModule.RANGE || module == LaserModule.THICKNESS) ? "advanced_" + module.id() : module.id());
         this.module = module;
         this.rangePerItem = rangePerItem;
     }
@@ -20,7 +20,12 @@ public class LaserModuleItem extends LaserPartItem {
         return module;
     }
 
+    @Override public net.minecraft.text.Text getName(net.minecraft.item.ItemStack stack) {
+        return super.getName(stack).copy().styled(style -> style.withColor(0x50DBD0));
+    }
+
     public int rangePerItem() {
         return rangePerItem;
     }
+    public int upgradeUnits() { return Math.max(1, rangePerItem); }
 }

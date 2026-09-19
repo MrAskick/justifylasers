@@ -33,6 +33,7 @@ public abstract class LaserGunInputMixin {
     @Inject(method = "doItemUse", at = @At("HEAD"), cancellable = true)
     private void justifylasers$aimInsteadOfUse(CallbackInfo ci) {
         var client = MinecraftClient.getInstance();
+        if (net.askcraft.justifylasers.client.MirrorControls.begin(client)) { ci.cancel(); return; }
         if (net.askcraft.justifylasers.laser.WeaponHands.dual(client.player)) {
             net.askcraft.justifylasers.client.SaberControls.attack(client, true);
             ci.cancel();

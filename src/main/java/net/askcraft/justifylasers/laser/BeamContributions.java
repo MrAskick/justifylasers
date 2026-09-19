@@ -14,10 +14,14 @@ public final class BeamContributions {
     public record Beam(LaserBeamTrace trace, BlockPos source, float width, boolean emission, double flux, long ticks) { }
 
     public static List<Beam> merge(List<Beam> contributions) {
-        Map<Line, List<Beam>> lines = new LinkedHashMap<>();
+        return merge(contributions, false);
+    }
+
+    public static List<Beam> merge(List<Beam> contributions, boolean preserveBehavior) {
+        Map<BehaviorLine, List<Beam>> lines = new LinkedHashMap<>();
         for (var beam : contributions) {
             var ray = beam.trace;
-            lines.computeIfAbsent(new Line(ray.start(), ray.axis()), ignored -> new ArrayList<>()).add(beam);
+            lines.computeIfAbsent(new BehaviorLine(new Line(ray.start(), ray.axis()), preserveBehavior ? ray.behavior() : null), ignored -> new ArrayList<>()).add(beam);
         }
         List<Beam> merged = new ArrayList<>();
         for (var beams : lines.values()) {
@@ -29,17 +33,19 @@ public final class BeamContributions {
                 var color = new LightMixture();
                 float width = 0;
                 boolean emission = false;
+                double work = 0;
                 for (int j = i; j < beams.size(); j++) {
                     var beam = beams.get(j);
                     color.add(beam.trace.rgb(), beam.flux);
                     width = Math.max(width, beam.width);
                     emission |= beam.emission;
+                    work += beam.trace.workPower();
                 }
                 var first = beams.get(0);
                 var ending = beams.get(i).trace;
                 Vec3d start = first.trace.start(), axis = first.trace.axis();
                 var ray = new LaserBeamTrace(start.add(axis.multiply(from)), start.add(axis.multiply(to)), ending.direction(),
-                        ending.hitBlock(), ending.hitSide(), color.rgb(), 1, first.trace.combinedBy());
+                        ending.hitBlock(), ending.hitSide(), color.rgb(), 1, first.trace.combinedBy(), first.trace.behavior(), work);
                 merged.add(new Beam(ray, first.source, width, emission, color.weight(), first.ticks));
                 from = to;
             }
@@ -47,6 +53,7 @@ public final class BeamContributions {
         return List.copyOf(merged);
     }
 
+    private record BehaviorLine(Line line, BeamBehavior behavior) { }
     private record Line(long x, long y, long z, long dx, long dy, long dz) {
         Line(Vec3d start, Vec3d axis) {
             this(Math.round(start.x * 1e6), Math.round(start.y * 1e6), Math.round(start.z * 1e6),

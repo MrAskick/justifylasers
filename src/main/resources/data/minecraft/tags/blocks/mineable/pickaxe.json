@@ -1,6 +1,8 @@
 {
   "replace": false,
   "values": [
+    "justifylasers:light_bridge",
+    "justifylasers:corner_light_bridge",
     "justifylasers:laser_turret",
     "justifylasers:laser_emitter",
     "justifylasers:powered_laser_emitter",
@@ -17,6 +19,8 @@
     "justifylasers:small_solar_concentrator",
     "justifylasers:crystal_growth_chamber",
     "justifylasers:assembly_chamber",
+    "justifylasers:chemical_synthesizer",
+    "justifylasers:laser_cutter",
     "justifylasers:optical_resonator",
     "justifylasers:reinforced_laser_housing",
     "justifylasers:energy_core",

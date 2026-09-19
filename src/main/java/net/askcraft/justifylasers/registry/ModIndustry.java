@@ -49,9 +49,9 @@ public final class ModIndustry {
             Platform.register(Registries.ITEM, Registries.BLOCK.getId(block), new BlockItem(block, new Item.Settings()));
         ORES.forEach((id, block) -> Platform.register(Registries.ITEM, JustifyLasers.id(id), new BlockItem(block, new Item.Settings())));
         MACHINES.forEach((kind, block) -> Platform.register(Registries.ITEM, JustifyLasers.id(kind.id()), new BlockItem(block, new Item.Settings())));
-        RAW_WOLFRAMITE = item("raw_wolframite");
-        ELECTRIC_MOTOR = item("electric_motor");
-        RAW_PHOTONIC_CRYSTAL = item("raw_photonic_crystal");
+        RAW_WOLFRAMITE = Platform.register(Registries.ITEM, JustifyLasers.id("raw_wolframite"), Platform.partItem(new Item.Settings(), "raw_wolframite"));
+        ELECTRIC_MOTOR = Platform.register(Registries.ITEM, JustifyLasers.id("electric_motor"), Platform.partItem(new Item.Settings(), "electric_motor"));
+        RAW_PHOTONIC_CRYSTAL = Platform.register(Registries.ITEM, JustifyLasers.id("raw_photonic_crystal"), Platform.partItem(new Item.Settings(), "raw_photonic_crystal"));
         HEAT_RESISTANT_ALLOY = item("heat_resistant_alloy");
         LASER_CHASSIS = Platform.register(Registries.ITEM, JustifyLasers.id("laser_chassis"),
                 new net.askcraft.justifylasers.item.LaserComponentItem(new Item.Settings(), "reinforced_laser_housing"));
@@ -69,10 +69,11 @@ public final class ModIndustry {
                 Platform.tabletItem(new Item.Settings().maxCount(1)));
         for (String device : new String[]{"powered_laser_emitter", "laser_gun", "laser_saber", "light_staff", "laser_turret",
                 "refocusing_cube", "laser_receiver", "laser_mirror", "beam_splitter", "energy_receiver", "configurator",
-                "block_destruction_module", "entity_damage_module", "block_drops_module", "silk_touch_module", "scorch_marks_module",
-                "ignition_module", "range_module", "advanced_range_module", "thickness_module", "target_filter_module",
+                "block_destruction_module", "entity_damage_module", "entity_heal_module", "entity_lift_module", "entity_lower_module", "block_drops_module", "block_collection_module", "silk_touch_module", "scorch_marks_module",
+                "ignition_module", "range_module", "advanced_range_module", "thickness_module", "advanced_thickness_module", "target_filter_module",
                 "optical_resonator", "reinforced_laser_housing", "energy_core", "focusing_lens_assembly", "beam_controller",
-                "solar_absorber", "extraterrestrial_tablet", "beam_combiner", "small_solar_concentrator"})
+                "solar_absorber", "extraterrestrial_tablet", "beam_combiner", "small_solar_concentrator", "light_bridge", "corner_light_bridge",
+                "chemical_synthesizer", "laser_cutter", "spectrum_module"})
             BLUEPRINTS.put(device, Platform.register(Registries.ITEM, JustifyLasers.id(device + "_blueprint"),
                     new net.askcraft.justifylasers.item.AssemblyBlueprintItem(new Item.Settings().maxCount(1), device)));
     }
