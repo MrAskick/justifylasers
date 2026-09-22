@@ -42,9 +42,10 @@ loom.runs.create('integrationTest') {
     if (!fabric) environment('gametestserver')
     source(checks)
     runDir('build/run/integrationTest')
+    if (project.hasProperty('releaseAudit')) vmArg '-Djustifylasers.releaseAudit=true'
     vmArg fabric ? '-Dfabric-api.gametest' : "-D${project.property('loom.platform')}.enabledGameTestNamespaces=justifylasers_integration"
     if (fabric) vmArg "-Dfabric-api.gametest.report-file=${file('build/integration-results.xml').absolutePath}"
 }
 if (project.hasProperty('integrationModsDir')) {
-    dependencies { modLocalRuntime fileTree(dir: project.property('integrationModsDir'), include: ['Mekanism-*.jar']) }
+    dependencies { modLocalRuntime fileTree(dir: project.property('integrationModsDir'), include: ['Mekanism-*.jar', 'appliedenergistics2-forge-*.jar', 'guideme-*.jar']) }
 }

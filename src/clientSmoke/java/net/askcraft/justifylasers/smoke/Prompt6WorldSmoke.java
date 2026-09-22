@@ -52,7 +52,7 @@ final class Prompt6WorldSmoke {
             if (tick == 150 + i * 50) client.player.closeHandledScreen();
         }
         if (Platform.isModLoaded("jei")) {
-            if (tick == 310) IndustryJeiSmoke.show("chemical_synthesizer",4);
+            if (tick == 310) IndustryJeiSmoke.show("chemical_synthesizer",5);
             if (tick == 325) capture(client,"jei-synthesizer");
             if (tick == 330) IndustryJeiSmoke.show("crystal_growth_chamber",5);
             if (tick == 345) capture(client,"jei-growth");
@@ -83,12 +83,18 @@ final class Prompt6WorldSmoke {
         var synth = machine(client, SYNTH, MachineKind.CHEMICAL_SYNTHESIZER);
         var cutter = machine(client, CUTTER, MachineKind.LASER_CUTTER);
         var grower = machine(client, GROWER, MachineKind.CRYSTAL_GROWER);
+        if (Boolean.getBoolean("justifylasers.smokePrompt8")) {
+            for (var pos : ChamberStructure.positions(CUTTER))
+                NativeInventoryProbe.verify(world.getBlockEntity(pos), new ItemStack(CrystalGrowth.AMETHYST.grown()), false);
+            org.slf4j.LoggerFactory.getLogger("justifylasers-client-smoke").info("CUTTER_NATIVE_INVENTORY_PASSED members=8 faces=6");
+        }
         synth.restoreFluids(new IndustrialMachineBlockEntity.Fluids(ProcessFluid.WATER,8000,ProcessFluid.AMETHYST,1000));
         var recipe = IndustryRecipe.all(world).stream().filter(r -> r.process().outputFluid() == ProcessFluid.AMETHYST).findFirst().orElseThrow();
         for (int i=0;i<3;i++) { var item = recipe.inputs().get(i).getMatchingStacks()[0].copy(); item.setCount(recipe.counts().get(i)*8); synth.setStack(i,item); }
         synth.energy().restore(synth.energy().capacity());
         cutter.setStack(0,new ItemStack(CrystalGrowth.AMETHYST.grown(),8)); cutter.energy().restore(cutter.energy().capacity());
-        grower.setStack(0,new ItemStack(CrystalGrowth.DIAMOND.natural(),4)); grower.fillFluid(ProcessFluid.DIAMOND,8000,false);
+        var seeds = CrystalGrowth.DIAMOND.seed(0); seeds.setCount(4);
+        grower.setStack(0,seeds); grower.fillFluid(ProcessFluid.DIAMOND,8000,false);
         beam(client,CUTTER.north(4),Direction.SOUTH);
         beam(client,GROWER.west(4),Direction.EAST);
         world.setBlockState(MODULE, ModLaserParts.MODULES.get(LaserModule.SPECTRUM).getBlock().getDefaultState());

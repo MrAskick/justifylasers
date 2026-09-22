@@ -77,6 +77,12 @@ public final class OpticsWorldSmoke {
             return;
         }
         int frame = ++ticks;
+        if (Boolean.getBoolean("justifylasers.smokeMirrorTemporal")) { MirrorTemporalSmoke.tick(client, frame); return; }
+        if (Boolean.getBoolean("justifylasers.smokeArtifacts")) { ArtifactWorldSmoke.tick(client, frame); return; }
+        if (Boolean.getBoolean("justifylasers.smokeBridgeGpu")) { BridgeGpuSmoke.tick(client, frame); return; }
+        if (Boolean.getBoolean("justifylasers.smokePrompt10")) { Prompt10WorldSmoke.tick(client, frame); return; }
+        if (Boolean.getBoolean("justifylasers.smokePrinting")) { PrintingWorldSmoke.tick(client, frame); return; }
+        if (Boolean.getBoolean("justifylasers.smokePrompt8")) { Prompt8WorldSmoke.tick(client, frame); return; }
         if (Boolean.getBoolean("justifylasers.smokePrompt7")) { Prompt7WorldSmoke.tick(client, frame); return; }
         if (Boolean.getBoolean("justifylasers.smokePrompt6")) { Prompt6WorldSmoke.tick(client, frame); return; }
         if (Boolean.getBoolean("justifylasers.smokePrompt5")) { Prompt5WorldSmoke.tick(client, frame); return; }

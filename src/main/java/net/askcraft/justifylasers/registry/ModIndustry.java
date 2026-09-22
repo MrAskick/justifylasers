@@ -26,10 +26,17 @@ public final class ModIndustry {
     public static Item RAW_WOLFRAMITE, RAW_PHOTONIC_CRYSTAL, HEAT_RESISTANT_ALLOY, LASER_CHASSIS, OPTICAL_ASSEMBLY;
     public static Item WOLFRAMITE_INGOT, PHOTONITE_CRYSTAL, CRYSTAL_MOUNT;
     public static Item BLANK_SCHEMATIC, EXTRATERRESTRIAL_TABLET, ELECTRIC_MOTOR;
+    public static Item MODEL_SCHEMATIC;
+    public static net.askcraft.justifylasers.block.PrintedModelBlock PRINTED_MODEL;
+    public static net.askcraft.justifylasers.item.AssemblyBlueprintItem ASSEMBLY_BLUEPRINT;
     public static final Map<String, net.askcraft.justifylasers.item.LaserComponentItem> COMPONENTS = new LinkedHashMap<>();
     public static final Map<String, net.askcraft.justifylasers.item.AssemblyBlueprintItem> BLUEPRINTS = new LinkedHashMap<>();
 
     public static void initializeBlocks() {
+        PRINTED_MODEL = Platform.register(Registries.BLOCK, JustifyLasers.id("printed_model"),
+                new net.askcraft.justifylasers.block.PrintedModelBlock(AbstractBlock.Settings.create().mapColor(MapColor.PURPLE)
+                        .strength(1.5F, 4).sounds(BlockSoundGroup.STONE).nonOpaque().dynamicBounds()
+                        .suffocates((state, world, pos) -> false).blockVision((state, world, pos) -> false)));
         for (String id : COMPONENT_IDS) componentBlock(id, false);
         SOLAR_ABSORBER = componentBlock("solar_absorber", false);
         LASER_ABSORBING_GLASS = componentBlock("laser_absorbing_glass", true);
@@ -45,6 +52,8 @@ public final class ModIndustry {
     }
 
     public static void initializeItems() {
+        MODEL_SCHEMATIC = Platform.register(Registries.ITEM, JustifyLasers.id("model_schematic"), new net.askcraft.justifylasers.item.ModelSchematicItem(new Item.Settings()));
+        Platform.register(Registries.ITEM, JustifyLasers.id("printed_model"), new net.askcraft.justifylasers.item.PrintedModelItem(PRINTED_MODEL, new Item.Settings()));
         for (var block : new Block[]{SOLAR_ABSORBER, LASER_ABSORBING_GLASS, SMALL_SOLAR_CONCENTRATOR})
             Platform.register(Registries.ITEM, Registries.BLOCK.getId(block), new BlockItem(block, new Item.Settings()));
         ORES.forEach((id, block) -> Platform.register(Registries.ITEM, JustifyLasers.id(id), new BlockItem(block, new Item.Settings())));
@@ -65,6 +74,8 @@ public final class ModIndustry {
             COMPONENTS.put(component, Platform.register(Registries.ITEM, JustifyLasers.id(component),
                     new net.askcraft.justifylasers.item.LaserComponentItem(new Item.Settings(), component)));
         BLANK_SCHEMATIC = item("blank_schematic");
+        ASSEMBLY_BLUEPRINT = Platform.register(Registries.ITEM, JustifyLasers.id("assembly_blueprint"),
+                new net.askcraft.justifylasers.item.AssemblyBlueprintItem(new Item.Settings().maxCount(1), ""));
         EXTRATERRESTRIAL_TABLET = Platform.register(Registries.ITEM, JustifyLasers.id("extraterrestrial_tablet"),
                 Platform.tabletItem(new Item.Settings().maxCount(1)));
         for (String device : new String[]{"powered_laser_emitter", "laser_gun", "laser_saber", "light_staff", "laser_turret",
@@ -73,9 +84,12 @@ public final class ModIndustry {
                 "ignition_module", "range_module", "advanced_range_module", "thickness_module", "advanced_thickness_module", "target_filter_module",
                 "optical_resonator", "reinforced_laser_housing", "energy_core", "focusing_lens_assembly", "beam_controller",
                 "solar_absorber", "extraterrestrial_tablet", "beam_combiner", "small_solar_concentrator", "light_bridge", "corner_light_bridge",
-                "chemical_synthesizer", "laser_cutter", "spectrum_module"})
+                "chemical_synthesizer", "laser_cutter", "photopolymer_printer", "model_encoder"})
             BLUEPRINTS.put(device, Platform.register(Registries.ITEM, JustifyLasers.id(device + "_blueprint"),
                     new net.askcraft.justifylasers.item.AssemblyBlueprintItem(new Item.Settings().maxCount(1), device)));
+        // Keep old saves readable; this retired plan can still be erased into a blank schematic.
+        Platform.register(Registries.ITEM, JustifyLasers.id("spectrum_module_blueprint"),
+                new net.askcraft.justifylasers.item.AssemblyBlueprintItem(new Item.Settings().maxCount(1), "spectrum_module"));
     }
 
     private static Item item(String id) { return Platform.register(Registries.ITEM, JustifyLasers.id(id), new Item(new Item.Settings())); }

@@ -45,7 +45,7 @@ final class Prompt7WorldSmoke {
         }
         if(tick==520) {
             var menu=(net.askcraft.justifylasers.screen.LaserEmitterScreenHandler)client.player.currentScreenHandler;
-            if(LaserAmplifierItem.tier(menu.getSlot(LaserEmitterBlockEntity.AMPLIFIER_SLOT).getStack())!=15 || menu.luminousFlux()<1_000_000_000_000L)
+            if(LaserAmplifierItem.tier(menu.getSlot(LaserEmitterBlockEntity.AMPLIFIER_SLOT).getStack())!=6 || menu.luminousFlux()<1_000_000_000L)
                 throw new AssertionError("High-tier amplifier inventory/flux did not synchronize");
             capture(client,"amplifier-slots");
             client.player.closeHandledScreen();
@@ -57,7 +57,7 @@ final class Prompt7WorldSmoke {
         if(tick==570 && Platform.isModLoaded("jei")) IndustryJeiSmoke.showAmplifiers();
         if(tick==590 && Platform.isModLoaded("jei")) capture(client,"amplifier-jei");
         if(tick==600) {
-            org.slf4j.LoggerFactory.getLogger("justifylasers-client-smoke").info("PROMPT7_WORLD_SMOKE_PASSED workshop=true menus=true amplifierTier15=true grownModels=true displayToggle=true reload=true");
+            org.slf4j.LoggerFactory.getLogger("justifylasers-client-smoke").info("PROMPT7_WORLD_SMOKE_PASSED workshop=true menus=true amplifierTier6=true grownModels=true displayToggle=true reload=true");
             client.scheduleStop();
         }
     }
@@ -79,14 +79,14 @@ final class Prompt7WorldSmoke {
         world.setBlockState(EMITTER,ModBlocks.POWERED_LASER_EMITTER.getDefaultState().with(LaserEmitterBlock.FACING,Direction.SOUTH));
         var emitter=(LaserEmitterBlockEntity)world.getBlockEntity(EMITTER); emitter.initializeOwner(player);
         emitter.setStack(0,new ItemStack(ModLaserParts.MODULES.get(LaserModule.SPECTRUM)));
-        emitter.setStack(LaserEmitterBlockEntity.AMPLIFIER_SLOT,LaserAmplifierItem.stack(15));
+        emitter.setStack(LaserEmitterBlockEntity.AMPLIFIER_SLOT,LaserAmplifierItem.stack(6));
         emitter.energy().restore(emitter.energy().capacity());
         Platform.onEndWorldTick(ticking -> {
             if (ticking==world && world.getBlockEntity(EMITTER) instanceof LaserEmitterBlockEntity source)
                 source.energy().receive(Integer.MAX_VALUE,false);
         });
         player.teleport(world,474,4,394,-12,18);
-        player.getInventory().setStack(8,LaserAmplifierItem.stack(15));
+        player.getInventory().setStack(8,LaserAmplifierItem.stack(6));
     }
     private static ServerPlayerEntity player(MinecraftClient client) { return client.getServer().getPlayerManager().getPlayer(client.player.getUuid()); }
     private static void capture(MinecraftClient client,String name) { ScreenshotRecorder.saveScreenshot(client.runDirectory,"prompt7-"+name+".png",client.getFramebuffer(),text->{}); }

@@ -9,6 +9,9 @@ import net.askcraft.justifylasers.industry.GeneratorFuel;
 import net.askcraft.justifylasers.industry.MachineKind;
 import net.askcraft.justifylasers.industry.ProcessFluid;
 import net.askcraft.justifylasers.industry.CrystalGrowth;
+import net.askcraft.justifylasers.printing.PrintCost;
+import net.askcraft.justifylasers.printing.PrintData;
+import net.askcraft.justifylasers.printing.PrintDesign;
 import net.askcraft.justifylasers.laser.LaserColor;
 import net.askcraft.justifylasers.laser.LaserRedstoneMode;
 import net.askcraft.justifylasers.platform.GameVersion;
@@ -43,7 +46,7 @@ import net.minecraft.world.World;
 
 public final class IndustrialMachineBlockEntity extends LaserBlockEntity implements SidedInventory, LaserScreenFactory, LaserEnergyHost, net.askcraft.justifylasers.laser.LaserLightSink {
     public static final int ACTIVE_SEED = 2, OUTPUT = 4, BLUEPRINT = 5, WATER_INPUT = 6, BUCKET_OUTPUT = 7, SLOT_COUNT = 8;
-    public enum Status { IDLE, WORKING, NO_POWER, OUTPUT_FULL, DISABLED, NO_FUEL, CALIBRATING, UNFORMED, NO_WATER, NO_BLUEPRINT, REDSTONE, WRONG_SPECTRUM, LOW_FLUX, WRONG_FLUID, MISSING_INPUT }
+    public enum Status { IDLE, WORKING, NO_POWER, OUTPUT_FULL, DISABLED, NO_FUEL, CALIBRATING, UNFORMED, NO_WATER, NO_BLUEPRINT, REDSTONE, WRONG_SPECTRUM, LOW_FLUX, WRONG_FLUID, MISSING_INPUT, INVALID_MODEL }
     private final DefaultedList<ItemStack> items = DefaultedList.ofSize(SLOT_COUNT, ItemStack.EMPTY);
     private final LaserEnergyBuffer energy = new LaserEnergyBuffer(() -> LaserConfig.get().machineCapacity,
             () -> Math.max(LaserConfig.get().machineTransfer, LaserConfig.get().generatorPerTick), this::markDirty);
@@ -61,6 +64,14 @@ public final class IndustrialMachineBlockEntity extends LaserBlockEntity impleme
     private int spectrum = 0xFFFFFF;
     private boolean advancedGrowth;
     private String recipeKey = "";
+    private PrintDesign printJob;
+    private int printPartIndex;
+    private net.askcraft.justifylasers.printing.EncoderDraft encoderDraft;
+    private int draftRevision;
+    private boolean hologramEnabled, hologramPowered;
+    private boolean printRepeat, printRequested = true;
+    public static final int HOLOGRAM_FE = 2;
+    public static final int ENCODING_ENERGY = 2_000;
     private long receivedFlux, lightTick = Long.MIN_VALUE;
     private net.askcraft.justifylasers.laser.LightMixture inputLight = new net.askcraft.justifylasers.laser.LightMixture();
     private int lightRgb = 0xFFFFFF;
@@ -135,6 +146,7 @@ public final class IndustrialMachineBlockEntity extends LaserBlockEntity impleme
     public int rate() { return kind() == MachineKind.FUEL_GENERATOR ? generatedRate : syncedRate > 0 ? syncedRate : kind().rate(); }
     public BlockPos origin() { return origin; }
     public net.minecraft.util.math.Box getRenderBoundingBox() {
+        if(kind()==MachineKind.MODEL_ENCODER)return new net.minecraft.util.math.Box(pos).stretch(0,1,0).expand(.03);
         if (!kind().multiblock() || origin == null) return new net.minecraft.util.math.Box(pos).expand(.03);
         return new net.minecraft.util.math.Box(origin.getX(), origin.getY(), origin.getZ(),
                 origin.getX() + 2, origin.getY() + 2, origin.getZ() + 2).expand(calibration > 0 ? 1.6 : .03);
@@ -162,7 +174,10 @@ public final class IndustrialMachineBlockEntity extends LaserBlockEntity impleme
         fluid = state.input; water = MathHelper.clamp(state.amount, 0, tankCapacity());
         product = state.product; productAmount = MathHelper.clamp(state.productAmount, 0, tankCapacity());
     }
-    public boolean acceptsFluid(ProcessFluid value) { return kind().fluidTank() && (kind() != MachineKind.CHEMICAL_SYNTHESIZER || value == ProcessFluid.WATER); }
+    public boolean acceptsFluid(ProcessFluid value) {
+        return kind().fluidTank() && (kind() != MachineKind.CHEMICAL_SYNTHESIZER || value == ProcessFluid.WATER)
+                && (kind() != MachineKind.PHOTOPOLYMER_PRINTER || value == ProcessFluid.PHOTOPOLYMER);
+    }
     public int fillFluid(ProcessFluid value, int amount, boolean simulate) {
         if (amount <= 0 || value == null || !acceptsFluid(value) || !formed()) return 0;
         var master = controller();
@@ -318,6 +333,12 @@ public final class IndustrialMachineBlockEntity extends LaserBlockEntity impleme
     private void process() {
         if (!enabled || !LaserConfig.technicalMode()) { status = Status.DISABLED; return; }
         if (!redstoneAllowsWork()) { status = Status.REDSTONE; return; }
+        if (kind() == MachineKind.PHOTOPOLYMER_PRINTER) { print(); return; }
+        if (kind() == MachineKind.MODEL_ENCODER) {
+            hologramPowered = hologramEnabled && encoderDraft != null && encoderDraft.design() != null && energy.consume(HOLOGRAM_FE);
+            if (status != Status.INVALID_MODEL) status = energy.stored() < ENCODING_ENERGY ? Status.NO_POWER : Status.IDLE;
+            return;
+        }
         if (calibration > 0) {
             calibration--;
             status = Status.CALIBRATING;
@@ -326,7 +347,7 @@ public final class IndustrialMachineBlockEntity extends LaserBlockEntity impleme
         }
         var recipe = recipe();
         if (recipe == null || !recipe.matches(this) || kind() == MachineKind.ASSEMBLY_CHAMBER
-                && (!(items.get(BLUEPRINT).getItem() instanceof net.askcraft.justifylasers.item.AssemblyBlueprintItem blueprint) || !blueprint.recipe().equals(recipe.blueprint()))) {
+                && !net.askcraft.justifylasers.item.AssemblyBlueprintItem.recipe(items.get(BLUEPRINT)).equals(recipe.blueprint())) {
             status = hasPendingWork() ? Status.MISSING_INPUT : kind() == MachineKind.ASSEMBLY_CHAMBER && !(items.get(BLUEPRINT).getItem() instanceof net.askcraft.justifylasers.item.AssemblyBlueprintItem) ? Status.NO_BLUEPRINT : Status.IDLE;
             return;
         }
@@ -343,11 +364,13 @@ public final class IndustrialMachineBlockEntity extends LaserBlockEntity impleme
         syncedDuration = recipe.duration(); syncedRate = recipe.rate();
         advancedGrowth = crystal != null;
         ItemStack result = recipe.output(this);
-        if (crystal != null) result.setCount(3);
+        boolean growing = kind() == MachineKind.CRYSTAL_GROWER;
+        boolean cuttingCrystal=kind()==MachineKind.LASER_CUTTER&&CrystalGrowth.isCuttingInput(items.get(0));
+        if (growing) result.setCount(crystal == null ? 3 : 1);
+        if (cuttingCrystal) result.setCount(6);
         ProcessFluid outputFluid = recipe.process().outputFluid();
         if (outputFluid != null ? productAmount > 0 && product != outputFluid || productAmount + recipe.waterCost() > tankCapacity()
                 : !canOutput(result)) { status = Status.OUTPUT_FULL; return; }
-        boolean growing = kind() == MachineKind.CRYSTAL_GROWER;
         if (growing && recipe.process().spectrum() >= 0 && (spectralFlux() == 0 || !CrystalGrowth.matchesSpectrum(spectrum, recipe.process().spectrum()))) {
             status = Status.WRONG_SPECTRUM; return;
         }
@@ -369,9 +392,11 @@ public final class IndustrialMachineBlockEntity extends LaserBlockEntity impleme
         growthRemainder = growing ? nextWork % recipe.rate() : 0;
         if (progress >= recipe.duration()) {
             if (crystal == null) {
+                if(growing)result.setCount(CrystalGrowth.basicYield(world.random.nextInt(1000)));
+                if(cuttingCrystal)result.setCount(CrystalGrowth.cuttingYield(world.random.nextInt(1000)));
                 for (int slot = 0; slot < recipe.inputs().size(); slot++) items.get(slot).decrement(recipe.counts().get(slot));
             } else {
-                result.setCount(CrystalGrowth.yield(crystal.stage(items.get(ACTIVE_SEED)), world.random.nextInt(1000)));
+                result.setCount(1);
                 items.set(ACTIVE_SEED, crystal.degraded(items.get(ACTIVE_SEED), world.random.nextInt(1000)));
             }
             if (outputFluid == null) addOutput(result);
@@ -395,9 +420,75 @@ public final class IndustrialMachineBlockEntity extends LaserBlockEntity impleme
     private long growthFlux() { return advancedGrowth ? spectralFlux() : lightFlux(); }
     private boolean hasPendingWork() { return progress > 0 || growthRemainder > 0 || waterSpent > 0; }
 
+    public PrintDesign printModel() { var project=printJob==null?PrintData.read(getStack(0)):printJob;return project==null?null:project.part(Math.min(printPartIndex,project.partCount()-1)); }
+    public int printPartIndex() { return printPartIndex; }
+    public int printPartCount() { var project=printJob==null?PrintData.read(getStack(0)):printJob;return project==null?1:project.partCount(); }
+    public long printingMinimumFlux() { var model = printModel(); return model == null ? 0 : model.cost().lumens(); }
+    public boolean printRepeat() { return printRepeat; }
+    public boolean printRequested() { return printRequested; }
+    public void cyclePrintMode() { if(kind()==MachineKind.PHOTOPOLYMER_PRINTER){printRepeat=!printRepeat;if(printRepeat)printRequested=true;sync();} }
+    public void requestPrint() { if(kind()==MachineKind.PHOTOPOLYMER_PRINTER){printRequested=true;sync();} }
+    public net.askcraft.justifylasers.printing.EncoderDraft encoderDraft() { return encoderDraft; }
+    public int draftRevision() { return draftRevision; }
+    public boolean saveDraft(PlayerEntity player,String json,int revision) {
+        if(kind()!=MachineKind.MODEL_ENCODER || !canPlayerUse(player) || revision!=draftRevision)return false;
+        try { encoderDraft=net.askcraft.justifylasers.printing.EncoderDraft.parse(json); }
+        catch(IllegalArgumentException failure){return false;}
+        draftRevision++;sync();return true;
+    }
+    public boolean hologramEnabled() { return hologramEnabled; }
+    public boolean hologramVisible() { return hologramEnabled && hologramPowered && enabled && redstoneAllowsWork() && encoderDraft!=null && encoderDraft.design()!=null; }
+    public void toggleHologram() { if(kind()==MachineKind.MODEL_ENCODER){hologramEnabled=!hologramEnabled;hologramPowered=false;sync();} }
+
+    private void print() {
+        if(!printRepeat && !printRequested && printJob==null){status=Status.IDLE;return;}
+        PrintDesign design = PrintData.read(items.get(0));
+        if (design == null) { status = items.get(0).isEmpty() ? Status.NO_BLUEPRINT : Status.INVALID_MODEL; return; }
+        if (printJob != null && !printJob.json().equals(design.json())) { status = Status.MISSING_INPUT; return; }
+        if(printPartIndex>=design.partCount())printPartIndex=0;
+        PrintDesign piece=design.part(printPartIndex);
+        PrintCost cost = piece.cost();
+        syncedDuration = cost.ticks(); syncedRate = cost.energyPerTick();
+        var result = PrintData.printed(piece);
+        if (!canOutput(result)) { status = Status.OUTPUT_FULL; return; }
+        if (lightFlux() < cost.lumens()) { status = Status.LOW_FLUX; return; }
+        if (!PrintCost.acceptsSpectrum(lightRgb())) { status = Status.WRONG_SPECTRUM; return; }
+        if (water > 0 && fluid != ProcessFluid.PHOTOPOLYMER) { status = Status.WRONG_FLUID; return; }
+        int due = (int)(((long)(progress + 1) * cost.polymer() + cost.ticks() - 1) / cost.ticks()) - waterSpent;
+        if (water < due || progress == 0 && water < Math.min(cost.polymer(), tankCapacity())) { status = Status.NO_WATER; return; }
+        if (!energy.consume(cost.energyPerTick())) { status = Status.NO_POWER; return; }
+        printJob = design; water -= due; waterSpent += due; progress++; status = Status.WORKING;
+        if (progress >= cost.ticks()) {
+            if (items.get(OUTPUT).isEmpty()) items.set(OUTPUT, result); else items.get(OUTPUT).increment(1);
+            progress = 0; waterSpent = 0; printPartIndex++;
+            if(printPartIndex>=design.partCount()){
+                printPartIndex=0;printJob=null;
+                if(!printRepeat){printRequested=false;status=Status.IDLE;}
+            }
+        }
+        markDirty();
+    }
+
+    public boolean encodeModel(PlayerEntity player, String json) {
+        if (kind() != MachineKind.MODEL_ENCODER || !canPlayerUse(player) || !LaserConfig.technicalMode() || !enabled || !redstoneAllowsWork()) return false;
+        PrintDesign design;
+        try { design = PrintDesign.parse(json); }
+        catch (IllegalArgumentException failure) { status = Status.INVALID_MODEL; sync(); return false; }
+        if (!isValid(0, items.get(0))) { status = Status.NO_BLUEPRINT; sync(); return false; }
+        var result = PrintData.schematic(design);
+        if (!canOutput(result)) { status = Status.OUTPUT_FULL; sync(); return false; }
+        if (!energy.consume(ENCODING_ENERGY)) { status = Status.NO_POWER; sync(); return false; }
+        items.get(0).decrement(1); items.set(OUTPUT, result); status = Status.IDLE; sync(); return true;
+    }
+    public boolean cancelPrint() {
+        if (kind() != MachineKind.PHOTOPOLYMER_PRINTER) return false;
+        progress = 0; waterSpent = 0; printJob = null; printPartIndex=0; printRequested=false; printRepeat=false; status = Status.IDLE; sync(); return true;
+    }
+
     public net.askcraft.justifylasers.industry.MachineRecipeData recipe() {
+        if (kind().programmable()) return null;
         if (world == null) return null;
-        String blueprint = items.get(BLUEPRINT).getItem() instanceof net.askcraft.justifylasers.item.AssemblyBlueprintItem item ? item.recipe() : "";
+        String blueprint = net.askcraft.justifylasers.item.AssemblyBlueprintItem.recipe(items.get(BLUEPRINT));
         var recipes = net.askcraft.justifylasers.industry.IndustryRecipe.all(world).stream().filter(recipe -> recipe.kind() == kind()
                 && (hasPendingWork() ? recipeKey.startsWith(recipe.key() + ":")
                 : kind() != MachineKind.ASSEMBLY_CHAMBER || !blueprint.isEmpty() && recipe.blueprint().equals(blueprint))).toList();
@@ -439,6 +530,12 @@ public final class IndustrialMachineBlockEntity extends LaserBlockEntity impleme
 
     @Override protected void writeLaserNbt(NbtCompound nbt, InventoryNbt inventory) {
         inventory.write(nbt, items);
+        if (printJob != null) PrintData.putText(nbt,"PrintJob", printJob.json());
+        nbt.putInt("PrintPart",printPartIndex);
+        nbt.putBoolean("PrintRepeat",printRepeat);nbt.putBoolean("PrintRequested",printRequested);
+        if(encoderDraft!=null)PrintData.putText(nbt,"EncoderDraft",encoderDraft.json());
+        nbt.putInt("DraftRevision",draftRevision);nbt.putBoolean("Hologram",hologramEnabled);nbt.putBoolean("HologramPowered",hologramPowered);
+        nbt.putInt("SeedSystemVersion", 38);
         nbt.putInt("Energy", energy.stored()); nbt.putInt("Progress", progress);
         nbt.putLong("GrowthRemainder", growthRemainder);
         nbt.putInt("Duration", duration());
@@ -459,7 +556,15 @@ public final class IndustrialMachineBlockEntity extends LaserBlockEntity impleme
     }
     @Override protected void readLaserNbt(NbtCompound nbt, InventoryNbt inventory) {
         items.clear(); inventory.read(nbt, items);
-        for (int slot = 0; slot < items.size(); slot++) items.set(slot, net.askcraft.justifylasers.industry.CrystalSeed.migrate(items.get(slot)));
+        if (kind() == MachineKind.LASER_CUTTER) net.askcraft.justifylasers.industry.CrystalSeed.cleanProduct(items.get(OUTPUT));
+        if (nbt.getInt("SeedSystemVersion") < 38 && kind() == MachineKind.CRYSTAL_GROWER) {
+            var seed = items.get(ACTIVE_SEED);
+            if (!net.askcraft.justifylasers.industry.CrystalSeed.synthetic(seed))
+                for (var crystal : CrystalGrowth.values()) if (seed.isOf(crystal.natural()))
+                    items.set(ACTIVE_SEED, net.askcraft.justifylasers.industry.CrystalSeed.migrate(seed, crystal,
+                            MathHelper.clamp(GameVersion.itemData(seed).getInt(net.askcraft.justifylasers.industry.CrystalSeed.STAGE), 0, 3)));
+        }
+        for (int slot = 0; slot < items.size(); slot++) items.set(slot, net.askcraft.justifylasers.item.AssemblyBlueprintItem.migrate(net.askcraft.justifylasers.industry.CrystalSeed.migrate(items.get(slot))));
         energy.restore(nbt.getInt("Energy"));
         syncedDuration = MathHelper.clamp(nbt.contains("Duration") ? nbt.getInt("Duration") : kind().duration(), 1, 72_000);
         syncedRate = Math.max(0, nbt.getInt("Rate"));
@@ -470,6 +575,21 @@ public final class IndustrialMachineBlockEntity extends LaserBlockEntity impleme
         advancedGrowth = nbt.getBoolean("AdvancedGrowth"); spectralFlux = net.askcraft.justifylasers.laser.LuminousFlux.clamp(nbt.getLong("SpectralFlux")); spectrum = nbt.getInt("Spectrum") & 0xFFFFFF;
         recipeKey = nbt.getString("Recipe"); origin = nbt.contains("ChamberOrigin") ? BlockPos.fromLong(nbt.getLong("ChamberOrigin")) : null;
         progress = MathHelper.clamp(nbt.getInt("Progress"), 0, 72_000);
+        printJob = kind() == MachineKind.PHOTOPOLYMER_PRINTER ? PrintData.read(PrintData.getText(nbt,"PrintJob",PrintDesign.MAX_DOCUMENT_JSON)) : null;
+        printPartIndex=printJob==null?0:MathHelper.clamp(nbt.getInt("PrintPart"),0,printJob.partCount()-1);
+        printRepeat=nbt.getBoolean("PrintRepeat");printRequested=!nbt.contains("PrintRequested")||nbt.getBoolean("PrintRequested");
+        encoderDraft=null;
+        if(kind()==MachineKind.MODEL_ENCODER && nbt.contains("EncoderDraft"))try{encoderDraft=net.askcraft.justifylasers.printing.EncoderDraft.parse(PrintData.getText(nbt,"EncoderDraft",net.askcraft.justifylasers.printing.EncoderDraft.MAX_JSON));}catch(IllegalArgumentException ignored){ }
+        draftRevision=nbt.getInt("DraftRevision");hologramEnabled=nbt.getBoolean("Hologram");hologramPowered=world!=null&&world.isClient&&nbt.getBoolean("HologramPowered");
+        if (kind() == MachineKind.PHOTOPOLYMER_PRINTER) {
+            if (printJob == null) { progress = 0; waterSpent = 0; }
+            else {
+                var cost=printJob.part(printPartIndex).cost();
+                progress = Math.min(progress, cost.ticks() - 1);
+                waterSpent = (int)(((long)progress * cost.polymer() + cost.ticks() - 1) / cost.ticks());
+                syncedDuration = cost.ticks(); syncedRate = cost.energyPerTick();
+            }
+        }
         growthRemainder = Math.max(0, Math.min(Math.max(1, rate()) - 1L, nbt.getLong("GrowthRemainder")));
         fuel = MathHelper.clamp(nbt.getInt("Fuel"), 0, 1_000_000); fuelTotal = MathHelper.clamp(nbt.getInt("FuelTotal"), 0, 1_000_000);
         calibration = MathHelper.clamp(nbt.getInt("Calibration"), 0, 30);
@@ -493,23 +613,44 @@ public final class IndustrialMachineBlockEntity extends LaserBlockEntity impleme
         ownerName = nbt.getString("OwnerName"); privateAccess = owner != null && nbt.getBoolean("PrivateAccess");
         redstoneMode = LaserRedstoneMode.byIndex(nbt.getInt("RedstoneMode"));
     }
+    @Override protected NbtCompound clientNbt(NbtCompound nbt) {
+        if(!kind().programmable())return nbt;
+        // Open menus synchronize their slots separately. Never duplicate a potentially large schematic
+        // in the world-render packet alongside the draft or active print job.
+        if(nbt.contains("Items",9)){
+            var contents=nbt.getList("Items",10);
+            for(int i=contents.size()-1;i>=0;i--)if(kind()==MachineKind.MODEL_ENCODER||contents.getCompound(i).getByte("Slot")==0)contents.remove(i);
+        }
+        if(kind()==MachineKind.PHOTOPOLYMER_PRINTER&&printJob!=null){PrintData.putText(nbt,"PrintJob",printJob.part(printPartIndex).json());nbt.putInt("PrintPart",0);}
+        return nbt;
+    }
     @Override public BlockEntityUpdateS2CPacket toUpdatePacket() { return BlockEntityUpdateS2CPacket.create(this); }
     @Override public BlockPos screenPosition() { return pos; }
     @Override public void writeScreenOpeningData(ServerPlayerEntity player, PacketByteBuf buffer) { buffer.writeBlockPos(pos); }
     @Override public Text getDisplayName() { return Text.translatable("block.justifylasers." + kind().id()); }
     @Override public ScreenHandler createMenu(int id, PlayerInventory inventory, PlayerEntity player) {
-        return canPlayerUse(player) ? new IndustrialMachineScreenHandler(id, inventory, this) : null;
+        return !canPlayerUse(player) ? null : kind() == MachineKind.MODEL_ENCODER
+                ? new net.askcraft.justifylasers.screen.ModelEncoderScreenHandler(id, inventory, this)
+                : new IndustrialMachineScreenHandler(id, inventory, this);
     }
     @Override public int size() { return items.size(); }
     @Override public boolean isEmpty() { for (int i = 0; i < size(); i++) if (!getStack(i).isEmpty()) return false; return true; }
     @Override public ItemStack getStack(int slot) { var controller = controller(); return controller != null && controller != this ? controller.getStack(slot) : items.get(slot); }
     @Override public ItemStack removeStack(int slot, int amount) { var controller = controller(); if (controller != null && controller != this) return controller.removeStack(slot, amount); var stack = Inventories.splitStack(items, slot, amount); sync(); return stack; }
     @Override public ItemStack removeStack(int slot) { var controller = controller(); if (controller != null && controller != this) return controller.removeStack(slot); var stack = Inventories.removeStack(items, slot); sync(); return stack; }
-    @Override public void setStack(int slot, ItemStack stack) { var controller = controller(); if (controller != null && controller != this) { controller.setStack(slot, stack); return; } stack = net.askcraft.justifylasers.industry.CrystalSeed.migrate(stack); items.set(slot, stack); stack.setCount(Math.min(slot == BLUEPRINT ? 1 : getMaxCountPerStack(), stack.getCount())); sync(); }
+    @Override public void setStack(int slot, ItemStack stack) {
+        var controller = controller();
+        if (controller != null && controller != this) { controller.setStack(slot, stack); return; }
+        if (slot == OUTPUT && kind() == MachineKind.LASER_CUTTER) net.askcraft.justifylasers.industry.CrystalSeed.cleanProduct(stack);
+        stack = net.askcraft.justifylasers.item.AssemblyBlueprintItem.migrate(net.askcraft.justifylasers.industry.CrystalSeed.migrate(stack));
+        items.set(slot, stack);
+        stack.setCount(Math.min(slot == BLUEPRINT ? 1 : getMaxCountPerStack(), stack.getCount()));
+        sync();
+    }
     @Override public void clear() {
         var controller = controller();
         if (controller != null && controller != this) { controller.clear(); return; }
-        items.clear(); progress = 0; growthRemainder = 0; waterSpent = 0; recipeKey = ""; sync();
+        items.clear(); progress = 0; growthRemainder = 0; waterSpent = 0; recipeKey = ""; printJob = null; sync();
     }
     @Override public void markDirty() {
         super.markDirty();
@@ -523,6 +664,9 @@ public final class IndustrialMachineBlockEntity extends LaserBlockEntity impleme
                 || java.util.Arrays.stream(ProcessFluid.values()).anyMatch(value -> acceptsFluid(value) && stack.isOf(value.bucket()))
                 : kind() == MachineKind.FUEL_GENERATOR && net.askcraft.justifylasers.energy.RechargeableItem.accepts(stack);
         if (slot == OUTPUT || slot == BUCKET_OUTPUT || slot < 0 || slot >= kind().inputs()) return false;
+        if (kind() == MachineKind.PHOTOPOLYMER_PRINTER) return slot == 0 && stack.isOf(net.askcraft.justifylasers.registry.ModIndustry.MODEL_SCHEMATIC) && PrintData.read(stack) != null;
+        if (kind() == MachineKind.MODEL_ENCODER) return slot == 0 && !stack.isEmpty()
+                && (stack.isOf(net.askcraft.justifylasers.registry.ModIndustry.BLANK_SCHEMATIC) || stack.isOf(net.askcraft.justifylasers.registry.ModIndustry.MODEL_SCHEMATIC));
         if (kind() == MachineKind.FUEL_GENERATOR) return IndustryRecipes.accepts(kind(), slot, stack);
         if (world == null) return false;
         var selected = recipe();

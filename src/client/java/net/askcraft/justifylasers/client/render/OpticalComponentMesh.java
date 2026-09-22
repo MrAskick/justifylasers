@@ -23,44 +23,78 @@ final class OpticalComponentMesh {
 
     private final String kind;
     private final List<Face> faces;
+    private record DrawFace(float[] vertices, float nx, float ny, float nz, int alpha) { }
+    private final List<DrawFace> solidFaces, glowFaces, glassFaces;
+    private final Object solidKey = new Object(), glowKey = new Object();
 
     OpticalComponentMesh(String kind, List<Face> faces) {
         this.kind = kind;
         this.faces = List.copyOf(faces);
+        var solid = new ArrayList<DrawFace>();
+        var glow = new ArrayList<DrawFace>();
+        var glass = new ArrayList<DrawFace>();
+        for (Face face : faces) {
+            (face.alpha < 255 ? glass : solid).add(bake(face, 0));
+            if (face.glowing && face.alpha == 255) glow.add(bake(face, .00035));
+        }
+        solidFaces = List.copyOf(solid);
+        glowFaces = List.copyOf(glow);
+        glassFaces = List.copyOf(glass);
     }
 
     List<Face> faces() { return faces; }
 
     void render(MatrixStack matrices, VertexConsumerProvider consumers, int light, int rgb, boolean active, boolean emission) {
-        VertexConsumer solid = consumers.getBuffer(RenderLayer.getEntitySolid(ComponentAtlas.texture(kind, "base")));
-        draw(matrices, solid, light, 0xFFFFFF, false, false);
+        drawBatch(solidKey, solidFaces, matrices, consumers, RenderLayer.getEntitySolid(ComponentAtlas.texture(kind, "base")), light, 0xFFFFFF, false);
         if (active) {
             String mask = emission && IrisCompatibility.isShaderPackInUse() ? "glow" : "indicator";
-            VertexConsumer glow = consumers.getBuffer(RenderLayer.getEntityCutout(ComponentAtlas.texture(kind, mask)));
-            draw(matrices, glow, emission ? LightmapTextureManager.MAX_LIGHT_COORDINATE : light, rgb, true, false);
+            drawBatch(glowKey, glowFaces, matrices, consumers, RenderLayer.getEntityCutout(ComponentAtlas.texture(kind, mask)),
+                    emission ? LightmapTextureManager.MAX_LIGHT_COORDINATE : light, rgb, true);
         }
-        if (!IrisCompatibility.isRenderingShadowPass() && faces.stream().anyMatch(f -> f.alpha < 255)) {
+        if (!IrisCompatibility.isRenderingShadowPass() && !glassFaces.isEmpty()) {
             // The core supplies opaque depth; the cover must not hide its late white-hot halo.
             VertexConsumer glass = consumers.getBuffer(LaserCrystalModel.EmissiveLayers.lens(ComponentAtlas.texture(kind, "base")));
-            draw(matrices, glass, light, 0xFFFFFF, false, true);
+            draw(glassFaces, matrices, glass, light, 0xFFFFFF);
         }
     }
 
-    private void draw(MatrixStack matrices, VertexConsumer buffer, int light, int rgb, boolean glow, boolean glass) {
-        for (Face f : faces) {
-            if (glass != (f.alpha < 255) || glow && !f.glowing) continue;
-            Vec3d offset = glow ? f.normal.multiply(0.00035) : Vec3d.ZERO;
-            vertex(buffer, matrices, f.a.add(offset), f.normal, f.ua, rgb, f.alpha, light);
-            vertex(buffer, matrices, f.b.add(offset), f.normal, f.ub, rgb, f.alpha, light);
-            vertex(buffer, matrices, f.c.add(offset), f.normal, f.uc, rgb, f.alpha, light);
-            vertex(buffer, matrices, f.d.add(offset), f.normal, f.ud, rgb, f.alpha, light);
+    private static void drawBatch(Object key, List<DrawFace> faces, MatrixStack matrices, VertexConsumerProvider consumers,
+                                  RenderLayer layer, int light, int rgb, boolean cutout) {
+        if (net.askcraft.justifylasers.client.ClientSettings.get().gpuModels
+                && GpuModelRenderer.draw(key, faces.size() * 4,
+                buffer -> draw(faces, new MatrixStack(), buffer, LightmapTextureManager.MAX_LIGHT_COORDINATE, 0xFFFFFF),
+                matrices, layer, light, OverlayTexture.DEFAULT_UV, rgb, cutout)) return;
+        draw(faces, matrices, consumers.getBuffer(layer), light, rgb);
+    }
+
+    private static void draw(List<DrawFace> faces, MatrixStack matrices, VertexConsumer buffer, int light, int rgb) {
+        var entry = matrices.peek();
+        var normal = entry.getNormalMatrix();
+        for (DrawFace f : faces) {
+            float nx = normal.m00()*f.nx + normal.m10()*f.ny + normal.m20()*f.nz;
+            float ny = normal.m01()*f.nx + normal.m11()*f.ny + normal.m21()*f.nz;
+            float nz = normal.m02()*f.nx + normal.m12()*f.ny + normal.m22()*f.nz;
+            int argb = f.alpha << 24 | rgb & 0xFFFFFF;
+            float[] v = f.vertices;
+            for (int i = 0; i < v.length; i += 5)
+                RenderVersion.entityVertex(buffer, entry.getPositionMatrix(), v[i], v[i+1], v[i+2], argb,
+                        v[i+3], v[i+4], OverlayTexture.DEFAULT_UV, light, nx, ny, nz);
         }
     }
 
-    private static void vertex(VertexConsumer buffer, MatrixStack matrices, Vec3d p, Vec3d n, ComponentAtlas.Uv uv, int rgb, int alpha, int light) {
-        RenderVersion.endVertex(RenderVersion.normal(buffer.vertex(matrices.peek().getPositionMatrix(), (float) p.x, (float) p.y, (float) p.z)
-                        .color(rgb >> 16 & 255, rgb >> 8 & 255, rgb & 255, alpha).texture(uv.u(), uv.v())
-                        .overlay(OverlayTexture.DEFAULT_UV).light(light), matrices.peek().getNormalMatrix(), (float) n.x, (float) n.y, (float) n.z));
+    private static DrawFace bake(Face face, double offset) {
+        float[] vertices = new float[20];
+        Vec3d[] positions = {face.a, face.b, face.c, face.d};
+        ComponentAtlas.Uv[] uvs = {face.ua, face.ub, face.uc, face.ud};
+        for (int i = 0; i < 4; i++) {
+            var p = positions[i];
+            vertices[i*5] = (float)(p.x+face.normal.x*offset);
+            vertices[i*5+1] = (float)(p.y+face.normal.y*offset);
+            vertices[i*5+2] = (float)(p.z+face.normal.z*offset);
+            vertices[i*5+3] = uvs[i].u();
+            vertices[i*5+4] = uvs[i].v();
+        }
+        return new DrawFace(vertices, (float)face.normal.x, (float)face.normal.y, (float)face.normal.z, face.alpha);
     }
 
     static final class Builder {
@@ -132,6 +166,12 @@ final class OpticalComponentMesh {
             projected(atlas.surface(part),glow,min,max,new Vec3d(x,y,z),new Vec3d(x,Y,z),new Vec3d(X,Y,z),new Vec3d(X,y,z));
         }
 
+        void panelRegion(String part, double x,double y,double X,double Y,double z,double u0,double v0,double u1,double v1){
+            var region=atlas.region(part);
+            face(new Vec3d[]{new Vec3d(x,y,z),new Vec3d(x,Y,z),new Vec3d(X,Y,z),new Vec3d(X,y,z)},
+                    new ComponentAtlas.Uv[]{region.uv(u0,v1),region.uv(u0,v0),region.uv(u1,v0),region.uv(u1,v1)},false,255);
+        }
+
         void readableLabel(String part, double x, double y, double X, double Y, double z) {
             var uv = atlas.region(part);
             face(new Vec3d[]{new Vec3d(x,y,z),new Vec3d(x,Y,z),new Vec3d(X,Y,z),new Vec3d(X,y,z)},
@@ -153,6 +193,14 @@ final class OpticalComponentMesh {
             ComponentAtlas.Uv[] uv = new ComponentAtlas.Uv[4];
             for (int i = 0; i < 4; i++) uv[i] = region.uv((points[i].x / radius + 1) / 2, (points[i].z / radius + 1) / 2);
             face(points, uv, false, 255);
+        }
+
+        void planarPane(String part, Vec3d a, Vec3d b, Vec3d c, Vec3d d, double radius, int alpha) {
+            var region = atlas.region(part);
+            Vec3d[] points = {a, b, c, d};
+            ComponentAtlas.Uv[] uv = new ComponentAtlas.Uv[4];
+            for (int i = 0; i < 4; i++) uv[i] = region.uv(.5 + points[i].x / (2 * radius), .5 - points[i].y / (2 * radius));
+            face(points, uv, false, alpha);
         }
 
         void trimmedPanel(String part, boolean glow, double x, double y, double X, double Y, double z) {

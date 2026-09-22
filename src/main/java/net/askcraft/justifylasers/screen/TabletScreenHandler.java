@@ -103,7 +103,7 @@ public final class TabletScreenHandler extends ScreenHandler {
         if (destination < 0) return Status.INVENTORY_FULL;
         // Validate every prerequisite before mutating the card, battery, or inventory.
         blanks.decrement(1);
-        inventory.setStack(destination, new ItemStack(blueprint()));
+        inventory.setStack(destination, blueprint().getDefaultStack());
         ExtraterrestrialTabletItem.setCharge(tablet, charge() - ExtraterrestrialTabletItem.WRITE_COST);
         return Status.RECORDED;
     }

@@ -36,6 +36,16 @@ final class TabletWorldSmoke {
         if (tick == 120) {
             if (!(client.currentScreen instanceof TabletScreen screen) || screen.getScreenHandler().charge() <= 40_000) throw new AssertionError("Tablet charge did not synchronize");
             capture(client,"active");
+            if (!screen.help()) throw new AssertionError("Help must open first");
+            for (var entry : screen.guides()) {
+                if (entry.description().getString().contains("guide.justifylasers.") || entry.title().getString().startsWith("item.justifylasers."))
+                    throw new AssertionError("Missing tablet guide localization: " + entry.id());
+            }
+            if (screen.guides().size() < 80) throw new AssertionError("Incomplete tablet guide");
+            screen.keyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_PAGE_DOWN,0,0);
+            if (screen.guideScroll() <= 0) throw new AssertionError("Long guide is not scrollable");
+            screen.keyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_PAGE_UP,0,0);
+            click(client,270,16);
             click(client,55,121);
         }
         if (tick == 137) {
@@ -85,6 +95,7 @@ final class TabletWorldSmoke {
             client.getServer().execute(() -> Platform.openScreen(player(client),new TabletScreenHandler.Factory(40)));
         }
         if(tick==337) {
+            click(client,270,16);
             click(client,50,58);
             var screen=(TabletScreen)client.currentScreen;
             for(char c:"powered_laser_emitter".toCharArray()) screen.charTyped(c,0);
@@ -134,7 +145,7 @@ final class TabletWorldSmoke {
                 context.getMatrices().push();
                 context.getMatrices().translate(x-size/2,y-size/2-5,0);
                 context.getMatrices().scale(size/16,size/16,size/16);
-                context.drawItem(new ItemStack(items.get(i)),0,0);
+                context.drawItem(items.get(i).getDefaultStack(),0,0);
                 context.getMatrices().pop();
                 var name=items.get(i).recipe();
                 context.drawCenteredTextWithShadow(textRenderer,name,x,y+(int)size/2,0xCCDDE7);

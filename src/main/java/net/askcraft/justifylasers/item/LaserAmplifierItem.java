@@ -12,13 +12,14 @@ import java.util.function.IntFunction;
 public final class LaserAmplifierItem extends Item {
     private static final String TIER = "AmplifierTier";
 
-    public LaserAmplifierItem(Settings settings) { super(settings.maxCount(1)); }
+    public LaserAmplifierItem(Settings settings) { super(settings.maxCount(64)); }
 
     public static int tier(ItemStack stack) {
         if (!(stack.getItem() instanceof LaserAmplifierItem)) return 0;
         var data = GameVersion.itemData(stack);
         int tier = data.contains(TIER) ? data.getInt(TIER) : 1;
-        return tier >= 1 && tier <= AmplifierTier.MAX ? tier : 0;
+        // Alpha.37 had fifteen levels. Retired levels retain a usable, capped amplifier.
+        return tier >= 1 && tier <= 15 ? Math.min(tier, AmplifierTier.MAX) : 0;
     }
 
     public static ItemStack stack(int tier) {
@@ -32,10 +33,21 @@ public final class LaserAmplifierItem extends Item {
         return stack;
     }
 
+    @Override public void inventoryTick(ItemStack stack, net.minecraft.world.World world,
+                                       net.minecraft.entity.Entity entity, int slot, boolean selected) {
+        if (world.isClient) return;
+        var data = GameVersion.itemData(stack);
+        int old = data.getInt(TIER);
+        if (old > AmplifierTier.MAX && old <= 15) {
+            data.putInt(TIER, AmplifierTier.MAX);
+            GameVersion.setItemData(stack, data);
+        }
+    }
+
     public static int upgradeTier(int width, int height, IntFunction<ItemStack> input) {
         if (width != 3 || height != 3 || !input.apply(4).isOf(ModLaserParts.CONTROL_CIRCUIT)) return 0;
         int tier = tier(input.apply(0));
-        if (tier < 1 || tier >= AmplifierTier.MAX) return 0;
+        if (!AmplifierTier.AVAILABLE.contains(tier) || !AmplifierTier.AVAILABLE.contains(tier + 1)) return 0;
         for (int i = 0; i < 9; i++) if (i != 4 && tier(input.apply(i)) != tier) return 0;
         return tier + 1;
     }

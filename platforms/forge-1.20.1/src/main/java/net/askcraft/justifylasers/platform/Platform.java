@@ -85,7 +85,7 @@ public final class Platform {
 
     private static IEventBus modBus;
     public static final SimpleChannel NETWORK = NetworkRegistry.newSimpleChannel(
-            JustifyLasers.id("main"), () -> "9", "9"::equals, "9"::equals);
+            JustifyLasers.id("main"), () -> "12", "12"::equals, "12"::equals);
 
     public static void initialize(IEventBus bus) {
         modBus = bus;

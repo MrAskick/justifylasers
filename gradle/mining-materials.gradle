@@ -1,0 +1,43 @@
+import groovy.json.JsonOutput
+import java.awt.image.BufferedImage
+import javax.imageio.ImageIO
+
+// Authoring only: the runtime uses the packed atlas, never the source swatch sheet.
+tasks.register('generateMiningMaterials') {
+    inputs.file(rootProject.file('src/main/materials/mining-module-swatches.png'))
+    inputs.file(rootProject.file('gradle/mining-materials.gradle'))
+    doLast {
+        def sheet = ImageIO.read(rootProject.file('src/main/materials/mining-module-swatches.png'))
+        def swatches = ['armor','steel','vent','hazard','drill_cap','drill_wrap','light','orange','panel']
+        def surfaces = [front:'armor',back:'hazard',left:'armor',right:'armor',top:'vent',bottom:'panel',
+                        metal:'panel',rim:'steel',bolt:'steel',white:'light',vent:'vent',panel:'panel',
+                        steel:'steel',drill_cap:'drill_cap',drill_wrap:'drill_wrap',light:'light',orange:'orange']
+        int size = 256
+        def images = ['', '_n', '_s'].collectEntries { [(it):new BufferedImage(size,size,BufferedImage.TYPE_INT_ARGB)] }
+        def regions = [:]
+        surfaces.entrySet().eachWithIndex { surface, index ->
+            String name=surface.key, swatch=surface.value
+            int source=swatches.indexOf(swatch)
+            int px = 4 + index % 6 * 40, py = 4 + index.intdiv(6) * 40
+            def patch = rootProject.ext.extractComponentPatch(sheet,
+                    [rect:[source%3*sheet.width.intdiv(3)+4,source.intdiv(3)*sheet.height.intdiv(3)+4,
+                           sheet.width.intdiv(3)-8,sheet.height.intdiv(3)-8],size:[32,32]])
+            // Crop the lit strip before extruding its own gutter; small meshes must not sample the dark surround.
+            if(swatch in ['light','orange']) patch=patch.getSubimage(0,14,32,10)
+            int height=patch.height
+            regions[name] = [px,py,32,height]
+            for(int y=-4;y<height+4;y++) for(int x=-4;x<36;x++) {
+                int pixel = patch.getRGB(Math.max(0,Math.min(31,x)),Math.max(0,Math.min(height-1,y))) | (int)0xFF000000L
+                int r=pixel>>16&255, g=pixel>>8&255, b=pixel&255
+                boolean luminous = swatch=='light' && g>125 && b>135 || swatch=='orange' && r>170 && g>65
+                images[''].setRGB(px+x,py+y,pixel)
+                images['_n'].setRGB(px+x,py+y,(int)0xFF7F7FFFL)
+                images['_s'].setRGB(px+x,py+y,(luminous?220:255)<<24 | (swatch=='steel'?0x90C000:0x609000))
+            }
+        }
+        def target=rootProject.file('src/main/resources/assets/justifylasers/textures/component/module/block_destruction_module')
+        images.each { suffix, image -> ImageIO.write(image,'png',new File(target,'default'+suffix+'.png')) }
+        new File(target,'default.json').setText(JsonOutput.toJson([size:size,regions:regions])+'\n','UTF-8')
+        ImageIO.write(images[''].getSubimage(4,4,32,32),'png',rootProject.file('src/main/resources/assets/justifylasers/textures/block/particle/block_destruction_module.png'))
+    }
+}

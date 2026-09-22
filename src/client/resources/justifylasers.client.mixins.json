@@ -5,6 +5,10 @@
   "package": "net.askcraft.justifylasers.mixin.client",
   "compatibilityLevel": "JAVA_17",
   "client": [
+    "GpuShaderTransformMixin",
+    "GpuVertexBufferMixin",
+    "MekanismShadowQueueMixin",
+    "PrintedModelParticlesMixin",
     "OreModelMixin",
     "BuiltinItemRendererMixin",
     "SaberHeldFeatureMixin",

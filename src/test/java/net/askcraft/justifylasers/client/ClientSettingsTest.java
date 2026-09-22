@@ -19,6 +19,9 @@ class ClientSettingsTest {
         assertTrue(settings.cubeLenses && settings.scopeLens && settings.scorchMarks && settings.weaponSway);
         assertEquals(64, settings.cubeLensDistance);
         assertEquals(96, settings.scorchDistance);
+        assertTrue(settings.gpuModels && settings.gpuPrintedModels && settings.gpuEffects);
+        assertEquals(64, settings.gpuCacheMiB);
+        assertEquals(8, settings.gpuUploadMiB);
     }
 
     @Test void outOfRangeAndNonfiniteValuesAreSafe() {
@@ -30,6 +33,8 @@ class ClientSettingsTest {
         settings.soundVolume = Double.POSITIVE_INFINITY;
         settings.maxSoundSources = 100;
         settings.maxMirrors = 100;
+        settings.gpuCacheMiB = Integer.MAX_VALUE;
+        settings.gpuUploadMiB = Integer.MIN_VALUE;
         settings.normalize();
         assertEquals(1.8, settings.cubeMagnification);
         assertEquals(128, settings.cubeLensDistance);
@@ -38,6 +43,8 @@ class ClientSettingsTest {
         assertEquals(1, settings.soundVolume);
         assertEquals(64, settings.maxSoundSources);
         assertEquals(32, settings.maxMirrors);
+        assertEquals(512, settings.gpuCacheMiB);
+        assertEquals(1, settings.gpuUploadMiB);
     }
 
     @Test void settingsRoundTripAndNewFieldsKeepTheirDefaults() throws Exception {
@@ -47,10 +54,18 @@ class ClientSettingsTest {
         assertTrue(ClientSettings.get().cubeLenses);
         assertFalse(ClientSettings.get().scopeLens);
         assertEquals(2.4, ClientSettings.get().cubeMagnification);
+        assertEquals(64, ClientSettings.get().gpuCacheMiB);
+        assertTrue(ClientSettings.get().gpuEffects);
+        ClientSettings.get().gpuCacheMiB = 16;
+        ClientSettings.get().gpuUploadMiB = 3;
+        ClientSettings.get().gpuPrintedModels = false;
         ClientSettings.get().scorchMarks = false;
         assertTrue(ClientSettings.save());
         ClientSettings.load(path);
         assertFalse(ClientSettings.get().scorchMarks);
+        assertEquals(16, ClientSettings.get().gpuCacheMiB);
+        assertEquals(3, ClientSettings.get().gpuUploadMiB);
+        assertFalse(ClientSettings.get().gpuPrintedModels);
         try (var files = Files.list(directory)) { assertEquals(1, files.count(), "No stranded temporary files"); }
     }
 

@@ -12,6 +12,6 @@ public abstract class ScriptedCameraSmokeMixin {
     private void justifylasers$keepScriptedCamera(CallbackInfo ci) {
         // Desktop mouse motion must not rotate the camera between GPU parallax measurements.
         // The fixture still sends its scripted mirror-drag input through MirrorControls.
-        if (Boolean.getBoolean("justifylasers.smokePrompt5")) ci.cancel();
+        if (Boolean.getBoolean("justifylasers.smokePrompt5") || Boolean.getBoolean("justifylasers.smokePerformance") || Boolean.getBoolean("justifylasers.smokePrompt10")) ci.cancel();
     }
 }

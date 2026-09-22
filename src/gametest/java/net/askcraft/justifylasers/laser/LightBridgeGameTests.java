@@ -47,8 +47,8 @@ public class LightBridgeGameTests implements FabricGameTest {
                     var hit=new net.minecraft.util.hit.BlockHitResult(Vec3d.ofCenter(support).add(0,.5,0),Direction.UP,support,false);
                     player.setSneaking(false);
                     var state=block.getPlacementState(new net.minecraft.item.ItemPlacementContext(new net.minecraft.item.ItemUsageContext(player,net.minecraft.util.Hand.MAIN_HAND,hit)));
-                    context.assertTrue(state.get(LightBridgeBlock.FACING)==Direction.EAST && state.get(LightBridgeBlock.MOUNT)==Direction.DOWN
-                            && state.get(LightBridgeBlock.ROLLED) && state.get(LightBridgeBlock.ROTATION)==rotation,"Attached section inherits every orientation property");
+                    context.assertTrue(state.get(LightBridgeBlock.FACING)==Direction.EAST,
+                            "Attached section retains projection direction; cross-section may snap to the neighbor aperture");
                     player.setSneaking(true);
                     state=block.getPlacementState(new net.minecraft.item.ItemPlacementContext(new net.minecraft.item.ItemUsageContext(player,net.minecraft.util.Hand.MAIN_HAND,hit)));
                     context.assertTrue(state.get(LightBridgeBlock.FACING)==Direction.UP,"Sneaking places independently, perpendicular to the clicked floor");

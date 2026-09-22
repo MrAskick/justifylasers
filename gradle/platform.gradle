@@ -99,6 +99,19 @@ apply from: rootProject.file('gradle/laser-optics.gradle')
 apply from: rootProject.file('gradle/industry-resources.gradle')
 apply from: rootProject.file('gradle/solar-resources.gradle')
 
+tasks.withType(ProcessResources).configureEach {
+    if (modern) {
+        // 1.21 fog already receives view-space positions; 1.20 also applies IViewRotMat.
+        filesMatching('assets/justifylasers/shaders/core/gpu_entity.vsh') {
+            filter { line -> line.replace('fog_distance(ModelViewMat, IViewRotMat * position, FogShape)', 'fog_distance(position, FogShape)')
+                    .replace('uniform mat3 IViewRotMat;', '') }
+        }
+        filesMatching('assets/justifylasers/shaders/core/gpu_entity.json') {
+            filter { line -> line.contains('"IViewRotMat"') ? null : line }
+        }
+    }
+}
+
 processResources {
     def metadata = [version: project.version, minecraft_version: minecraft_version, loader_version: loader_version,
                     java_version: modern ? 21 : 17, pack_format: modern ? 34 : 15]

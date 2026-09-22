@@ -23,8 +23,42 @@ public final class RenderVersion {
         return builder;
     }
 
+    public static net.minecraft.client.gl.VertexBuffer staticEntityMesh(java.util.function.Consumer<VertexConsumer> emit) {
+        return staticMesh(net.minecraft.client.render.VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL, emit);
+    }
+
+    public static net.minecraft.client.gl.VertexBuffer staticMesh(VertexFormat format, java.util.function.Consumer<VertexConsumer> emit) {
+        var builder = new BufferBuilder(4096);
+        builder.begin(VertexFormat.DrawMode.QUADS, format);
+        emit.accept(builder);
+        var gpu = new net.minecraft.client.gl.VertexBuffer(net.minecraft.client.gl.VertexBuffer.Usage.STATIC);
+        try {
+            gpu.bind();
+            gpu.upload(builder.end());
+            return gpu;
+        } catch (RuntimeException failure) {
+            gpu.close();
+            throw failure;
+        } finally { net.minecraft.client.gl.VertexBuffer.unbind(); }
+    }
+
     public static void endVertex(VertexConsumer consumer) {
         consumer.next();
+    }
+
+    public static void positionColorVertex(BufferBuilder buffer, float x, float y, float z, int rgb, int alpha) {
+        buffer.vertex(x, y, z);
+        buffer.color(rgb >> 16 & 255, rgb >> 8 & 255, rgb & 255, alpha);
+        buffer.next();
+    }
+
+    public static void entityVertex(VertexConsumer consumer, Matrix4f matrix, float x, float y, float z,
+                                    int argb, float u, float v, int overlay, int light, float nx, float ny, float nz) {
+        consumer.vertex(matrix.m00()*x + matrix.m10()*y + matrix.m20()*z + matrix.m30(),
+                matrix.m01()*x + matrix.m11()*y + matrix.m21()*z + matrix.m31(),
+                matrix.m02()*x + matrix.m12()*y + matrix.m22()*z + matrix.m32(),
+                (argb >> 16 & 255)/255F, (argb >> 8 & 255)/255F, (argb & 255)/255F, (argb >>> 24)/255F,
+                u, v, overlay, light, nx, ny, nz);
     }
 
     public static VertexConsumer normal(VertexConsumer consumer, Matrix3f matrix, float x, float y, float z) {

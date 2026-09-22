@@ -17,6 +17,9 @@ tasks.named('jar') { enabled = false }
 apply from: 'gradle/universal-isolation.gradle'
 // Optional local art tools. Production builds use only the finished, checked-in textures.
 apply from: 'gradle/component-atlases.gradle'
+apply from: 'gradle/prompt8-materials.gradle'
+apply from: 'gradle/printing-materials.gradle'
+apply from: 'gradle/mining-materials.gradle'
 apply from: 'gradle/crystal-materials.gradle'
 apply from: 'gradle/industry-materials.gradle'
 apply from: 'gradle/solar-materials.gradle'
@@ -69,9 +72,19 @@ tasks.register('verifyUniversalJars') {
                         throw new GradleException("Missing cross-loader mixin guard in ${configName}")
                 }
                 def discovery = [:].withDefault { 0 }
+                def jeiBridgeMethods = new HashSet<String>()
+                def jeiPluginMethods = new HashSet<String>()
                 names.findAll { it.endsWith('.class') && it.startsWith('net/askcraft/') }.each { name ->
                     byte[] bytes = merged.getInputStream(merged.getEntry(name)).withCloseable { it.bytes }
                     new org.objectweb.asm.ClassReader(bytes).accept(new org.objectweb.asm.ClassVisitor(org.objectweb.asm.Opcodes.ASM9) {
+                        @Override org.objectweb.asm.MethodVisitor visitMethod(int access, String method, String descriptor, String signature, String[] exceptions) {
+                            if ((access & org.objectweb.asm.Opcodes.ACC_PUBLIC) != 0
+                                    && (method.startsWith('register') || method.startsWith('onRuntime') || method == 'getPluginUid')) {
+                                if (name == 'net/askcraft/justifylasersbridge/JeiBridge.class') jeiBridgeMethods.add(method)
+                                if (name.endsWith('/client/compat/JustifyLasersJeiPlugin.class')) jeiPluginMethods.add(method)
+                            }
+                            return null
+                        }
                         @Override org.objectweb.asm.AnnotationVisitor visitAnnotation(String descriptor, boolean visible) {
                             if (descriptor in ['Lmezz/jei/api/JeiPlugin;', 'Lsnownee/jade/api/WailaPlugin;']) {
                                 if (!name.startsWith('net/askcraft/justifylasersbridge/'))
@@ -84,6 +97,8 @@ tasks.register('verifyUniversalJars') {
                 }
                 if (discovery.size() != 2 || discovery.values().any { it != 1 })
                     throw new GradleException("Universal JAR needs exactly one discovery bridge per optional UI mod")
+                if (!jeiBridgeMethods.containsAll(jeiPluginMethods))
+                    throw new GradleException("JEI bridge omits plugin callbacks in ${artifact.name}: ${jeiPluginMethods - jeiBridgeMethods}")
                 if (names.any { it =~ /\/(smoke|integration|gametest)\/|justifylasers_client_smoke|justifylasers_test/ })
                     throw new GradleException("Test fixtures leaked into ${artifact.name}")
                 ['forge', 'neoforge'].each { loader ->

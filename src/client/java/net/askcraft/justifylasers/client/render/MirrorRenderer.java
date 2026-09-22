@@ -129,6 +129,12 @@ public final class MirrorRenderer {
             var stack = new MatrixStack(); stack.multiplyPositionMatrix(reflection.view());
             stack.peek().getNormalMatrix().set(reflection.view());
             pass.render(reflected, stack, captureProjection);
+            if (IrisMirrorPass.shaders()) {
+                // Color has already been upscaled by the pack, but its depth may still occupy
+                // a smaller viewport. Resolve it while this mirror's pipeline is still active.
+                GL11.glDisable(GL30.GL_CLIP_DISTANCE0);
+                if (!IrisCompatibility.prepareFinalDepthMask()) return;
+            }
             CAPTURES.put(surface.pos, new Capture(target, normal, captureDepth, frame));
         } finally {
             MirrorClipPlane.clear();
@@ -178,6 +184,7 @@ public final class MirrorRenderer {
             RenderSystem.enableDepthTest(); RenderSystem.depthFunc(GL11.GL_ALWAYS); RenderSystem.depthMask(true);
             RenderSystem.disableCull(); RenderSystem.disableBlend(); RenderSystem.setShader(() -> program);
             program.getUniform("MainTransform").set(transform);
+            program.getUniform("DepthPixelRadius").set(1.25F * IrisCompatibility.finalDepthPixelScale());
             program.addSampler("WorldDepth",worldDepth.getDepthAttachment());
             for (var surface : VISIBLE.values().stream().sorted(Comparator.comparingDouble(
                     (Surface surface)->Vec3d.ofCenter(surface.pos).squaredDistanceTo(camera.getPos())).reversed()).toList()) {

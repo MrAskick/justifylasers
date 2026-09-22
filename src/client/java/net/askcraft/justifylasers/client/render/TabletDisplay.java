@@ -36,13 +36,19 @@ final class TabletDisplay {
         }
         for (int x = 0; x < 480; x += 24) rect(matrices, consumers, x, 0, 1, 300, -.02, 0x083044);
         for (int y = 0; y < 300; y += 24) rect(matrices, consumers, 0, y, 480, 1, -.02, 0x083044);
-        text(matrices, consumers, Text.literal("LASER OS"), 13, 13, 275, 0x5EEBFF, 1.75F);
+        text(matrices, consumers, Text.literal("LASER OS"), 13, 16, 99, 0x5EEBFF, 1.3F);
+        boolean help = screen == null || screen.help();
+        panel(matrices, consumers, 118, 7, 95, 26, help);
+        panel(matrices, consumers, 218, 7, 99, 26, !help);
+        text(matrices, consumers, label("help_tab"), 126, 16, 79, help ? 0xC8FAFF : 0x6DCDE3, 1);
+        text(matrices, consumers, label("schematics_tab"), 225, 16, 85, !help ? 0xC8FAFF : 0x6DCDE3, 1);
         long minutes = client.world == null ? 0 : Math.floorMod(client.world.getTimeOfDay() + 6000, 24000) * 60 / 1000;
         text(matrices, consumers, Text.literal(charge * 100 / ExtraterrestrialTabletItem.CAPACITY + "%"), 353, 17, 52, 0x8EEEDD, 1);
         text(matrices, consumers, Text.literal(String.format(Locale.ROOT, "%02d:%02d", minutes / 60, minutes % 60)), 426, 17, 48, 0x5EEBFF, 1);
         rect(matrices, consumers, 329, 17, 17, 8, -.04, 0x136582);
         rect(matrices, consumers, 331, 19, 13d * charge / ExtraterrestrialTabletItem.CAPACITY, 4, -.06, 0x88F4DC);
         rect(matrices, consumers, 10, 39, 460, 1, -.04, 0x146781);
+        if (help) { help(screen, matrices, consumers); return; }
         var blueprints = screen == null ? List.copyOf(ModIndustry.BLUEPRINTS.values()) : screen.getScreenHandler().blueprints();
         int selected = screen == null ? 0 : screen.getScreenHandler().selected(), first = screen == null ? 0 : screen.firstVisible();
         var matches = screen == null ? java.util.stream.IntStream.range(0, blueprints.size()).boxed().toList() : screen.matches();
@@ -83,6 +89,45 @@ final class TabletDisplay {
         boolean canRecord = !matches.isEmpty() && screen != null && screen.getScreenHandler().blanks() > 0 && charge >= ExtraterrestrialTabletItem.WRITE_COST;
         panel(matrices, consumers, 344, 259, 124, 28, canRecord);
         text(matrices, consumers, label("record"), 354, 269, 106, canRecord ? 0xA2F2F8 : 0x527783, 1);
+    }
+
+    private static void help(TabletScreen screen, MatrixStack matrices, VertexConsumerProvider consumers) {
+        var guides = screen == null ? net.askcraft.justifylasers.client.screen.TabletGuide.entries() : screen.guides();
+        var matches = screen == null ? java.util.stream.IntStream.range(0, guides.size()).boxed().toList() : screen.matches();
+        int first = screen == null ? 0 : screen.firstVisible(), selected = screen == null ? 0 : screen.selectedGuide();
+        panel(matrices, consumers, 12, 48, 156, 24, screen != null && screen.searching());
+        String query = screen == null ? "" : screen.query();
+        if (screen != null && screen.searching() && System.currentTimeMillis() / 500 % 2 == 0)
+            query = query.substring(0, screen.searchCursor()) + "|" + query.substring(screen.searchCursor());
+        text(matrices, consumers, query.isEmpty() ? label("help_search") : Text.literal(query), 18, 56, 144,
+                query.isEmpty() ? 0x669CAC : 0xC8FAFF, .9F);
+        for (int row=0; row<TabletScreen.PAGE_SIZE && first+row<matches.size(); row++) {
+            int index = matches.get(first+row), y = TabletScreen.LIST_TOP+row*31;
+            var entry = guides.get(index);
+            panel(matrices, consumers, 12, y, 156, 27, index == selected);
+            item(matrices, consumers, entry.icon(), 28, y+13, 27, 0, 0);
+            text(matrices, consumers, entry.title(), 44, y+10, 118, index == selected ? 0xC8FAFF : 0x6DCDE3, .87F);
+        }
+        if (matches.isEmpty()) text(matrices, consumers, label("help_no_matches"), 18, 90, 144, 0x8DBBC8, .9F);
+        panel(matrices, consumers, 12, 259, 74, 28, false);
+        panel(matrices, consumers, 94, 259, 74, 28, false);
+        text(matrices, consumers, Text.literal("<"), 43, 268, 24, 0x85E8FA, 1.1F);
+        text(matrices, consumers, Text.literal(">"), 125, 268, 24, 0x85E8FA, 1.1F);
+        text(matrices, consumers, Text.literal((matches.isEmpty() ? 0 : first/TabletScreen.PAGE_SIZE+1) + " / "
+                + (matches.size()+TabletScreen.PAGE_SIZE-1)/TabletScreen.PAGE_SIZE), 14, 240, 152, 0x669CAC, .8F);
+        panel(matrices, consumers, 180, 49, 288, 238, false);
+        var entry = guides.get(selected);
+        text(matrices, consumers, entry.title(), 189, 59, 267, 0x8DF0FF, 1.1F);
+        rect(matrices, consumers, 188, 77, 272, 1, -.15, 0x146781);
+        var lines = screen == null ? net.askcraft.justifylasers.client.screen.TabletGuide.lines(entry.description(), MinecraftClient.getInstance().textRenderer, 256) : screen.guideLines();
+        int scroll = screen == null ? 0 : screen.guideScroll(), count = net.askcraft.justifylasers.client.screen.TabletGuide.VISIBLE_LINES;
+        for (int row=0; row<count && scroll+row<lines.size(); row++)
+            text(matrices, consumers, lines.get(scroll+row), 189, 87+row*12, 256, 0xBDDCE5, 1);
+        rect(matrices, consumers, 460, 86, 2, 168, -.16, 0x113C51);
+        double handle = Math.max(12, 168d * Math.min(count, lines.size()) / Math.max(1, lines.size()));
+        double offset = (168-handle)*scroll/Math.max(1, lines.size()-count);
+        rect(matrices, consumers, 460, 86+offset, 2, handle, -.18, 0x6CCFDB);
+        text(matrices, consumers, label(screen == null ? "interact" : "help_scroll"), 189, 272, 267, 0x669CAC, .8F);
     }
 
     private static Text label(String key) { return Text.translatable("gui.justifylasers.tablet." + key); }

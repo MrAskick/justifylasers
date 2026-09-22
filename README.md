@@ -4,9 +4,11 @@ Configurable laser emitters, optical components, portable refocusing cubes, lase
 
 Author: Mr.Askick.
 
-[Changes since alpha.26](docs/releases/2.0.0-alpha.37.md) · [Подробное руководство на русском](docs/guide.ru.md) · [Build and verification](docs/verification.md)
+[Changes since alpha.37](docs/releases/2.0.0-alpha.49.md) · [Подробное руководство на русском](docs/guide.ru.md) · [Build and verification](docs/verification.md)
 
-Current release: [2.0.0-alpha.37 — Hard light and crystal production](docs/releases/2.0.0-alpha.37.md) (prerelease).
+Current release: [2.0.0-alpha.49 — Printing, GPU rendering and shader fixes](docs/releases/2.0.0-alpha.49.md) (prerelease).
+
+[Printing guide (Russian)](docs/photopolymer-printing.ru.md) · [Crystal cultivation (Russian)](docs/advanced-crystals.ru.md) · [GPU settings and benchmarks (Russian)](docs/prompt11-gpu.ru.md).
 
 ## Installation
 
@@ -25,13 +27,13 @@ Minecraft 1.20.1 targets Java 17; 1.21.1 targets Java 21. Architectury API is no
 
 NeoForge 1.20.1 is a legacy target and shares the Forge implementation. Prefer Forge for a new 1.20.1 modpack; contemporary NeoForge support is on 1.21.1. A universal JAR does not bundle a loader, Fabric API, shaders or technical mods, and it cannot make incompatible third-party mods run together.
 
-**2.0.0-alpha.37 is a prerelease. Back up worlds before upgrading or changing loaders. Empty Electric Smelters before upgrading from versions that still include that machine. Alpha.25 large solar collectors require the four-resonator layout.** Other registry IDs and saved settings are preserved, but this does not make another mod's world data portable between loaders. Minecraft worlds cannot safely be downgraded from 1.21.1 to 1.20.1.
+**2.0.0-alpha.49 is a prerelease. Back up worlds before upgrading or changing loaders. Empty Electric Smelters before upgrading from versions that still include that machine. Alpha.25 large solar collectors require the four-resonator layout.** Other registry IDs and saved settings are preserved, but this does not make another mod's world data portable between loaders. Minecraft worlds cannot safely be downgraded from 1.21.1 to 1.20.1.
 
 ## Advanced crystal production
 
-The Chemical Synthesizer turns water and three reagents into four placeable nutrient fluids. Feed the matching mixture and a natural seed into the Crystal Growth Chamber, then tune the light to that crystal's hue range. Seed wear is stored on the vanilla gem and may skip degradation stages; each completed cycle produces 0–3 uncut crystals. Pausing preserves progress and paid fluid. Finish crystals in the 2×2×2 Laser Cutter, which needs both LM and FE. Cut gems retain their vanilla IDs and normal crafting uses, but their artificial-origin tag prevents reseeding. The original raw-photonite-and-quartz recipe is unchanged. See the [production and balance guide (Russian)](docs/advanced-crystals.ru.md).
+The Chemical Synthesizer turns water and three reagents into four placeable nutrient fluids. Craft a growth seed from raw photonite and the corresponding gem, feed it and the matching mixture into the Crystal Growth Chamber, then tune the light to that crystal's hue range. Seeds wear out; each advanced cycle consumes one bucket of mixture and produces one uncut crystal. Pausing preserves progress and paid fluid. Finish crystals in the 2×2×2 Laser Cutter, which needs both LM and FE and yields 3–6 resources per crystal. Cut gems are ordinary resources without origin tags; starting a new seed always consumes raw photonite, even after recycling a gem through other mods. The original raw-photonite-and-quartz recipe is unchanged. See the [production and balance guide (Russian)](docs/advanced-crystals.ru.md).
 
-Spectrum Modules replace an emitter's crystal or work as inline blocks, with a general palette and RGB/HEX controls. There are no one-click growth presets. Item-only amplifiers add from 1 lm to 1 Tlm on top of range/thickness output, with a corresponding FE cost. Eight equal-tier amplifiers and a control circuit craft the next tier. Recipes and multiblock construction are available in JEI when installed. Fluid ports use the loader's native transfer API.
+Spectrum Modules replace an emitter's crystal or work as inline blocks, with a general palette and RGB/HEX controls. There are no one-click growth presets. Item-only amplifiers currently offer tiers I–IV, from +32 klm at 34 FE/t to +16.384 Mlm at 17,408 FE/t per item. The emitter accepts 1–64 of the same tier; output and FE draw scale with the count. Tiers V–VI are temporarily hidden, with existing stacks preserved. Eight equal-tier amplifiers and a control circuit craft the next available tier. The tablet opens with a searchable item guide; its Schematics tab records configured cards. Cards share one item ID, and a lone configured card can be cleared in any crafting grid. Recipes and multiblock construction are available in JEI when installed. Fluid ports use the loader's native transfer API.
 
 ## Hard Light Bridges
 
@@ -69,7 +71,7 @@ The **large 3×3×3 + 4 collector** now has a dish model. Its bottom is nine sma
 
 Use the Configurator's Rotate mode on an exterior horizontal bottom face to choose the single laser output. Both sizes have emitter-style GUIs with live luminous flux, status, power, redstone and privacy. The large collector peaks at **480 klm**, 30× one small collector and about 1.76× the combined flux of its 17 small components. It retains a 256-block beam, 3× width and up to 0.5 HP/tick damage with armor/resistance support. Small beam damage is proportionally weaker.
 
-Sun height smoothly controls output; shading, night and weather matter. A default Energy Receiver converts a small source to up to **12 FE/tick**, a large one to **384 FE/tick**. The large collector exceeds a base emitter (80 klm), but not a maximally upgraded one (656 klm). FE conversion is a gameplay ratio, not a physical equivalence. Mirrors, crystals, cubes, splitters and combiners remain compatible; an optical share cannot be consumed twice. Creative emitters supply adjustable test flux that receivers can convert to FE.
+Sun height smoothly controls output; shading, night and weather matter. A default Energy Receiver converts a small source to up to **12 FE/tick**, a large one to **384 FE/tick**. The large collector exceeds a base emitter (80 klm), but not one with full stacks of Range II and Thickness II (1.104 Mlm before amplifiers or effect costs). FE conversion is a gameplay ratio, not a physical equivalence. Mirrors, crystals, cubes, splitters and combiners remain compatible; an optical share cannot be consumed twice. Creative emitters supply adjustable test flux that receivers can convert to FE.
 
 **Laser-Absorbing Glass returns to the workbench**, with the same four glass, two Wolframite Ingots and one grown Photonite Crystal; it no longer has a schematic. It passes sunlight but stops lasers and cannot be laser-mined. Soft incoming sunlight shafts can be disabled under J → Effects without stopping generation.
 
@@ -161,7 +163,7 @@ A normal furnace smelts one Raw Wolframite into one **Wolframite Ingot** in **15
 
 Build each chamber from **eight matching casings in a solid 2×2×2 arrangement**. The last placed casing forms the multiblock; right-click can also form an existing arrangement. Every member opens the controller's inventory. The grower's shared tank holds **8,000 mB** by default, accepts water buckets or native fluid pipes and consumes water progressively. Its visible water level follows the tank. Removing a casing stops processing; controller contents remain owned by that controller rather than being duplicated across members.
 
-The grower produces a bare **Photonite Crystal**, not a laser-ready item. Craft a **Crystal Mount**, then combine it with the grown crystal to obtain a **White Laser Crystal**. The mount can also be placed as decoration. Dye the mounted crystal as before; emitter assembly accepts any of the nine colors and installs the supplied crystal in the finished emitter.
+The grower produces a bare **Photonite Crystal**, not a laser-ready item. Craft a **Crystal Mount**, then combine it with the crystal to obtain a **Magenta Laser Crystal**. The mount can also be placed as decoration. Recolor any laser crystal in the Chemical Synthesizer with 1000 mB water and the corresponding mineral reagent; emitter assembly accepts all nine colors and installs the supplied crystal in the finished emitter.
 
 Connect cables and pipes to any formed casing, on any face. Assembly chambers share a 100,000-unit FE buffer by default; growers reject FE and need light instead. Items can be inserted and results extracted from all six sides; fluid ports accept water only. Native Fabric Transfer and Forge/NeoForge item/fluid/energy interfaces allow automation without a hard dependency on an automation mod. The right-hand tabs control privacy and redstone: ignore (default), require power, or require no power. A signal on any casing controls the whole structure. Private chambers restrict access and breaking to the owner/admin and disable item/fluid automation. Full output, missing power or a disabled redstone condition pauses processing. Inventory, water, energy, ownership and progress persist across saves. Unloaded structures do not force-load missing chunks.
 
@@ -227,7 +229,7 @@ Placed crystals have translucent colored facets and retain their shader emission
 
 ### Recipes
 
-The powered emitter has no workbench recipe: use the Assembly Chamber and a grown, mounted crystal. Combine a grown Photonite Crystal with a Crystal Mount to make a white laser crystal; dye it for the chosen color. Violet uses purple dye.
+The powered emitter has no workbench recipe: use the Assembly Chamber and a mounted crystal. Combine a Photonite Crystal with a Crystal Mount to make a magenta laser crystal. The Chemical Synthesizer uses water and redstone, copper, gold, emerald, diamond, lapis, amethyst or quartz to produce red, orange, yellow, green, cyan, blue, violet or white respectively.
 
 Modules require their Assembly Schematics. Their ingredients reflect their purpose: lenses for range/thickness, Beam Controllers for targeting/mining/damage, and specialized materials for Silk Touch, drops, scorch marks and ignition. See JEI for the exact ingredient counts and current data-pack recipes; the old workbench module recipes are no longer used.
 
@@ -279,14 +281,17 @@ Amounts use the native platform's energy units (FE on Forge/NeoForge, E on Fabri
 
 ```text
 basePerTick
-+ rangeModuleCount * rangeTierBonus + thicknessModuleCount
++ rangeModuleCount * rangeTierBonus + thicknessModuleCount * thicknessTierBonus
++ amplifierCount * amplifierEnergyCost + installedActionModuleCost
 + [when mining] miningPerTick * miningSpeedMultiplier^(speedSlider / 100)
 + [when damage is enabled] hitsPerSecond / 20 *
     (damageHP * damagePerHealthPoint + knockbackMultiplier * knockbackPerHit
      + [when ignition is enabled and installed] ignitionPerHit)
 ```
 
-With defaults and no range/thickness upgrades, a visual-only beam uses 80 units/tick. Mining uses 200 at minimum speed and 2,480 at maximum speed. Enabling default damage adds 28 units/tick. A full stack of Range II and a full stack of Thickness add 576 units/tick, making a visual-only beam use 656. Upgrade surcharges are fixed; existing configurable base/mining/damage rates are unchanged. Capacity, input limit, and base cost must be positive; other costs must be finite and non-negative, and the mining multiplier must be at least 1. Invalid configuration stops startup with the file path and does not overwrite the file.
+With defaults and no optical upgrades, a visual-only beam uses 80 units/tick. Including its installed module, Mining uses 201 at minimum speed and 2,481 at maximum speed; default Damage adds 29 units/tick. Mining with Ignition also pays its smelting surcharge. A full stack of Range II and a full stack of Thickness I add 576 units/tick; two tier-II stacks add 1,024. Amplifiers add their FE cost for every installed item. Effect modules also consume LM from the outgoing beam. Capacity, input limit, and base cost must be positive; other costs must be finite and non-negative, and the mining multiplier must be at least 1. Invalid configuration stops startup with the file path and does not overwrite the file.
+
+Private emitters and industrial machines, including private multiblock members, reject automatic laser mining before any inventory or drops are changed. This also blocks the owner's own mining laser: dismantle manually or switch the device to Public first. This is device protection, not a claim system for arbitrary third-party blocks.
 
 ## Optical components
 

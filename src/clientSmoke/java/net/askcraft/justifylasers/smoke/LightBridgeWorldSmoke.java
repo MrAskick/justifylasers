@@ -60,16 +60,21 @@ final class LightBridgeWorldSmoke {
             capture(client,"against-sky");
             client.getServer().execute(() -> {
                 var player=player(client);
+                player.setHealth(player.getMaxHealth());
+                player.fallDistance = 0;
+                player.setVelocity(Vec3d.ZERO);
                 player.changeGameMode(GameMode.SURVIVAL);
                 player.getAbilities().flying=false; player.sendAbilitiesUpdate();
                 player.teleport(client.getServer().getOverworld(),1003,DECK_Y,1000.5,-90,0);
             });
         }
         if (frame == 240) {walkingStart=previousX=client.player.getX();client.options.forwardKey.setPressed(true);}
+        if (frame >= 240 && frame < 285) client.options.forwardKey.setPressed(true);
         if (frame > 243 && frame < 285) {
             double x = client.player.getX();
             if (x - previousX < .08 || Math.abs(client.player.getY()-DECK_Y) > .002)
-                throw new AssertionError("Bridge movement stutters at tick " + frame + ": " + client.player.getPos() + " dx=" + (x-previousX));
+                throw new AssertionError("Bridge movement stutters at tick " + frame + ": " + client.player.getPos() + " dx=" + (x-previousX)
+                        + " input=" + client.options.forwardKey.isPressed() + " focused=" + client.isWindowFocused() + " screen=" + client.currentScreen);
             previousX = x;
         }
         if (frame == 285) {
@@ -82,13 +87,27 @@ final class LightBridgeWorldSmoke {
             client.getServer().submit(() -> {
                 var player=player(client);
                 if(!player.isOnGround()||Math.abs(player.getY()-DECK_Y)>.08) throw new AssertionError("Server/client disagree about support");
+                if (player.fallDistance > .1F) throw new AssertionError("Standing on a bridge accumulates fall damage: " + player.fallDistance);
                 client.getServer().getOverworld().removeBlock(ORIGIN.west(3),false);
                 return true;
             }).join();
         }
         if (frame == 385) {
             if(client.player.getY()>8.8) throw new AssertionError("Disconnected bridge still supports player");
+            client.getServer().submit(() -> {
+                var player = player(client);
+                if (!player.isAlive() || player.getHealth() < 16)
+                    throw new AssertionError("Short fall from a disconnected bridge dealt excessive damage: health=" + player.getHealth()
+                            + " fallDistance=" + player.fallDistance + " pos=" + player.getPos());
+                return true;
+            }).join();
             capture(client,"power-off");
+            if (Boolean.getBoolean("justifylasers.smokeBridgePhysicsOnly")) {
+                LoggerFactory.getLogger("justifylasers-client-smoke").info("BRIDGE_PHYSICS_PASSED shader={} walking/snapshot/widths/flight-check/power-off/particles",
+                        IrisCompatibility.isShaderPackInUse());
+                client.scheduleStop();
+                return;
+            }
             client.getServer().submit(() -> { setupGrowth(client); return true; }).join();
             camera(client, new Vec3d(1039, 10.1, 997), Vec3d.of(GROWER).add(1, 1, 1));
         }
@@ -116,7 +135,9 @@ final class LightBridgeWorldSmoke {
         if (frame == 455) {
             if (!(client.currentScreen instanceof net.askcraft.justifylasers.client.screen.IndustrialMachineScreen screen)
                     || screen.getScreenHandler().rate() != 480_000 || screen.getScreenHandler().lightFlux() <= 480_000)
-                throw new AssertionError("Growth GUI must synchronize the reference and actual flux independently");
+                throw new AssertionError("Growth GUI must synchronize the reference and actual flux independently: "
+                        + (client.currentScreen instanceof net.askcraft.justifylasers.client.screen.IndustrialMachineScreen actual
+                        ? "rate=" + actual.getScreenHandler().rate() + " flux=" + actual.getScreenHandler().lightFlux() : client.currentScreen));
             capture(client, "grower-menu"); client.player.closeHandledScreen();
             client.getServer().execute(() -> client.getServer().getOverworld().removeBlock(GROWER.west(2).north(3), false));
         }
@@ -432,7 +453,10 @@ final class LightBridgeWorldSmoke {
                 if (terrain) client.world.setBlockState(origin.east(2), Blocks.STONE.getDefaultState());
                 int expected = terrain ? 3 : 2;
                 Object bulk = constructor.newInstance(client.world, client.player, query);
-                if (((java.util.List<?>) collect.invoke(bulk)).size() != expected) throw new AssertionError("Lithium lost/duplicated bulk shapes");
+                int actual = ((java.util.List<?>) collect.invoke(bulk)).size();
+                if (actual != expected) throw new AssertionError("Lithium lost/duplicated bulk shapes: expected=" + expected
+                        + " actual=" + actual + " terrain=" + terrain + " bridges=" + LightBridgeNetwork.collisions(client.world, query).size()
+                        + " terrainState=" + client.world.getBlockState(origin.east(2)) + " playerAlive=" + client.player.isAlive());
                 Object partial = constructor.newInstance(client.world, client.player, query);
                 var iterator = (java.util.Iterator<?>) partial;
                 if (!iterator.hasNext()) throw new AssertionError("Missing prefetched bridge shape");
@@ -555,8 +579,11 @@ final class LightBridgeWorldSmoke {
         button.onPress();
     }
     private static void settings(MinecraftClient client, int index) {
-        var buttons = client.currentScreen.children().stream().filter(net.minecraft.client.gui.widget.ButtonWidget.class::isInstance)
+        var candidates = client.currentScreen.children().stream().filter(net.minecraft.client.gui.widget.ButtonWidget.class::isInstance)
                 .map(net.minecraft.client.gui.widget.ButtonWidget.class::cast).filter(widget -> widget.getMessage().getString().isEmpty())
+                .filter(widget -> widget.getWidth() == 15 && widget.getHeight() == 18).toList();
+        int row = candidates.stream().mapToInt(net.minecraft.client.gui.widget.ButtonWidget::getY).max().orElse(-1);
+        var buttons = candidates.stream().filter(widget -> widget.getY() == row)
                 .sorted(java.util.Comparator.comparingInt(net.minecraft.client.gui.widget.ButtonWidget::getX)).toList();
         if (buttons.size() != 2 || !buttons.get(index).active) throw new AssertionError("Module settings are not available");
         buttons.get(index).onPress();

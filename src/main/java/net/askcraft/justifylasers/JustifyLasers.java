@@ -49,6 +49,8 @@ public final class JustifyLasers {
         Platform.registerEnergy();
         net.askcraft.justifylasers.industry.IndustryRecipe.initialize();
         net.askcraft.justifylasers.industry.AmplifierUpgradeRecipe.initialize();
+        net.askcraft.justifylasers.industry.BlueprintClearingRecipe.initialize();
+        net.askcraft.justifylasers.industry.GrowthSeedRecipe.initialize();
         Platform.registerExplorationLoot();
         LaserBeamNetwork.initialize();
         Platform.onEndWorldTick(net.askcraft.justifylasers.bridge.LightBridgeNetwork::tick);

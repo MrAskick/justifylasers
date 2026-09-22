@@ -51,12 +51,12 @@ public class Prompt7GameTests implements FabricGameTest {
     }
 
     @GameTest(templateName=EMPTY_STRUCTURE)
-    public void legacySeedsMigrateWithoutChangingVanillaGemIdentity(TestContext c) {
+    public void legacySeedsMigrateToTypedSubstratesWithoutLosingWear(TestContext c) {
         var machine=machine(c);
         for(var crystal:CrystalGrowth.values()) for(int stage=1;stage<4;stage++) {
             machine.setStack(0,new ItemStack(ModNutrients.SEEDS.get(crystal).get(stage-1),3));
             var seed=machine.getStack(0);
-            c.assertTrue(seed.isOf(crystal.natural()) && seed.getCount()==3 && crystal.stage(seed)==stage,"Hidden legacy IDs migrate to natural items with wear data");
+            c.assertTrue(seed.isOf(ModNutrients.GROWTH_SEED) && seed.getCount()==3 && crystal.stage(seed)==stage,"Hidden legacy IDs migrate to substrates with wear data");
             c.assertTrue(crystal.stage(CrystalSeed.syntheticResult(seed.copy()))==-1,"Synthetic origin takes precedence over wear");
         }
         var grown=CrystalSeed.syntheticResult(new ItemStack(Items.DIAMOND));
@@ -71,14 +71,18 @@ public class Prompt7GameTests implements FabricGameTest {
         var player=c.createMockCreativeServerPlayerInWorld();
         for(int tier=1;tier<=AmplifierTier.MAX;tier++) {
             for(int i=0;i<9;i++) stacks.set(i,i==4?new ItemStack(ModLaserParts.CONTROL_CIRCUIT):LaserAmplifierItem.stack(tier));
-            c.assertTrue(LaserAmplifierItem.upgradeTier(3,3,stacks::get)==(tier<AmplifierTier.MAX?tier+1:0),"Exact upgrade tier");
-            if(tier<AmplifierTier.MAX) {
-                var input=new net.minecraft.inventory.CraftingInventory(player.playerScreenHandler,3,3);
-                for(int i=0;i<9;i++) input.setStack(i,stacks.get(i).copy());
-                var recipe=c.getWorld().getRecipeManager().getFirstMatch(net.minecraft.recipe.RecipeType.CRAFTING,input,c.getWorld()).orElseThrow();
+            boolean available = AmplifierTier.AVAILABLE.contains(tier) && AmplifierTier.AVAILABLE.contains(tier + 1);
+            c.assertTrue(LaserAmplifierItem.upgradeTier(3,3,stacks::get)==(available?tier+1:0),"Exact available upgrade tier");
+            var input=new net.minecraft.inventory.CraftingInventory(player.playerScreenHandler,3,3);
+            for(int i=0;i<9;i++) input.setStack(i,stacks.get(i).copy());
+            var match=c.getWorld().getRecipeManager().getFirstMatch(net.minecraft.recipe.RecipeType.CRAFTING,input,c.getWorld());
+            if(available) {
+                var recipe=match.orElseThrow();
                 c.assertTrue(LaserAmplifierItem.tier(recipe.craft(input,c.getWorld().getRegistryManager()))==tier+1,"Registered workbench recipe preserves tier data");
                 stacks.set(7,LaserAmplifierItem.stack(tier+1));
                 c.assertTrue(LaserAmplifierItem.upgradeTier(3,3,stacks::get)==0,"Mixed tiers cannot be upgraded");
+            } else {
+                c.assertTrue(match.isEmpty(), "Disabled tiers cannot be obtained from the registered crafting recipe");
             }
         }
         c.assertTrue(LaserAmplifierItem.upgradeTier(2,2,stacks::get)==0,"Needs a crafting table");
@@ -88,34 +92,38 @@ public class Prompt7GameTests implements FabricGameTest {
     }
 
     @GameTest(templateName=EMPTY_STRUCTURE)
-    public void craftingKeepsSyntheticOriginThroughDiamondCompression(TestContext c) {
+    public void washingOriginThroughCraftingDoesNotProduceGrowthSubstrates(TestContext c) {
         var player=c.createMockCreativeServerPlayerInWorld();
         var input=new net.minecraft.inventory.CraftingInventory(player.playerScreenHandler,3,3);
         for(int i=0;i<9;i++) input.setStack(i,CrystalSeed.syntheticResult(new ItemStack(Items.DIAMOND)));
         var recipe=c.getWorld().getRecipeManager().getFirstMatch(net.minecraft.recipe.RecipeType.CRAFTING,input,c.getWorld()).orElseThrow();
         var compressed=recipe.craft(input,c.getWorld().getRegistryManager());
-        c.assertTrue(compressed.isOf(Items.DIAMOND_BLOCK) && CrystalSeed.synthetic(compressed),"Compression keeps origin");
+        c.assertTrue(compressed.isOf(Items.DIAMOND_BLOCK) && !CrystalSeed.synthetic(compressed),"Vanilla crafting is no longer patched");
         input.clear(); input.setStack(0,compressed);
         var unpack=c.getWorld().getRecipeManager().getFirstMatch(net.minecraft.recipe.RecipeType.CRAFTING,input,c.getWorld()).orElseThrow();
         var gems=unpack.craft(input,c.getWorld().getRegistryManager());
-        c.assertTrue(gems.getCount()==9 && CrystalSeed.synthetic(gems) && CrystalGrowth.DIAMOND.stage(gems)<0,"Unpacking cannot restart growth");
+        c.assertTrue(gems.getCount()==9 && !CrystalSeed.synthetic(gems) && CrystalGrowth.DIAMOND.stage(gems)<0,"Unpacking clean gems still cannot restart growth");
         player.discard(); c.complete();
     }
 
     @GameTest(templateName=EMPTY_STRUCTURE)
-    public void emitterAddsExactAmplifierFluxAndPaysForHighTiers(TestContext c) {
+    public void emitterAddsExactAmplifierStackFluxAndPaysForHighTiers(TestContext c) {
         var pos=c.getAbsolutePos(new BlockPos(2,2,2));
-        for(int tier : new int[]{1,5,10,15}) {
+        for(int tier=1;tier<=AmplifierTier.MAX;tier++) for (int count : new int[]{1, 2, 64}) {
             c.getWorld().setBlockState(pos,ModBlocks.POWERED_LASER_EMITTER.getDefaultState());
             var emitter=(LaserEmitterBlockEntity)c.getWorld().getBlockEntity(pos);
             emitter.setStack(0,new ItemStack(ModLaserParts.CRYSTALS.get(LaserColor.RED)));
             emitter.setStack(LaserModule.RANGE.slot(),new ItemStack(ModLaserParts.ADVANCED_RANGE_MODULE,2));
-            emitter.setStack(LaserEmitterBlockEntity.AMPLIFIER_SLOT,LaserAmplifierItem.stack(tier));
+            int baseCost=emitter.energyCost();
+            var amplifiers=LaserAmplifierItem.stack(tier); amplifiers.setCount(count);
+            emitter.setStack(LaserEmitterBlockEntity.AMPLIFIER_SLOT,amplifiers);
             long base=(net.askcraft.justifylasers.config.LaserConfig.get().basePerTick+16L)*net.askcraft.justifylasers.config.LaserConfig.get().lumensPerEnergyUnit;
             emitter.energy().restore(emitter.energy().capacity());
             emitter.readNbt(emitter.createNbt()); int before=emitter.energy().stored();
+            c.assertTrue(emitter.getStack(LaserEmitterBlockEntity.AMPLIFIER_SLOT).getCount()==count,"Installed stack survives reload");
+            c.assertTrue(emitter.energyCost()==baseCost+count*AmplifierTier.energy(tier),"Every installed amplifier adds its FE cost");
             LaserEmitterBlockEntity.serverTick(c.getWorld(),pos,emitter.getCachedState(),emitter);
-            c.assertTrue(emitter.isBeamActive() && emitter.opticalBudget()==base+AmplifierTier.lumens(tier),"Amplifier adds exact lm, without rounding up the FE conversion");
+            c.assertTrue(emitter.isBeamActive() && emitter.opticalBudget()==base+count*AmplifierTier.lumens(tier),"Stack adds exact lm, without rounding up the FE conversion");
             c.assertTrue(before-emitter.energy().stored()==emitter.energyCost(),"Full powered tick paid");
             c.assertTrue(emitter.energy().capacity()>=emitter.energyCost() && emitter.energy().receive(emitter.energyCost(),true)==emitter.energyCost(),"High-tier buffer and ports can sustain operation");
             c.getWorld().removeBlock(pos,false);

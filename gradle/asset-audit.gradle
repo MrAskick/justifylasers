@@ -9,7 +9,7 @@ tasks.register('verifyPublishedAssets') {
         def hash = { byte[] bytes -> MessageDigest.getInstance('SHA-256').digest(bytes).encodeHex().toString() }
         // Private inputs are optional: a clean public checkout must build without them.
         def privateInputs = fileTree('ref/private_material_sources') { include '**/*.png' }.files +
-                ['Reciever', 'Cube', 'Mirror', 'Splitter', 'Configurator', 'LightSaber'].collectMany { folder -> fileTree("ref/modules/${folder}") { include '**/*.png' }.files } +
+                ['Reciever', 'Cube', 'Mirror', 'Splitter', 'Configurator', 'LightSaber', 'Amplifier', 'Loot'].collectMany { folder -> fileTree("ref/modules/${folder}") { include '**/*.png' }.files } +
                 ['Blocks', 'parts', 'Tablet', 'blueprints'].collectMany { folder -> fileTree("ref/${folder}") { include '**/*.png' }.files }
         def privateHashes = privateInputs.collect { hash(it.bytes) }.toSet()
         def forbidden = { String name ->

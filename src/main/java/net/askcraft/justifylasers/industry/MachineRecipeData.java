@@ -53,7 +53,6 @@ public record MachineRecipeData(String key, MachineKind kind, String blueprint, 
     }
     public ItemStack output(Inventory inventory) {
         ItemStack output = result.copy();
-        if (kind == MachineKind.LASER_CUTTER && process.cuttingFlux() > 0) CrystalSeed.syntheticResult(output);
         if (output.isOf(ModBlocks.POWERED_LASER_EMITTER_ITEM)) {
             var data = GameVersion.itemData(output);
             data.putInt(IndustryRecipes.INSTALLED_CRYSTAL, color(inventory));

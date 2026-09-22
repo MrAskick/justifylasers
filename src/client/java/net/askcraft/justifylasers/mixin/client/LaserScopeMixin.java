@@ -14,6 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class LaserScopeMixin {
     @Inject(method = "render", at = @At("HEAD"))
     private void justifylasers$prepareSchematicIcons(CallbackInfo ci) {
+        net.askcraft.justifylasers.client.render.GpuGeometryCache.beginFrame();
         net.askcraft.justifylasers.client.render.SchematicIcons.prepare();
     }
     @Inject(method = "getFov", at = @At("RETURN"), cancellable = true)
@@ -39,6 +40,7 @@ public abstract class LaserScopeMixin {
 
     @Inject(method = "close", at = @At("HEAD"))
     private void justifylasers$releaseScopeTexture(CallbackInfo ci) {
+        net.askcraft.justifylasers.client.render.GpuGeometryCache.clear();
         LaserScopeRenderer.clear();
         net.askcraft.justifylasers.client.render.MirrorRenderer.clear();
         net.askcraft.justifylasers.client.render.CubeLensRenderer.clear();

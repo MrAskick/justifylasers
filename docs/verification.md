@@ -1,6 +1,6 @@
 # Build and verification
 
-Target: **2.0.0-alpha.37**. Build and regression checks on 2026-09-19.
+Target: **2.0.0-alpha.49**. Build and regression checks on 2026-09-22.
 
 ## Build from source
 
@@ -15,7 +15,143 @@ On Linux/macOS, use `./gradlew`. `build` compiles all six loader/version targets
 
 The public checkout contains the finished textures, models and OGG recordings. Normal builds do not need reference images, source MP3/WAV files, FFmpeg, an installed Minecraft instance or the optional material-authoring tasks. Test fixture sources are included for reproducibility but are excluded from production JARs.
 
-## Alpha.37 checks
+## Alpha.49 mirror temporal stability
+
+- Fixed self-occlusion between the TAA-jittered mirror pane and the unjittered reflection aperture. The comparison accounts for surface depth slope and shader render scaling; reflected object depth and GPU rendering are preserved.
+- Full shader captures now resolve depth into the same viewport as their upscaled color image.
+- Consecutive-frame checks pass with Oculus/Kappa, Iris/Kappa, CPU/GPU model rendering, oblique views, foreground blocks and resource reloads. The final Oculus/Kappa + seven Pixlli packs run at `ResolutionScale=0.5` has zero mismatched control pixels across 288 sampled frames. A separate vanilla Forge 1.21.1 run also passes.
+- Final Fabric 1.21.1 + Iris/Kappa checks also pass parallax, reflected depth, occlusion, resize, reload and mirror controls. All six targets build; **230 JUnit tests and 326 GameTests pass**, and all 14 distributable/source archives pass their audits.
+- [Reproduction, scope and evidence (Russian)](mirror-flicker.ru.md). Tests use isolated copies; installed saves, mods and shaders are unchanged.
+
+## Alpha.48 shared GPU geometry and shader fixes
+
+- All six targets build, with **230 JUnit tests and 326 GameTests passing**. Both universal JARs and 14 distributable/source archives pass their metadata and private-asset checks.
+- GPU geometry is shared by solid machinery/optics, opaque printed models, bridge materials and late light effects. The client GPU tab exposes three compatibility toggles, a **16–512 MiB** residency budget and **1–32 MiB/frame** uploads. Transparent print faces retain Minecraft sorting. Cache misses use the CPU renderer, without hiding objects.
+- Native pixel/reload/depth tests pass on Forge 1.20.1, Fabric 1.21.1, Forge 1.21.1 and NeoForge 1.21.1. Model lighting/transforms are compared on both Forge versions; effect checks cover beams, sabers, cube cores, sunlight, grouped scorch marks and bridge profiles. Minimum-budget eviction and upload fallback also pass.
+- Mirror parallax, composite occlusion, resize, reload and controls pass with vanilla rendering and Kappa, including full shader captures. Continuous opaque mirror UVs remove false recursive-looking refraction when custom reflections are off.
+- Reproduced the sky specks in the actual Oculus/Kappa + Pixlli scene. Isolated their source to Mekanism's energy-core queue during the shadow pass; the optional queue guard removes them in both CPU and GPU paths. The original shaderpack was not edited.
+- Advanced nutrient growth now consumes one bucket per intermediate crystal; cutting yields **3/4/5/6** resources at **55/30/12/3%**. End-to-end world tests cover all four crystal types, all outcomes, exact resource use, inventory capacity and save/reload. Basic water growth is unchanged.
+- JEI uses the sanitized user-supplied single-block house preview; its in-game appearance and the GPU settings screen were inspected with the full resource-pack set.
+- Matched 1920×1080, 12-chunk runs at `-385 -60 -21 / 45 / 15`, with Kappa and all seven Pixlli packs, measured **9.13 → 76.45 FPS**. Same loaded scene; no quality reduction. Conditions, percentiles and limits: [alpha.48 report](prompt11-gpu.ru.md).
+
+## Alpha.47 GPU light bridges
+
+- All six loader/version targets build. **229 JUnit tests and 325 Fabric 1.20.1 GameTests pass**, with no skipped unit tests. All 14 distributable/source archives pass the private-asset audit.
+- Shared static VBOs and GPU animation replace per-frame bridge mesh generation. Mesh density, collision, power, field colors and the existing late depth/lighting path are unchanged.
+- Tests cover descriptor bounds, partial/maximum spans, all existing transform orientations and camera-relative precision near the world border. Native pixel comparisons exercise the actual shader, occlusion, shared meshes, bounded eviction and resource reload.
+- Both the pixel/cache fixture and the bridge walking/power-off fixture pass on Forge 1.20.1 with the installed technical modpack, Fabric 1.21.1 + Iris/Kappa, Forge 1.21.1, and NeoForge 1.21.1 + Iris/Kappa. The 288 GPU/CPU image comparisons preserve the reference appearance; maximum mean visible-pixel channel error is 0.0035/255.
+- An additional Forge 1.20.1 + Oculus/Kappa bridge physics run passes. Shader screenshots retain the colored field and bright edges against the sky.
+- The restored-map benchmark uses 12 chunks and 1920×1080: alpha.46 measured **14.15 / 14.74 FPS**, alpha.47 **230.83 / 237.47 FPS**, with 18 active fields in all four runs. Earlier runs against the accidentally modified map are excluded. Evidence and limitations: [GPU bridge report](bridge-gpu.ru.md).
+
+## Alpha.46 bridges and cultivation
+
+- **226 JUnit tests and 325 Fabric 1.20.1 GameTests pass**, with no skipped unit tests. Added checks cover the printed-block vision/collision predicates, exact bridge coordinates across every mount/roll/rotation and join, real adjacent placement and shared optical power, growth economics, original basic yields, updated crafting, 72 chemical recoloring combinations and fluid registration.
+- All six loader/version targets compile. Both universal JARs pass recipe/metadata checks; the 14 binary/source archives pass the private-asset audit. The retired Spectrum Module schematic retains its item/model registration for existing saves, but is absent from assembly recipes and the tablet catalog.
+- The Prompt10 native-client fixture passes on **Forge 1.20.1 with the installed Mekanism/AE2/JEI/Embeddium pack**, **Fabric 1.21.1 + Iris/Kappa**, **Forge 1.21.1 without shaders**, and **NeoForge 1.21.1 + Iris/Kappa**. It checks straight/corner alignment, powered tunnel surfaces, bounded break debris, seed-stage rendering, fluid translations and all 13 synthesizer recipes in JEI. The Mekanism run verifies the actual filled photopolymer tank ingredient and its stored fluid data.
+- Screenshots of both tunnel angles, seed stages, Mining Module materials and recipes were inspected. Frame-edge views retain the oriented emitters. Material tests check every UV region, non-overlap, edge extrusion and matching emission/normal maps.
+- On fresh copies of the supplied Forge 1.20.1 world, at `-405 -60 18 / 50 / 15`, a fixed **1440×900**, shaders-off comparison measured **16.71 → 35.74 FPS**. No visual detail or effect settings were reduced. Method, percentiles and evidence paths are in the [performance report](client-performance.ru.md#alpha46-участок-со-световыми-мостами). This is not a general FPS guarantee or a benchmark of the other loaders.
+- Logs: `build/prompt10/logs/`; native profiles: `build/prompt10/clients/` and `build/client-performance/clients/prompt10-*`. Tests never modify the installed world, modpack or configuration. Nothing was published. Dedicated-server integration, long-session soak and arbitrary resource-pack tests were not repeated in this pass.
+
+Progression and balance changes: [alpha.46 notes](prompt10-fixes.ru.md), [advanced crystals](advanced-crystals.ru.md).
+
+## Alpha.45 client performance
+
+- All six loader/version targets build successfully. Both universal JARs pass the metadata, recipe, fixture-isolation and asset checks.
+- **220 JUnit tests and 320 Fabric 1.20.1 GameTests pass**, with no skipped unit tests. Added coverage for cached quad geometry, UVs, normals, clipped printing layers, complete-vertex submission and mirror collision-cache invalidation.
+- A real-world **Forge 1.20.1** comparison against the original alpha.44, using the installed modpack, fixed 1920×1080 resolution and the same camera/item, measured **8.26 FPS before** and **52.61 / 45.98 FPS after** in two fresh runs. Shaders were off; mirrors and model detail were not reduced. Methodology, frame-time percentiles and local evidence paths are in the [performance report](client-performance.ru.md).
+- The final universal JARs pass the full Printing/WorldEdit native-client fixture on **Forge 1.20.1 + Oculus/Kappa**, **Fabric 1.21.1 + Iris/Kappa**, and **Forge 1.21.1 without shaders**. These check import, palette/textures, multipart output, construction layers, draft persistence, holograms and resource reload. Captured model/editor views were inspected.
+- **NeoForge 1.21.1 + Iris/Kappa** passes the full Prompt5/Tablet chain with shader-rendered reflections enabled, including depth, parallax, occlusion, resizing, mirror controls and resource reload. Reflection screenshots were inspected.
+- These are measurements for one scene, not an FPS guarantee for other loaders, shader packs or worlds. The existing alpha.44 dedicated-server integration matrix was not repeated for this client-focused change; the normal world suite includes the new mirror-cache regression.
+
+## Alpha.44 release-audit fixes
+
+- **216 JUnit tests and 319 Fabric 1.20.1 GameTests pass**, with no skipped unit tests. Eight security/upload regressions now run in the normal GameTest suite, not an optional audit source set. They cover private emitters and encoders, all eight chamber parts and all solar structure members, inventory preservation under every drop/silk/smelting combination, public mining, overlapping uploads, cooldown recovery and an immediate card write after autosaving.
+- Native server integration checks pass on **all six Fabric/Forge/NeoForge targets for 1.20.1 and 1.21.1**. The expanded checks exercise the mining guard, private multiblock members, encoder packets and public mining through each platform. Existing inventory/fluid/FE, persistence, stale-packet and cached-privacy checks still pass.
+- The Forge 1.20.1 integration run with **Mekanism 10.4.16.80, AE2 15.4.10 and GuideME 20.1.15** passes, including the actual installed AE2 Storage Bus, simulation, transfer and revocation through an already connected bus.
+- Full **Fabric 1.20.1 + Lithium 0.11.4 + Iris/Kappa** LightBridge smoke passes: straight/diagonal walking, disable/re-enable, rejoining on the bridge, corners, modules and the radial menu. Exact-union tests compare 48 straight/corner orientation cases and reversed box ordering. In this run the recipes-to-integrated-server interval was **4 seconds**, compared with approximately **64 seconds** in the original audit. This is a startup observation on the same PC, not an isolated CPU benchmark or an FPS claim.
+- **Forge 1.20.1 + Oculus/Kappa** passes the complete Optics/CubeLens chain: 38 particle sprites, optical routing, mixed color, filter packets, JEI, audio limits, six ports, lens magnification and occlusion.
+- **NeoForge 1.21.1 + Iris/Kappa**, with shader rendering inside the reflection explicitly enabled, passes the full Prompt5 → Tablet chain, including mirror depth/parallax, controls, resource reload and Russian guide text. **Fabric 1.21.1 + Iris/Sodium/Kappa** passes Prompt8 → Tablet in English. These chains previously stopped on the missing printing guide entries.
+- Full Printing tests pass on **Fabric 1.20.1/1.21.1, Forge 1.21.1 and NeoForge 1.21.1**: real schematic writes, multipart VOX, JSON, WorldEdit imports, skips, textures, palette, draft persistence and resource reload. The final Fabric 1.20.1, Forge 1.21.1 and NeoForge 1.21.1 runs also explicitly autosave, edit again and close during the cooldown: the editor waits, saves the last edit and restores it after reopening. Final Fabric 1.20.1/1.21.1 and NeoForge logs show the block atlas at **mip level 4**, including after resource reload; Forge logs also retain level 4. The NeoForge 1.20.1 graphical client was not separately launched.
+- All six targets and both universal JARs build; the private-asset audit passes for all **14 binary/source archives**, checking against **145 private sheets**. No reference directories, tools or smoke helpers are packaged. New unit coverage checks block/item/particle sprite dimensions; the white print material remains white and the grown-crystal swatches retain their exact pixels.
+- Logs: `build/release-fixes/logs/`; captures and copied test worlds: `build/release-fixes/clients/`. Previous alpha.43 universal JARs are preserved in `build/release-fixes/baseline/`. Installed mods, configuration and user worlds were not changed; nothing was published.
+
+Scope remains limited: no arbitrary modpack compatibility guarantee, third-party claim integration, remote multiplayer/latency testing, long-session soak or acceptance test of the user's own world. Those checks are still needed before declaring stable 2.0.0. Recipes, balance, storage format and the loader protocol were not changed by these fixes.
+
+## Alpha.43 unsupported schematic blocks
+
+- **210 JUnit tests and 311 Fabric 1.20.1 GameTests pass.** New unit cases cover counted skips for missing blocks, incompatible states, unsupported models and missing textures, resolving each used state only once, excluding air and unused palette entries, empty results, and preserving gaps and coordinates in both scales. Unexpected failures and malformed files still surface as errors.
+- All six loader/version targets build. Both universal JARs pass metadata, recipe and fixture-isolation checks; all 14 binary/source archives pass the private-asset audit.
+- The alpha.43 universal JARs pass the expanded printing fixture on **Fabric 1.21.1 with Iris/Sodium/Kappa** and **Forge 1.20.1 with Oculus/Embeddium/Kappa**, both with JEI. The miniature fixture skips two chests, water, an invalid log state and a missing mod block; the full-size fixture skips a chest and water. Both still write real schematic items through the client/server menu, retain the original bounds and leave the skipped positions empty.
+- Native assertions check the skipped-block count after autosave, both printing scales, preserved textures and resource reload. Inspected Russian and English editor captures: the persistent warning does not overlap the status or inventory. Existing VOX, draft, printing and particle regressions also pass.
+- Checks use only isolated profiles under `build/prompt8-clients`. Installed mods, configuration and saves are unchanged. The other four targets are compiled/archive-checked, not separately launched; no dedicated-server, long-session or arbitrary-modpack testing was performed. Nothing was published. Storage format and Forge/NeoForge protocol **12** are unchanged.
+
+## Alpha.42 WorldEdit schematic import
+
+- **207 JUnit tests and 311 Fabric 1.20.1 GameTests pass.** New tests cover Sponge versions 1–3, compressed/uncompressed NBT, sparse palettes and VarInts, coordinates and empty margins, both import scales, multipart round trips, invalid states, malformed data and decompression limits. Entity and container data never enter a printable design.
+- World tests verify that source block states survive item/block save and reload, a full-size bottom slab keeps its half-height collision, and an interrupted print retains its materials and exact paid FE/LM/polymer costs.
+- All six loader/version targets compile. Both universal JARs pass metadata, recipe and fixture-isolation checks; all 14 binary/source archives pass the private-asset audit. Final packaging reruns unit tests and archive checks after the world suite; later runtime changes only refine client rendering/caches and interface wording.
+- The expanded printing fixture passes on **Forge 1.20.1 with Oculus/Embeddium/Kappa** and **Fabric 1.21.1 with Iris/Sodium/Kappa**, both with JEI, using the alpha.42 universal JARs. It imports generated Sponge v3 files through the asynchronous encoder, writes schematics through the real client/server menu, places both scales and reloads resources. Existing VOX, paid printing, draft and particle checks remain enabled.
+- Native assertions check rotated log end faces, furnace facing, slab geometry, grass tint, modded block textures, normalized sprite UVs and cache invalidation after resource reload. English/Russian editor and in-world captures are inspected, including original blocks alongside full-size prints.
+- Tests use isolated profiles under `build/prompt8-clients`; installed mods, configuration and saves are unchanged. Nothing was published. Client/server must update together: Forge/NeoForge protocol is **12**.
+- The native source files are generated fixtures, not an export supplied by the user. Automation does not click the operating-system file dialog. The other four targets are compiled/archive-checked, not separately launched in this update. Dedicated servers, long sessions, arbitrary modpacks and custom block-entity renderers are not covered by this pass.
+
+Supported models, scale limits and import workflow: [photopolymer printing](photopolymer-printing.ru.md#кодировщик-импорт-worldedit).
+
+## Alpha.41 multipart printing and crystal yields
+
+- **200 JUnit tests and 309 Fabric 1.20.1 GameTests pass.** Added coverage includes lossless multipart splitting, bounded compressed storage, 512-part round trips, per-part editing, material replacement, rotated placement and occupied-target rejection, output extraction, interrupted multipart printing, large NBT and client-packet filtering.
+- Crystal tests check the exact yield distributions, reserving room for three outputs, a single roll at completion, failed-growth resource costs and seed wear, and save/reload. Grower probabilities are 15/55/20/10% for 0/1/2/3 outputs; cutter probabilities are 50/35/15% for 1/2/3. The grower assumption resolving the requested 115% total is recorded in [advanced crystals](advanced-crystals.ru.md).
+- All six loader/version targets compile. Both universal JARs pass metadata, recipe and fixture-isolation checks; all 14 binary/source archives pass the private-asset audit. Mesh tests check printer cap UV proportions; every photopolymer texture pixel has alpha 204 (80% opacity).
+- The printing fixture passes on **Forge 1.20.1 with Oculus/Embeddium/Kappa** and **Fabric 1.21.1 with Iris/Sodium/Kappa**, both with JEI. It writes a multipart VOX schematic through the actual client/server menu, restores the draft, prints with a real beam, checks the collector's beam color and reloads resources. English/Russian editor, palette, texture-mode and world captures are inspected.
+- A deliberately waiting import worker leaves the client and integrated server ticking; completion returns to the editor. Breaking a 2,048-voxel checkerboard print stays within the fixture's particle budget instead of emitting particles for every collision box.
+- Native checks run the universal JARs in isolated profiles under `build/prompt8-clients`. Installed game mods, configuration and saves are unchanged. Nothing was published. Client/server must update together: Forge/NeoForge protocol is **11**.
+- The operating-system file dialog itself is not clicked by automation; the waiting-worker check exercises the same asynchronous import path. The other four targets are compiled/archive-checked, not separately launched in this update. Long-session, dedicated-server and arbitrary-modpack checks remain outside this pass.
+
+Operating instructions, format limits and multipart assembly: [photopolymer printing](photopolymer-printing.ru.md).
+
+## Alpha.40 VOX and printer refinements
+
+- **192 JUnit tests and 304 Fabric 1.20.1 GameTests pass.** New coverage includes VOX palettes, Z-up conversion, scene transforms/hidden layers, malformed chunks and cycles, 4096-cell storage, square/round brushes, draft persistence and concurrent edits, hologram FE costs, single/continuous printing, layer clipping and fluid opacity/flow. A full-tank job may exceed the vat capacity and continue after refilling; draft metadata has a separate bounded allowance around maximum-size designs.
+- All six loader/version targets compile. Both universal JARs pass metadata, recipes and fixture-isolation checks; all 14 binary/source archives pass the private-asset audit. The finished OpenComputers-derived printer/collector textures are included with their CC0 notice, not the private reference sheets or authoring inputs.
+- The printing fixture passes on **Forge 1.20.1 with Oculus/Embeddium/Kappa** and **Fabric 1.21.1 with Iris/Sodium/Kappa**, both with JEI. It imports a generated multicolor VOX file, checks that typing E leaves the editor open, writes a schematic, closes/reopens the draft, verifies the powered hologram, completes a real-beam print and reloads resources. English/Russian screenshots are inspected; the editor status now has its own full-width row.
+- The expanded fixture also places the colored VOX model in the world and verifies the collector's client-side glow color against actual red and cyan beams. World captures show the rotating hologram, recolored collector and printer materials after resource reload.
+- Final packaging reruns the full world suite, unit tests and archive checks after the tank-capacity and maximum-draft-size corrections. These last changes do not alter the native-tested rendering or GUI.
+- The other four targets are compiled/archive-checked, not separately launched for this update. The native fixture calls the same file import path as the VOX picker but does not interact with the operating system's file dialog. Long-session, dedicated-server and arbitrary-modpack tests remain outside this pass.
+- Checks use isolated profiles under `build/prompt8-clients`. Installed game mods, configuration and saves are unchanged. Nothing was published. Client/server must update together: Forge/NeoForge protocol is now **10**.
+
+Operating instructions, file limits and draft recovery: [photopolymer printing](photopolymer-printing.ru.md).
+
+## Alpha.39 photopolymer printing
+
+- **182 JUnit tests and 299 Fabric 1.20.1 GameTests pass.** New checks cover JSON and texture-reference validation, rotations/UVs, outward face winding, voxel merging, overlapping-volume costs, violet spectrum gates, exact FE/resin costs, interrupted jobs and changed schematics, packet ordering/replays, privacy, and printed-block placement/picking/drops/save data.
+- Native inventory tests exercise all 48 printer member/face combinations, model-data-preserving extraction, private access and fluid transaction rollback. Mesh seam tests include the encoder and printer frame, gantry, head and bed.
+- All six loader/version targets compile. Both universal JARs pass metadata, recipe and fixture-isolation checks; all 14 binary/source archives pass the private-asset audit. No OpenComputers source or reference artwork is bundled.
+- The printing fixture passes on **Forge 1.20.1 with Oculus/Embeddium/Kappa** and **Fabric 1.21.1 with Iris/Sodium/Kappa**, both with JEI. It verifies real-beam printing, server-side schematic recording, mod texture discovery, parent-model import, voxel painting/undo, machine menus, JEI previews and resource reload. Native screenshots were inspected; a clipped JEI preview and an overlong search placeholder were corrected.
+- The final packaging reruns unit tests and archive checks after the world suite. The last change only shortens the English/Russian search placeholder. The other four loader/version combinations are compiled and archive-checked, not separately launched for this feature. Dedicated-server, long-session and arbitrary-modpack testing remain outside this pass.
+- Native fixtures use project-owned profiles under `build/prompt8-clients`. Installed game mods, configuration and saves are unchanged. No release was published by this task.
+
+Operating instructions and format limits: [photopolymer printing](photopolymer-printing.ru.md).
+
+## Alpha.38 amplifier and photonite corrections
+
+- **171 JUnit tests and 293 Fabric 1.20.1 GameTests pass.** Added coverage for single-item placement, full-stack insertion, Shift-click remainders, mixed-tier rejection and save/load. Counts of 1, 2 and 64 produce the exact additional LM and charge the full FE cost, including retained V–VI stacks. The registered crafting recipe rejects upgrades to disabled tiers.
+- Photonite growth accepts purple `BC09F5` and rejects the old golden spectrum in the loaded machine recipe. The seed's render palette is also checked as violet.
+- All six targets compile; both universal JARs and all 14 binary/source archives pass verification. After the world suite, `build -x runGameTest` reran unit tests and archive checks to include the final tooltip wording.
+- The updated universal JARs pass the Prompt8 native fixture on Forge 1.20.1 with Oculus/Embeddium/Kappa and Fabric 1.21.1 with Iris/Sodium/Kappa, both with JEI. The catalog contains exactly I–IV and three upgrade recipes. Seed/icon screenshots were inspected; photonite is purple. Full fixture runs also pass native inventory, tablet and resource-reload checks. The other loader combinations below were tested before these corrections, not relaunched for this follow-up.
+
+## Initial alpha.38 checks (before these corrections)
+
+- All six loader/version targets compile. Both universal JARs pass metadata, recipe and test-fixture isolation checks. All 14 binary/source archives pass the private-asset audit against 145 reference images, including the new amplifier and loot references.
+- **169 JUnit tests and 291 Fabric 1.20.1 GameTests pass.** Coverage includes all configured schematics and crafting-grid clearing, typed seed recipes and legacy migration, paid growth persistence, exact amplifier flux/FE costs and retired tiers, empty custom-data normalization, and exact-filter extraction with transaction rollback through all 48 cutter member/face combinations. Private and dismantled inventories remain protected.
+- Mesh/resource checks cover cutter rail and moving-carriage intersections, Spectrum Module outward normals and GUI bounds, collector geometry/particles, six distinct 512px amplifier icons with clean alpha and transparent margins, and English/Russian localization parity. Supplied tier I–IV image hashes remain unchanged.
+- The Prompt8 native fixture passes on **Fabric 1.20.1** without shaders, using the development client. The **final universal JARs** pass on Forge 1.20.1 / Oculus / Embeddium / Kappa 5.3 Caves, Fabric 1.21.1 / Iris 1.8.8 / Sodium 0.6.13 / Kappa, NeoForge 1.21.1 / Iris 1.8.8 / Sodium 0.6.13 / Kappa, and Forge 1.21.1 without shaders. All four universal runs include JEI; the 1.20.1 production client uses Java 17 and the 1.21.1 clients use Java 21.
+- Native checks exercise cutter item-transfer APIs on every member and face, live growth, machine menus, resource reload, the new models/icons, minimum-flow text, and cube-core on/off captures without changing beam routing. They verify all configured schematic variants in JEI, four seed types, six amplifier types and five upgrade recipes. Tablet checks include the default Help tab, translated item coverage, scrolling, tab switching, projected mouse input, recording, search, charging, F1 and resource reload. English/Russian and shader/non-shader captures were inspected.
+- These tests exposed a missing delegation in the universal JEI entry point: subtype and extra-ingredient registration were not forwarded. Both callbacks are now forwarded, and archive verification checks that the bridge covers every plugin callback. This is checked with the final universal artifacts, not only loader-specific development classes.
+- Tests run in project-owned profiles under `build/prompt8-clients` and platform build directories. An older reused fixture had a stale industrial block entity over air; fresh isolated fixtures did not reproduce it. Installed game mods, configuration and saves are unchanged. Legacy NeoForge 1.20.1 is compiled/archive-checked, not separately launched. Shader checks cover the named combinations, not every pack. AE2/Mekanism support is verified through native inventory contracts and exact filters, not every third-party pipe setup.
+
+Final packaging: `gradlew.bat build -x runGameTest` after the completed 291-test world run. The later changes were icon margins, JEI text contrast and universal JEI callback forwarding; unit tests and archive checks were rerun, followed by the native universal tests above.
+
+## Previous alpha.37 checks
 
 - All six loader/version targets build; 166 unit tests and 285 Fabric 1.20.1 GameTests pass. Both universal JARs pass metadata/recipe/fixture checks and all 14 binary/source archives pass the private-asset audit.
 - Bridge footsteps now use a constant pitch of 1.0, with the tested walking/sprint cadence unchanged. The machine status is localized as “Waiting for fluid” / “Ожидание жидкости”. No other runtime behavior changed from alpha.36.

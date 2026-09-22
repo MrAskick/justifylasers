@@ -87,10 +87,8 @@ public final class LaserBeamLateRenderer {
             try {
                 if (!IrisCompatibility.isShaderPackInUse() && LaserScorchRenderer.hasVisibleMarks()) {
                     LaserRenderLayers.SHADER_BEAM_HALO.startDrawing();
-                    try {
-                        BufferBuilder soot = RenderVersion.beginQuads(VertexFormats.POSITION_COLOR);
+                    try (var soot = new LateEffectBatch()) {
                         LaserScorchRenderer.renderLate(soot, camera.getPos());
-                        BufferRenderer.drawWithGlobalProgram(soot.end());
                     } finally {
                         LaserRenderLayers.SHADER_BEAM_HALO.endDrawing();
                     }
@@ -112,24 +110,39 @@ public final class LaserBeamLateRenderer {
                         && !LightBridgeRenderer.queued()
                         && (!IrisCompatibility.isShaderPackInUse() || !LaserScorchRenderer.hasVisibleMarks())) return;
                 LaserRenderLayers.SHADER_BEAM_HALO.startDrawing();
-                try {
-                    BufferBuilder builder = RenderVersion.beginQuads(VertexFormats.POSITION_COLOR);
+                try (var batch = new LateEffectBatch()) {
                     Vec3d cameraPos = camera.getPos();
 
-                    if (IrisCompatibility.isShaderPackInUse()) LaserScorchRenderer.renderLate(builder, cameraPos);
-                    SolarLightShaftRenderer.render(builder,cameraPos);
-                    LightBridgeRenderer.render(builder,cameraPos);
+                    if (IrisCompatibility.isShaderPackInUse()) LaserScorchRenderer.renderLate(batch, cameraPos);
+                    SolarLightShaftRenderer.render(batch,cameraPos);
+                    if (LightBridgeRenderer.queued() && LightBridgeGpuRenderer.ready()) {
+                        batch.flush();
+                        LightBridgeRenderer.renderGpu(cameraPos, worldMatrices.peek().getPositionMatrix(), worldProjection);
+                    } else if (LightBridgeRenderer.queued()) LightBridgeRenderer.render(batch.buffer(),cameraPos);
                     for (QueuedBeam beam : QUEUED_BEAMS.values()) {
                         Vec3d side = screenSide(beam, cameraPos);
-                        renderGradientRibbon(builder, beam, side, cameraPos, false);
-                        renderGradientRibbon(builder, beam, side, cameraPos, true);
+                        if (GpuLightEffects.enabled()) {
+                            batch.flush();
+                            if (GpuLightEffects.beam(beam.start(), beam.end(), beam.axis(), side, cameraPos,
+                                    beam.rgb(), beam.intensity(), beam.widthScale(), beam.startClip(), beam.endClip())) continue;
+                        }
+                        renderGradientRibbon(batch.buffer(), beam, side, cameraPos, false);
+                        renderGradientRibbon(batch.buffer(), beam, side, cameraPos, true);
                     }
                     for (QueuedCore core : QUEUED_CORES.values()) {
-                        CubeCoreRenderer.renderLate(builder, core.center(), cameraPos, core.rgb(), core.time());
+                        if (GpuLightEffects.enabled()) {
+                            batch.flush();
+                            if (GpuLightEffects.core(core.center(), cameraPos, core.rgb(), core.time())) continue;
+                        }
+                        CubeCoreRenderer.renderLate(batch.buffer(), core.center(), cameraPos, core.rgb(), core.time());
                     }
-                    for (VanillaBeam saber : SABERS.values()) SaberBladeRenderer.renderLate(builder, saber.trace(), saber.rgb(), cameraPos);
-
-                    BufferRenderer.drawWithGlobalProgram(builder.end());
+                    for (VanillaBeam saber : SABERS.values()) {
+                        if (GpuLightEffects.enabled()) {
+                            batch.flush();
+                            if (GpuLightEffects.saber(saber.trace(), saber.rgb(), cameraPos)) continue;
+                        }
+                        SaberBladeRenderer.renderLate(batch.buffer(), saber.trace(), saber.rgb(), cameraPos);
+                    }
                 } finally {
                     LaserRenderLayers.SHADER_BEAM_HALO.endDrawing();
                 }

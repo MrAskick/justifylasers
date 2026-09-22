@@ -18,13 +18,18 @@ public final class JustifyLasersClient {
         net.askcraft.justifylasers.network.LightBridgePacket.receiver = packet ->
                 net.askcraft.justifylasers.bridge.LightBridgeNetwork.receive(MinecraftClient.getInstance().world, packet);
         ClientSettings.initialize();
+        net.askcraft.justifylasers.client.render.GpuModelRenderer.initialize();
         LaserDepthMerger.initialize();
+        net.askcraft.justifylasers.client.render.LightBridgeGpuRenderer.initialize();
         LaserScopeRenderer.initialize();
         net.askcraft.justifylasers.client.render.CubeLensRenderer.initialize();
         net.askcraft.justifylasers.client.render.MirrorRenderer.initialize();
         IrisCompatibility.initialize();
         LaserRenderLayers.initialize();
         ClientPlatform.initialize();
+        net.minecraft.client.item.ModelPredicateProviderRegistry.register(net.askcraft.justifylasers.registry.ModLaserParts.AMPLIFIER,
+                net.askcraft.justifylasers.JustifyLasers.id("amplifier_tier"),
+                (stack, world, entity, seed) -> net.askcraft.justifylasers.item.LaserAmplifierItem.tier(stack) / 10F);
     }
 
     public static void tick(MinecraftClient client) {

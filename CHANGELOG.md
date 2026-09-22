@@ -1,6 +1,15 @@
 # Changelog
 
-For the latest public update, see the [short alpha.37 release notes](docs/releases/2.0.0-alpha.37.md), covering changes since alpha.26. The entries below retain the individual development changes.
+For the latest public update, see the [short alpha.49 release notes](docs/releases/2.0.0-alpha.49.md), covering changes since alpha.37. The entries below retain the individual development changes.
+
+## 2.0.0-alpha.38–49
+
+- Added photopolymer printing, model encoding/editing and JSON, VOX and WorldEdit `.schem` imports, including multipart models.
+- Added GPU geometry caches and client performance settings; optimized bridges, machinery, prints and light effects.
+- Reworked crystal production, amplifier stacking, schematics, tablet help and JEI integration.
+- Fixed automation, private-machine mining protection, bridge placement/rendering and shader/mirror artifacts; refreshed machine and module materials.
+
+See the [alpha.49 notes](docs/releases/2.0.0-alpha.49.md) for the public summary and the individual files in `docs/releases/` for each development build.
 
 ## 2.0.0-alpha.37
 

@@ -13,7 +13,7 @@ public final class IndustryRecipes {
         return switch (kind) {
             case FUEL_GENERATOR -> fuelTicks(stack) > 0;
             case CRYSTAL_GROWER -> slot == 0 ? stack.isOf(ModIndustry.RAW_PHOTONIC_CRYSTAL) : stack.isOf(Items.QUARTZ);
-            case ASSEMBLY_CHAMBER, CHEMICAL_SYNTHESIZER, LASER_CUTTER -> false;
+            case ASSEMBLY_CHAMBER, CHEMICAL_SYNTHESIZER, LASER_CUTTER, PHOTOPOLYMER_PRINTER, MODEL_ENCODER -> false;
         };
     }
 

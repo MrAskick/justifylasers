@@ -53,6 +53,9 @@ public final class LaserOpticBlockEntity extends LaserBlockEntity implements Las
     private int lastInput;
     private long lastFlux;
     private double syncedCombinerEfficiency = .95;
+    private double shapeYaw = Double.NaN, shapePitch;
+    private Direction shapeMount;
+    private VoxelShape cachedSupportShape, cachedMirrorShape;
 
     public LaserOpticBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.LASER_OPTIC, pos, state);
@@ -208,16 +211,27 @@ public final class LaserOpticBlockEntity extends LaserBlockEntity implements Las
     }
 
     public VoxelShape supportShape() {
-        return MirrorGeometry.supportShape(normal(),facing());
+        Direction mount = facing();
+        if (cachedSupportShape == null || shapeYaw != yaw || shapePitch != pitch || shapeMount != mount) {
+            cachedSupportShape = MirrorGeometry.supportShape(normal(), mount);
+            cachedMirrorShape = null;
+            shapeYaw = yaw;
+            shapePitch = pitch;
+            shapeMount = mount;
+        }
+        return cachedSupportShape;
     }
 
     public VoxelShape mirrorShape() {
+        VoxelShape support = supportShape();
+        if (cachedMirrorShape != null) return cachedMirrorShape;
         Vec3d n = normal();
         var frame=MirrorGeometry.frame(n,facing());
         Vec3d extent = new Vec3d(panelExtent(frame.right().x,frame.up().x,n.x),
                 panelExtent(frame.right().y,frame.up().y,n.y),panelExtent(frame.right().z,frame.up().z,n.z));
         Vec3d center = new Vec3d(0.5, 0.5, 0.5);
-        return VoxelShapes.union(supportShape(), VoxelShapes.cuboid(new Box(center.subtract(extent), center.add(extent))));
+        cachedMirrorShape = VoxelShapes.union(support, VoxelShapes.cuboid(new Box(center.subtract(extent), center.add(extent))));
+        return cachedMirrorShape;
     }
 
     private static double panelExtent(double right,double up,double normal) {

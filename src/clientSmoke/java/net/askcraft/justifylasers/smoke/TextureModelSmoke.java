@@ -57,7 +57,14 @@ public final class TextureModelSmoke {
         blocks.put("laser_turret",net.askcraft.justifylasers.registry.ModBlocks.LASER_TURRET);
         blocks.forEach((id,block)-> {
             var sprite=client.getBlockRenderManager().getModel(block.getDefaultState()).getParticleSprite();
-            if(!sprite.getContents().getId().toString().equals("justifylasers:block/particle/"+id))
+            String particle = switch (id) {
+                case "advanced_thickness_module" -> "block/particle/thickness_module";
+                case "entity_heal_module", "entity_lift_module", "entity_lower_module" -> "block/particle/control_circuit";
+                case "raw_wolframite" -> "component/wolframite/base";
+                case "raw_photonic_crystal" -> "component/photonite/base";
+                default -> "block/particle/" + id;
+            };
+            if(!sprite.getContents().getId().toString().equals("justifylasers:"+particle))
                 throw new AssertionError("Wrong baked breaking sprite for "+id+": "+sprite.getContents().getId());
         });
         LoggerFactory.getLogger("justifylasers-client-smoke").info("MODEL_PARTICLE_SPRITES_SMOKE_PASSED blocks={}",blocks.size());

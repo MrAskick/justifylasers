@@ -126,7 +126,9 @@ public class IndustryRefinementGameTests implements FabricGameTest {
         ExtraterrestrialTabletItem.setCharge(tablet,2000);
         context.assertTrue(menu.onButtonClick(player,TabletScreenHandler.RECORD), "Charged tablet records a design");
         context.assertTrue(inventory.count(ModIndustry.BLANK_SCHEMATIC) == 1 && ExtraterrestrialTabletItem.charge(tablet) == 1000, "One card and exact energy consumed");
-        context.assertTrue(inventory.count(menu.blueprint()) == 1, "Exactly one blueprint created");
+        int written = 0;
+        for (int slot = 0; slot < inventory.size(); slot++) if (net.askcraft.justifylasers.platform.GameVersion.canStack(inventory.getStack(slot), menu.blueprint().getDefaultStack())) written += inventory.getStack(slot).getCount();
+        context.assertTrue(written == 1, "Exactly one typed blueprint created");
         context.assertFalse(menu.onButtonClick(player,9999), "Unknown commands rejected");
         inventory.setStack(0,new ItemStack(Items.STONE));
         context.assertFalse(menu.onButtonClick(player,TabletScreenHandler.RECORD), "Swapping tablet invalidates existing screen");

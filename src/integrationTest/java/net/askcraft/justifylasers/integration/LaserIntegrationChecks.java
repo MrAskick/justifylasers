@@ -102,6 +102,10 @@ public final class LaserIntegrationChecks {
     }
 
     public static void verify(TestContext context) {
+        if (Boolean.getBoolean("justifylasers.releaseAudit")) {
+            verifyRelease(context);
+            return;
+        }
         verifyDecorations(context);
         verifyWorkshopAndDualControls(context);
         IntegrationEnergy.tablet();
@@ -273,6 +277,12 @@ public final class LaserIntegrationChecks {
         IntegrationEnergy.roundTrip(controller);
         check(context, controller.water() == 750 && controller.getStack(0).getCount() == 1,
                 "Tank and automated inventory survive native serialization");
+        var owner = IntegrationEnergy.player(context);
+        controller.initializeOwner(owner);
+        check(context, controller.togglePrivacy(owner), "Native private chamber fixture");
+        for (var part : net.askcraft.justifylasers.industry.ChamberStructure.positions(origin))
+            check(context, !net.askcraft.justifylasers.laser.LaserMining.breakBlock(world, part, false, false), "Private multiblock part resists laser mining");
+        check(context, controller.formed() && controller.getStack(0).getCount() == 1, "Denied mining preserves native structure and inventory");
         for (var pos : net.askcraft.justifylasers.industry.ChamberStructure.positions(origin)) world.setBlockState(pos, Blocks.AIR.getDefaultState());
     }
 
@@ -293,7 +303,10 @@ public final class LaserIntegrationChecks {
             var hit = new net.minecraft.util.hit.BlockHitResult(Vec3d.ofCenter(support).add(0, 0.5, 0), Direction.UP, support, false);
             check(context, stack.useOnBlock(new net.minecraft.item.ItemUsageContext(player, net.minecraft.util.Hand.MAIN_HAND, hit)).isAccepted(), "Native placement " + part.partId());
             check(context, stack.isEmpty() && world.getBlockState(target).isOf(part.getBlock()), "Native placement consumes exactly one part");
-            check(context, world.getBlockEntity(target) instanceof net.askcraft.justifylasers.block.entity.LaserPartBlockEntity, "Native decoration block entity");
+            boolean bakedMineral = part.getBlock() instanceof net.askcraft.justifylasers.block.LaserPartBlock decoration && decoration.isRawMineral();
+            check(context, bakedMineral ? world.getBlockEntity(target) == null
+                    : world.getBlockEntity(target) instanceof net.askcraft.justifylasers.block.entity.LaserPartBlockEntity,
+                    "Native decoration block entity policy: " + part.partId());
             check(context, part.getBlock().asItem() == item && world.getBlockState(target).getLuminance() == 0, "Original pick item and no vanilla lighting");
             player.setStackInHand(net.minecraft.util.Hand.MAIN_HAND, new ItemStack(Items.DIAMOND_PICKAXE));
             check(context, player.interactionManager.tryBreakBlock(target), "Native survival decoration mining");
@@ -353,6 +366,98 @@ public final class LaserIntegrationChecks {
         check(context, sink.energy().stored() == 1494 && receiver.energy().stored() == 0, "Re-enabled native output resumes transfer without loss or duplication");
         world.setBlockState(receiverPos, Blocks.AIR.getDefaultState());
         world.setBlockState(receiverPos.east(), Blocks.AIR.getDefaultState());
+    }
+
+    private static void verifyRelease(TestContext context) {
+        verifyDecorations(context);
+        verifyIndustry(context);
+        verifyEnergyOutput(context);
+        IntegrationEnergy.tablet();
+        var world = context.getWorld();
+        var pos = context.getAbsolutePos(new BlockPos(1, 4, 3));
+        world.setBlockState(pos, ModBlocks.POWERED_LASER_EMITTER.getDefaultState());
+        var emitter = (LaserEmitterBlockEntity) world.getBlockEntity(pos);
+        check(context, IntegrationEnergy.receive(emitter, 1000, true) == 1000 && emitter.energy().stored() == 0,
+                "Energy simulation is non-mutating");
+        check(context, IntegrationEnergy.receive(emitter, 1000, false) == 1000, "Native energy insertion");
+        IntegrationEnergy.roundTrip(emitter);
+        check(context, emitter.energy().stored() == 1000, "Native energy serialization");
+        tick(emitter);
+        check(context, !emitter.isBeamActive() && emitter.energy().stored() == 1000, "Missing optical element cannot drain FE");
+        var owner = IntegrationEnergy.player(context);
+        var guest = IntegrationEnergy.serverPlayer(context);
+        owner.setPosition(Vec3d.ofCenter(pos));
+        guest.setPosition(owner.getPos());
+        emitter.initializeOwner(owner);
+        check(context, emitter.togglePrivacy(owner) && !emitter.canAccess(guest), "Private access rejects another player");
+        check(context, !guest.interactionManager.tryBreakBlock(pos) && world.getBlockEntity(pos) == emitter,
+                "Native manual mining respects privacy");
+        for (int flags = 0; flags < 8; flags++)
+            check(context, !net.askcraft.justifylasers.laser.LaserMining.breakBlock(world, pos, (flags & 1) != 0, (flags & 2) != 0, (flags & 4) != 0),
+                    "Native automatic mining respects privacy in every drop mode");
+        check(context, emitter.getAvailableSlots(Direction.UP).length == 0, "Private inventory is not exposed");
+        IntegrationEnergy.roundTrip(emitter);
+        check(context, emitter.canManageSecurity(owner) && emitter.isPrivate(), "Owner and privacy persist");
+        emitter.togglePrivacy(owner);
+        for (LaserColor color : LaserColor.values()) {
+            var crystal = ModLaserParts.CRYSTALS.get(color);
+            if (crystal == null) continue;
+            emitter.setStack(0, new ItemStack(crystal));
+            IntegrationEnergy.roundTrip(emitter);
+            check(context, emitter.crystal() != null && emitter.crystal().color() == color, "Crystal serialization: " + color);
+        }
+        for (LaserModule module : LaserModule.values()) {
+            var item = ModLaserParts.MODULES.get(module);
+            if (item == null) continue;
+            var stack = new ItemStack(item);
+            if (module == LaserModule.SCORCH_MARKS) {
+                check(context, !emitter.isValid(module.slot(), stack), "Disabled scorch slot remains inaccessible");
+                continue;
+            }
+            emitter.setStack(module.slot(), stack);
+            IntegrationEnergy.roundTrip(emitter);
+            check(context, emitter.hasModule(module), "Module serialization: " + module);
+            if (module.maxCount() == 64) {
+                emitter.setStack(module.slot(), new ItemStack(item, 64));
+                IntegrationEnergy.roundTrip(emitter);
+                check(context, emitter.getStack(module.slot()).getCount() == 64, "Full module stack serialization: " + module);
+            }
+            emitter.removeStack(module.slot());
+        }
+        var menu = new LaserEmitterScreenHandler(73, owner.getInventory(), emitter);
+        owner.currentScreenHandler = menu;
+        check(context, !new LaserSettingsPacket(72, 0).apply(owner), "Stale menu cannot mutate emitter");
+        owner.setPosition(Vec3d.ofCenter(pos).add(30, 0, 0));
+        check(context, !new LaserSettingsPacket(73, 0).apply(owner), "Remote menu cannot mutate emitter");
+        menu.onClosed(owner);
+        guest.discard();
+        check(context, net.askcraft.justifylasers.laser.LaserMining.breakBlock(world, pos, false, false), "Public emitter remains mineable");
+        verifyEncoderUploadLimit(context, pos);
+        org.slf4j.LoggerFactory.getLogger("justifylasers-release-audit").info(
+                "RELEASE_NATIVE_API_PASSED decorations/48-multiblock-ports/energy/cache-invalidation/tablet/modules/privacy/persistence/stale-packets");
+        if (Platform.isModLoaded("ae2")) ReleaseAe2Checks.schedule(context);
+        else context.complete();
+    }
+
+    private static void verifyEncoderUploadLimit(TestContext context, BlockPos pos) {
+        var world = context.getWorld();
+        world.setBlockState(pos, net.askcraft.justifylasers.registry.ModIndustry.MACHINES
+                .get(net.askcraft.justifylasers.industry.MachineKind.MODEL_ENCODER).getDefaultState());
+        var machine = (net.askcraft.justifylasers.block.entity.IndustrialMachineBlockEntity) world.getBlockEntity(pos);
+        var player = IntegrationEnergy.player(context);
+        player.setPosition(Vec3d.ofCenter(pos));
+        machine.initializeOwner(player);
+        var menu = new net.askcraft.justifylasers.screen.ModelEncoderScreenHandler(94, player.getInventory(), machine);
+        player.currentScreenHandler = menu;
+        var request = new LaserSettingsPacket(94, net.askcraft.justifylasers.screen.ModelEncoderScreenHandler.DRAFT_BEGIN,
+                Integer.toString(net.askcraft.justifylasers.printing.EncoderDraft.MAX_JSON));
+        check(context, request.apply(player), "Native initial draft upload accepted");
+        check(context, !request.apply(player), "Native duplicate draft begin rejected");
+        check(context, machine.togglePrivacy(player) && !net.askcraft.justifylasers.laser.LaserMining.breakBlock(world, pos, true, true),
+                "Private native encoder cannot be mined");
+        menu.onClosed(player);
+        world.removeBlock(pos, false);
+        org.slf4j.LoggerFactory.getLogger("justifylasers-release-audit").info("RELEASE_SECURITY_FIXES_PASSED private-emitter/chamber/encoder/draft-throttle/public-mining");
     }
 
     private static void tick(LaserEmitterBlockEntity emitter) {

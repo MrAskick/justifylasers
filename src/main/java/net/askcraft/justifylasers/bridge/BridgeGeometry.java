@@ -2,6 +2,9 @@ package net.askcraft.justifylasers.bridge;
 
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.function.BooleanBiFunction;
+import net.minecraft.util.shape.VoxelShape;
+import net.minecraft.util.shape.VoxelShapes;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,5 +36,21 @@ public final class BridgeGeometry {
         var boxes = new ArrayList<Box>(slices);
         for (int i = 0; i < slices; i++) boxes.add(bounds(start.add(step.multiply(i)), step, forward, normal));
         return List.copyOf(boxes);
+    }
+
+    public static VoxelShape union(List<Box> boxes) {
+        if (boxes.isEmpty()) return VoxelShapes.empty();
+        var shapes = boxes.stream().map(VoxelShapes::cuboid).toArray(VoxelShape[]::new);
+        // Simplifying after every slice repeatedly rebuilds the growing voxel grid (especially with Lithium).
+        // Merge a balanced tree without simplification, then simplify the exact union once.
+        for (int count = shapes.length; count > 1; ) {
+            int next = 0;
+            for (int i = 0; i < count; i += 2) {
+                shapes[next++] = i + 1 == count ? shapes[i]
+                        : VoxelShapes.combine(shapes[i], shapes[i + 1], BooleanBiFunction.OR);
+            }
+            count = next;
+        }
+        return shapes[0].simplify();
     }
 }

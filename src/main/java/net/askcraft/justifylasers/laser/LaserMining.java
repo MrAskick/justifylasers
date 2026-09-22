@@ -1,16 +1,20 @@
 package net.askcraft.justifylasers.laser;
 
+import net.askcraft.justifylasers.block.entity.IndustrialMachineBlockEntity;
+import net.askcraft.justifylasers.block.entity.LaserComponentBlockEntity;
+import net.askcraft.justifylasers.block.entity.LaserEmitterBlockEntity;
+import net.askcraft.justifylasers.block.entity.SolarConcentratorBlockEntity;
 import net.askcraft.justifylasers.registry.ModBlocks;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.enchantment.Enchantments;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
+import net.minecraft.world.World;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,12 +33,27 @@ public final class LaserMining {
         return (int) Math.ceil(Math.pow(original, 1.0D - clampSpeedStep(speedStep) / (double) MAX_SPEED_STEP));
     }
 
+    /** Private machines reject automation even when their owner is offline. */
+    public static boolean isProtected(World world, BlockPos pos) {
+        BlockEntity target = world.getBlockEntity(pos);
+        if (target instanceof LaserEmitterBlockEntity emitter) return emitter.isPoweredEmitter() && emitter.isPrivate();
+        if (target instanceof IndustrialMachineBlockEntity machine)
+            return machine.isPrivate() || machine.origin() != null && machine.controller() == null;
+        if (target instanceof SolarConcentratorBlockEntity solar && solar.isPrivate()) return true;
+        if (target instanceof LaserComponentBlockEntity component && component.controllerPos() != null) {
+            var controller = component.controller();
+            // Do not bypass a multiblock's security when its controller's chunk is unavailable.
+            return controller == null || controller.isPrivate();
+        }
+        return false;
+    }
+
     public static boolean breakBlock(ServerWorld world, BlockPos pos, boolean drops, boolean silkTouch) {
         return breakBlock(world, pos, drops, silkTouch, false);
     }
 
     public static boolean breakBlock(ServerWorld world, BlockPos pos, boolean drops, boolean silkTouch, boolean smelt) {
-        if (world.getBlockState(pos).isIn(ModBlocks.LASER_PROOF)) return false;
+        if (world.getBlockState(pos).isIn(ModBlocks.LASER_PROOF) || isProtected(world, pos)) return false;
         if (drops && !silkTouch && !smelt) {
             return world.breakBlock(pos, true, null);
         }

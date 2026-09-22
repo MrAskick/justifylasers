@@ -14,6 +14,44 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class LaserPartResourcesTest {
     @Test
+    void amplifierIconsHaveCleanAlphaAndExactlySixDistinctTiers() throws IOException {
+        var model = resource("assets/justifylasers/models/item/amplifier_module.json");
+        assertEquals("minecraft:item/generated", model.get("parent").getAsString());
+        assertEquals(5, model.getAsJsonArray("overrides").size());
+        var hashes = new java.util.HashSet<Integer>();
+        for (int tier = 1; tier <= AmplifierTier.MAX; tier++) {
+            if (tier > 1) {
+                var override = model.getAsJsonArray("overrides").get(tier - 2).getAsJsonObject();
+                assertEquals(tier / 10.0, override.getAsJsonObject("predicate").get("justifylasers:amplifier_tier").getAsDouble(), 0.00001);
+                assertEquals("justifylasers:item/amplifier_" + tier, override.get("model").getAsString());
+            }
+            String path = "/assets/justifylasers/textures/item/amplifier_" + tier + ".png";
+            try (var stream = getClass().getResourceAsStream(path)) {
+                assertNotNull(stream, path);
+                var sprite = ImageIO.read(stream);
+                assertEquals(512, sprite.getWidth());
+                assertEquals(512, sprite.getHeight());
+                int[] pixels = sprite.getRGB(0, 0, 512, 512, null, 0, 512);
+                int solid = 0;
+                for (int pixel : pixels) {
+                    int alpha = pixel >>> 24;
+                    assertTrue(alpha == 0 || alpha == 255, "Item-generated side faces need a clean alpha boundary");
+                    if (alpha == 255) solid++;
+                }
+                assertTrue(solid > 512 * 512 / 5 && solid < 512 * 512 * 4 / 5, "Icon must have both a subject and transparent margins");
+                hashes.add(java.util.Arrays.hashCode(pixels));
+                for (int edge = 0; edge < 512; edge++) {
+                    assertEquals(0, pixels[edge] >>> 24);
+                    assertEquals(0, pixels[511 * 512 + edge] >>> 24);
+                    assertEquals(0, pixels[edge * 512] >>> 24);
+                    assertEquals(0, pixels[edge * 512 + 511] >>> 24);
+                }
+            }
+        }
+        assertEquals(6, hashes.size(), "Each tier must use its own icon");
+    }
+
+    @Test
     void redstoneReceiverUsesTheEmitterInventoryTransform() throws IOException {
         var emitter = resource("assets/justifylasers/models/block/laser_emitter.json");
         var receiver = resource("assets/justifylasers/models/block/laser_receiver.json");
@@ -35,7 +73,7 @@ class LaserPartResourcesTest {
         for (String part : parts) {
             assertEquals("justifylasers:block/" + part, resource("assets/justifylasers/blockstates/" + part + ".json")
                     .getAsJsonObject("variants").getAsJsonObject("").get("model").getAsString());
-            String particle = part.equals("entity_heal_module") || part.equals("entity_lift_module") || part.equals("entity_lower_module") || part.equals("block_collection_module") ? "control_circuit" : part;
+            String particle = part.equals("entity_heal_module") || part.equals("entity_lift_module") || part.equals("entity_lower_module") ? "control_circuit" : part;
             assertEquals("justifylasers:block/particle/" + particle,
                     resource("assets/justifylasers/models/block/" + part + ".json").getAsJsonObject("textures").get("particle").getAsString());
             try (var stream = getClass().getResourceAsStream("/assets/justifylasers/textures/block/particle/" + particle + ".png")) {
@@ -145,7 +183,7 @@ class LaserPartResourcesTest {
     }
 
     @Test
-    void allCrystalColorsUseTheVolumetricModelAndKeepTheirRecipes() throws IOException {
+    void allCrystalColorsUseTheVolumetricModelAndChemicalRecoloring() throws IOException {
         JsonObject model = resource("assets/justifylasers/models/item/crystal.json");
         assertEquals("builtin/entity", model.get("parent").getAsString());
         for (String context : new String[]{"gui", "ground", "fixed", "firstperson_righthand", "firstperson_lefthand", "thirdperson_righthand", "thirdperson_lefthand"}) {
@@ -153,12 +191,14 @@ class LaserPartResourcesTest {
         }
         for (String color : new String[]{"red", "orange", "yellow", "green", "cyan", "blue", "violet", "magenta", "white"}) {
             assertEquals("justifylasers:item/crystal", resource("assets/justifylasers/models/item/" + color + "_crystal.json").get("parent").getAsString());
-            JsonObject recipe = resource("data/justifylasers/recipes/" + color + "_crystal.json");
+            assertNull(getClass().getClassLoader().getResource("data/justifylasers/recipes/" + color + "_crystal.json"));
+            assertNull(getClass().getClassLoader().getResource("data/justifylasers/recipes/legacy_" + color + "_crystal.json"));
+            String recipeId = color.equals("magenta") ? "mounted_crystal" : "industry/recolor_" + color;
+            JsonObject recipe = resource("data/justifylasers/recipes/" + recipeId + ".json");
             assertEquals("justifylasers:" + color + "_crystal", recipe.getAsJsonObject("result").get("item").getAsString());
-            assertEquals("minecraft:crafting_shapeless", recipe.get("type").getAsString());
-            assertEquals("justifylasers:laser_crystals", recipe.getAsJsonArray("ingredients").get(0).getAsJsonObject().get("tag").getAsString());
-            assertTrue(resource("data/justifylasers/recipes/legacy_" + color + "_crystal.json").has("fabric:load_conditions"));
-            assertFalse(recipe.has("fabric:load_conditions"), "Crystals also work as optics without technical mods");
+            if (color.equals("magenta")) assertEquals("minecraft:crafting_shapeless", recipe.get("type").getAsString());
+            else assertEquals("CHEMICAL_SYNTHESIZER", recipe.get("machine").getAsString());
+            assertFalse(recipe.has("fabric:load_conditions"), "Crystals work without technical mods");
             for (String suffix : color.equals("cyan") ? new String[]{"", "_light", "_light_s", "_light_n"} : new String[]{""}) {
                 String path = "assets/justifylasers/textures/item/crystal/" + color + suffix + ".png";
                 try (var stream = getClass().getClassLoader().getResourceAsStream(path)) {

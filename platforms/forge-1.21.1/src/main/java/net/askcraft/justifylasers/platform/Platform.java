@@ -78,7 +78,7 @@ public final class Platform {
 
     private static IEventBus modBus;
     public static final SimpleChannel NETWORK = ChannelBuilder.named(JustifyLasers.id("main"))
-            .networkProtocolVersion(9).simpleChannel();
+            .networkProtocolVersion(12).simpleChannel();
 
     public static void initialize(IEventBus bus) {
         modBus = bus;

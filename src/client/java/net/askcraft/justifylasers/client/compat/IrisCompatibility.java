@@ -264,6 +264,16 @@ public final class IrisCompatibility {
         return copyWorldDepthToMainFramebuffer();
     }
 
+    /** Size of one source-depth pixel after the shader pack's final upscale. */
+    public static float finalDepthPixelScale() {
+        if (!isShaderPackInUse()) return 0;
+        if (!finalDepthCaptured) return 1 / getShaderRenderScale();
+        var target = MinecraftClient.getInstance().getFramebuffer();
+        return Math.max(1, Math.max(
+                target.textureWidth / Math.max(1.0F, (float) Math.ceil(capturedDepthWidth * capturedRenderScale)),
+                target.textureHeight / Math.max(1.0F, (float) Math.ceil(capturedDepthHeight * capturedRenderScale))));
+    }
+
     /**
      * Copies opaque-world depth to the final framebuffer, accounting for pack render scaling.
      */

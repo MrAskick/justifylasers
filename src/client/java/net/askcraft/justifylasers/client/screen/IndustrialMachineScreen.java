@@ -47,6 +47,19 @@ public final class IndustrialMachineScreen extends HandledScreen<IndustrialMachi
         if (handler.kind().multiblock())
             button(13, 129, 23, 21, TechGui.Icon.MODULES, () -> Text.translatable("gui.justifylasers.jei.construction"),
                     RecipeNavigation::available, RecipeNavigation::showConstruction);
+        if (page == Page.MAIN && handler.kind() == MachineKind.PHOTOPOLYMER_PRINTER) {
+            printButton(155,()->handler.printRepeat()?PrintingIcons.Icon.REPEAT:PrintingIcons.Icon.SINGLE,
+                    ()->Text.translatable("gui.justifylasers.printing."+(handler.printRepeat()?"repeat":"single")),()->send(4));
+            printButton(187,()->handler.progress()>0||handler.printRequested()?PrintingIcons.Icon.STOP:PrintingIcons.Icon.PLAY,
+                    ()->Text.translatable("gui.justifylasers.printing."+(handler.progress()>0||handler.printRequested()?"cancel":"start")),
+                    ()->send(handler.progress()>0||handler.printRequested()?3:5));
+        }
+    }
+    private void printButton(int by,java.util.function.Supplier<PrintingIcons.Icon> icon,java.util.function.Supplier<Text> hint,Runnable action){
+        addDrawableChild(new ButtonWidget(x+8,y+by,28,28,hint.get(),b->action.run(),supplier->supplier.get()){
+            public void renderButton(DrawContext c,int mx,int my,float delta){renderWidget(c,mx,my,delta);}
+            public void renderWidget(DrawContext c,int mx,int my,float delta){TechGui.button(c,getX(),getY(),width,height,TechGui.State.of(true,false,isHovered(),isFocused(),false));PrintingIcons.draw(c,icon.get(),getX()+6,getY()+6,0xFFBEEBF3);setTooltip(Tooltip.of(hint.get()));}
+        });
     }
 
     private static Text label(String key) { return Text.translatable("gui.justifylasers.powered." + key); }
@@ -92,7 +105,9 @@ public final class IndustrialMachineScreen extends HandledScreen<IndustrialMachi
         for (int index = 0; index < recipe.inputs().size(); index++) {
             var slot = handler.getSlot(index);
             if (!slot.isEnabled() || slot.hasStack()) continue;
-            var options = recipe.inputs().get(index).getMatchingStacks();
+            var options = recipe.process().crystal() != null && index == 0
+                    ? new net.minecraft.item.ItemStack[]{recipe.process().crystal().seed(0)}
+                    : recipe.inputs().get(index).getMatchingStacks();
             if (options.length == 0) continue;
             var ghost = options[(int)(net.minecraft.util.Util.getMeasuringTimeMs() / 1400 % options.length)].copy();
             ghost.setCount(recipe.counts().get(index));
@@ -145,16 +160,22 @@ public final class IndustrialMachineScreen extends HandledScreen<IndustrialMachi
                 handler.kind() == MachineKind.CRYSTAL_GROWER ? handler.rate() : handler.capacity(), 0xFF8CFCE8, 0xFF237F99);
         fitted(context, handler.kind() == MachineKind.FUEL_GENERATOR
                 ? Text.translatable("gui.justifylasers.industry.generator_stats", handler.efficiency(), handler.temperature())
+                : handler.kind() == MachineKind.CRYSTAL_GROWER ? Text.translatable("gui.justifylasers.industry.minimum_flux",
+                    net.askcraft.justifylasers.laser.LuminousFlux.format(handler.minimumFlux()))
+                : handler.kind() == MachineKind.PHOTOPOLYMER_PRINTER ? Text.translatable("gui.justifylasers.printing.flux", net.askcraft.justifylasers.laser.LuminousFlux.format(handler.lightFlux()), net.askcraft.justifylasers.laser.LuminousFlux.format(handler.minimumFlux()))
                 : handler.kind() == MachineKind.LASER_CUTTER ? Text.translatable("gui.justifylasers.industry.cutting_flux", net.askcraft.justifylasers.laser.LuminousFlux.format(handler.lightFlux()))
                 : Text.translatable("gui.justifylasers.industry.automation"), x + 64, y + 113, 192, 0x618E9F);
         if (handler.kind() == MachineKind.FUEL_GENERATOR)
             fitted(context, Text.translatable("gui.justifylasers.industry.charge"), x + 167, y + 43, 39, 0x87B6C4);
+        if(handler.kind()==MachineKind.PHOTOPOLYMER_PRINTER&&handler.printPartCount()>1)
+            fitted(context,Text.translatable("gui.justifylasers.printing.part",handler.printPartIndex()+1,handler.printPartCount()),x+64,y+125,190,0xB5DEE8);
         if (handler.kind().fluidTank()) tank(context, 0, 24, 70, 54);
         if (handler.kind() == MachineKind.CHEMICAL_SYNTHESIZER) tank(context, 1, 237, 63, 27);
     }
 
     private void fluidTooltip(DrawContext context, int tank, int mouseX, int mouseY) {
-        Text name = Text.translatable(handler.fluid(tank) == net.askcraft.justifylasers.industry.ProcessFluid.WATER
+        Text name = Text.translatable(handler.fluidAmount(tank) == 0 ? "gui.justifylasers.industry.fluid"
+                : handler.fluid(tank) == net.askcraft.justifylasers.industry.ProcessFluid.WATER
                 ? "block.minecraft.water" : "block.justifylasers." + handler.fluid(tank).fluidId());
         context.drawTooltip(textRenderer, name.copy().append(": " + handler.fluidAmount(tank) + " / " + handler.tankCapacity() + " mB"), mouseX, mouseY);
     }

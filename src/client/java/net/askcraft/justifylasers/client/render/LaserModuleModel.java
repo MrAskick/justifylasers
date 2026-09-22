@@ -33,6 +33,7 @@ public final class LaserModuleModel {
     public static void render(String id, ModelTransformationMode mode, MatrixStack matrices,
                               VertexConsumerProvider consumers, int light, int overlay) {
         if (id.equals("spectrum_module")) { SpectrumModuleModel.render(mode, matrices, consumers, light); return; }
+        if (id.equals("block_collection_module")) { LootCollectorModel.render(mode, matrices, consumers, light); return; }
         List<Face> mesh = MESHES.get(id);
         if (mesh == null) return;
         matrices.push();
@@ -98,7 +99,6 @@ public final class LaserModuleModel {
         result.put("control_circuit", circuit());
         result.put("silk_touch_module", silk());
         result.put("block_drops_module", collector(false));
-        result.put("block_collection_module", cargoCollector());
         result.put("scorch_marks_module", thermal(false));
         result.put("ignition_module", thermal(true));
         result.put("target_filter_module", targetFilter());
@@ -211,7 +211,7 @@ public final class LaserModuleModel {
         b.box(Material.FRAME, 4.1, 10.8, 10, 11.9, 11.35, 14);
         for (int i = 0; i < 5; i++) b.box(Material.STEEL, 4.3, 11.35, 10.1 + i * 0.75, 11.7, 11.65, 10.4 + i * 0.75);
         for (double x : new double[]{2.35, 13.55}) {
-            b.box(Material.CYAN, x, 7.5, 10.2, x + 0.08, 8.3, 13.6);
+            b.box(Material.CYAN, x, 7.2, 10.2, x + 0.08, 8.6, 13.6);
             for (int i = 0; i < 3; i++) b.box(Material.ORANGE, x, 3, 10 + i, x + 0.08, 5.8, 10.45 + i);
         }
         return b.faces;
@@ -420,31 +420,6 @@ public final class LaserModuleModel {
         return b.faces;
     }
 
-    private static List<Face> cargoCollector() {
-        Builder b = new Builder("block_drops_module");
-        b.box(Material.FRAME, 1, 0, 2, 15, 2, 15);
-        b.skin = b.body();
-        b.box(Material.FRAME, 2, 2, 6, 14, 12, 14.5);
-        b.skin = null;
-        // A rectangular storage cassette with three drawers is distinct from the round Drops funnel.
-        for (int row = 0; row < 3; row++) {
-            double y = 2.4 + row * 3.1;
-            b.box(Material.STEEL, 2.7, y, 5.3, 13.3, y + 2.5, 6.1);
-            b.box(Material.FRAME, 4, y + .6, 5.05, 12, y + 1.9, 5.29);
-            b.box(Material.CYAN, 4.2, y + .75, 5.01, 5.8, y + 1.75, 5.04);
-            b.box(Material.STEEL, 7, y + .9, 4.7, 10.5, y + 1.5, 5.04);
-        }
-        for (double x : new double[]{1.5, 13.4}) {
-            b.box(Material.STEEL, x, 1.3, 3.1, x + 1.1, 12.8, 4.2);
-            b.box(Material.YELLOW, x + .15, 3.5, 3.01, x + .95, 10.6, 3.1);
-        }
-        b.box(Material.FRAME, 3, 12, 7, 13, 13.1, 13.5);
-        b.box(Material.STEEL, 4, 13.1, 8, 5, 14.8, 11);
-        b.box(Material.STEEL, 11, 13.1, 8, 12, 14.8, 11);
-        b.box(Material.STEEL, 4, 14.8, 8, 12, 15.5, 11);
-        for (int i = 0; i < 5; i++) b.box(Material.CYAN, 4.4 + i * 1.5, 12.01, 6, 5.1 + i * 1.5, 12.1, 6.8);
-        return b.faces;
-    }
 
     private static List<Face> motor() {
         Builder b = new Builder("electric_motor");

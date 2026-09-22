@@ -3,7 +3,7 @@ package net.askcraft.justifylasers.industry;
 import net.askcraft.justifylasers.platform.GameVersion;
 import net.minecraft.item.ItemStack;
 
-/** Item data keeps vanilla gems usable in ordinary recipes without letting them seed another growth cycle. */
+/** Wear data and compatibility with pre-alpha.38 seeds. Origin tags are no longer a security boundary. */
 public final class CrystalSeed {
     public static final String STAGE = "JustifyLasersSeedStage", SYNTHETIC = "JustifyLasersSynthetic";
 
@@ -18,25 +18,34 @@ public final class CrystalSeed {
         return stack;
     }
     public static ItemStack migrate(ItemStack stack) {
-        if (!(stack.getItem() instanceof net.askcraft.justifylasers.item.LegacyCrystalSeedItem old)) return stack;
-        var result = GameVersion.replaceItem(stack, old.crystal().natural());
+        if (stack.getItem() instanceof net.askcraft.justifylasers.item.LegacyCrystalSeedItem old)
+            return migrate(stack, old.crystal(), old.stage());
+        var data = GameVersion.itemData(stack);
+        int stage = data.getInt(STAGE);
+        if (data.contains(STAGE) && stage >= 0 && stage <= 3 && !synthetic(stack))
+            for (var crystal : CrystalGrowth.values()) if (stack.isOf(crystal.natural())) return migrate(stack, crystal, stage);
+        return stack;
+    }
+    public static ItemStack migrate(ItemStack stack, CrystalGrowth crystal, int stage) {
+        var result = GameVersion.replaceItem(stack, net.askcraft.justifylasers.registry.ModNutrients.GROWTH_SEED);
         var data = GameVersion.itemData(result);
-        data.putInt(STAGE, old.stage());
+        data.putInt(STAGE, stage);
+        data.putString(net.askcraft.justifylasers.item.GrowthSeedItem.TYPE, crystal.id());
         GameVersion.setItemData(result, data);
         return result;
     }
-    public static ItemStack crafted(ItemStack output, int size, java.util.function.IntFunction<ItemStack> input) {
-        // Compressing and unpacking gems must not erase their origin or reset a worn seed.
-        var item = output.getItem();
-        if (item != net.minecraft.item.Items.DIAMOND && item != net.minecraft.item.Items.DIAMOND_BLOCK
-                && item != net.minecraft.item.Items.EMERALD && item != net.minecraft.item.Items.EMERALD_BLOCK
-                && item != net.minecraft.item.Items.AMETHYST_SHARD && item != net.minecraft.item.Items.AMETHYST_BLOCK
-                && item != net.askcraft.justifylasers.registry.ModIndustry.PHOTONITE_CRYSTAL) return output;
-        for (int slot = 0; slot < size; slot++) {
-            var stack = input.apply(slot);
-            if (synthetic(stack) || GameVersion.itemData(stack).getInt(STAGE) > 0) return syntheticResult(output.copy());
+    /** Retired origin/wear tags on cut gems break NBT-sensitive pipe and storage filters. */
+    public static ItemStack cleanProduct(ItemStack stack) {
+        for (var crystal : CrystalGrowth.values()) if (stack.isOf(crystal.natural())) {
+            var data = GameVersion.itemData(stack);
+            if (data.contains(SYNTHETIC) || data.contains(STAGE)) {
+                data.remove(SYNTHETIC);
+                data.remove(STAGE);
+                GameVersion.setItemData(stack, data);
+            }
+            break;
         }
-        return output;
+        return stack;
     }
     private CrystalSeed() { }
 }

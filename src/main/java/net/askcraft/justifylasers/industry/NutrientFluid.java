@@ -23,6 +23,11 @@ public class NutrientFluid extends WaterFluid {
     @Override public Fluid getFlowing() { return ModNutrients.FLOWING.get(nutrient); }
     @Override public Item getBucketItem() { return nutrient.bucket(); }
     @Override public boolean matchesType(Fluid fluid) { return fluid == getStill() || fluid == getFlowing(); }
+    @Override public int getTickRate(net.minecraft.world.WorldView world) { return nutrient==ProcessFluid.PHOTOPOLYMER?30:super.getTickRate(world); }
+    // The water-spread method was renamed between the two supported Minecraft versions.
+    public int getFlowSpeed(net.minecraft.world.WorldView world) { return nutrient==ProcessFluid.PHOTOPOLYMER?2:4; }
+    public int getMaxFlowDistance(net.minecraft.world.WorldView world) { return nutrient==ProcessFluid.PHOTOPOLYMER?2:4; }
+    @Override public int getLevelDecreasePerBlock(net.minecraft.world.WorldView world) { return nutrient==ProcessFluid.PHOTOPOLYMER?2:super.getLevelDecreasePerBlock(world); }
     @Override protected boolean isInfinite(World world) { return false; }
     @Override public boolean isStill(FluidState state) { return !flowing; }
     @Override public int getLevel(FluidState state) { return flowing ? state.get(LEVEL) : 8; }

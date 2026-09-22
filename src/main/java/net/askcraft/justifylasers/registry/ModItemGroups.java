@@ -37,8 +37,10 @@ public final class ModItemGroups {
                             if (LaserConfig.technicalMode()) {
                                 ModIndustry.ORES.values().forEach(entries::add);
                                 ModIndustry.MACHINES.values().forEach(entries::add);
+                                entries.add(net.askcraft.justifylasers.printing.PrintData.printed(net.askcraft.justifylasers.printing.PrintExamples.pedestal()));
                                 ModNutrients.BUCKETS.values().forEach(entries::add);
                                 ModNutrients.GROWN.values().forEach(entries::add);
+                                for (var crystal : net.askcraft.justifylasers.industry.CrystalGrowth.values()) entries.add(crystal.seed(0));
                                 for (var material : new net.minecraft.item.Item[]{ModIndustry.RAW_WOLFRAMITE, ModIndustry.RAW_PHOTONIC_CRYSTAL,
                                         ModIndustry.WOLFRAMITE_INGOT, ModIndustry.PHOTONITE_CRYSTAL, ModIndustry.CRYSTAL_MOUNT}) entries.add(material);
                                 ModIndustry.COMPONENTS.values().forEach(entries::add);
@@ -54,7 +56,7 @@ public final class ModItemGroups {
                                 });
                                 entries.add(ModLaserParts.ADVANCED_RANGE_MODULE);
                                 entries.add(ModLaserParts.ADVANCED_THICKNESS_MODULE);
-                                for (int tier = 1; tier <= net.askcraft.justifylasers.energy.AmplifierTier.MAX; tier++)
+                                for (int tier : net.askcraft.justifylasers.energy.AmplifierTier.AVAILABLE)
                                     entries.add(net.askcraft.justifylasers.item.LaserAmplifierItem.stack(tier));
                                 entries.add(ModLaserParts.CONTROL_CIRCUIT);
                             }
@@ -66,7 +68,8 @@ public final class ModItemGroups {
                         .icon(() -> ModIndustry.BLUEPRINTS.get("powered_laser_emitter").getDefaultStack())
                         .entries((context, entries) -> {
                             entries.add(ModIndustry.BLANK_SCHEMATIC);
-                            ModIndustry.BLUEPRINTS.values().forEach(entries::add);
+                            entries.add(net.askcraft.justifylasers.printing.PrintData.schematic(net.askcraft.justifylasers.printing.PrintExamples.pedestal()));
+                            ModIndustry.BLUEPRINTS.values().forEach(blueprint -> entries.add(blueprint.getDefaultStack()));
                         }).build());
     }
 

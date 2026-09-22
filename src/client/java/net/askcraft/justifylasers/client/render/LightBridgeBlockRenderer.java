@@ -53,5 +53,6 @@ public final class LightBridgeBlockRenderer implements BlockEntityRenderer<Light
     }
 
     @Override public boolean rendersOutsideBoundingBox(LightBridgeBlockEntity bridge) { return true; }
+    public net.minecraft.util.math.Box getRenderBoundingBox(LightBridgeBlockEntity bridge) { return bridge.getRenderBoundingBox(); }
     @Override public int getRenderDistance() { return 192; }
 }

@@ -40,6 +40,7 @@ public final class JustifyLasersForgeClient {
         event.registerBlockEntityRenderer(ModBlockEntities.LASER_PART, LaserPartRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.LASER_COMPONENT, net.askcraft.justifylasers.client.render.LaserComponentBlockRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.INDUSTRIAL_MACHINE, net.askcraft.justifylasers.client.render.IndustrialMachineRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntities.PRINTED_MODEL, net.askcraft.justifylasers.client.render.PrintedModelRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.LASER_TURRET, net.askcraft.justifylasers.client.render.LaserTurretRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.LASER_OPTIC, net.askcraft.justifylasers.client.render.LaserOpticRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.LIGHT_BRIDGE, net.askcraft.justifylasers.client.render.LightBridgeBlockRenderer::new);

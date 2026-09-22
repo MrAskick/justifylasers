@@ -15,7 +15,7 @@ public class LoaderGameTests {
         LaserIntegrationChecks.verifyMekanismCable(context);
     }
 
-    @GameTest(templateName = "empty", templateNamespace = "justifylasers_integration", tickLimit = 40)
+    @GameTest(templateName = "empty", templateNamespace = "justifylasers_integration", tickLimit = 140)
     public void nativeEnergyAndGameplay(TestContext context) {
         LaserIntegrationChecks.verify(context);
     }

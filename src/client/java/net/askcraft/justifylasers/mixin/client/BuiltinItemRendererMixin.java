@@ -18,10 +18,17 @@ public abstract class BuiltinItemRendererMixin {
     @Inject(method = "reload", at = @At("TAIL"))
     private void justifylasers$reloadSchematicIcons(CallbackInfo ci) {
         net.askcraft.justifylasers.client.render.SchematicIcons.clear();
+        net.askcraft.justifylasers.client.screen.TabletGuide.clear();
+        net.askcraft.justifylasers.client.render.PrintTextures.clear();
     }
     @Inject(method = "render", at = @At("HEAD"), cancellable = true)
     private void justifylasers$renderOptic(ItemStack stack, ModelTransformationMode mode, MatrixStack matrices,
                                          VertexConsumerProvider consumers, int light, int overlay, CallbackInfo ci) {
+        if (stack.getItem() instanceof net.askcraft.justifylasers.item.PrintedModelItem) {
+            net.askcraft.justifylasers.client.render.PrintedModelRenderer.render(net.askcraft.justifylasers.printing.PrintData.read(stack),
+                    net.minecraft.util.math.Direction.NORTH, matrices, consumers, light, overlay);
+            ci.cancel(); return;
+        }
         if (stack.getItem() instanceof BlockItem bridgeItem && bridgeItem.getBlock() instanceof net.askcraft.justifylasers.block.LightBridgeBlock bridge) {
             net.askcraft.justifylasers.client.render.LightBridgeBlockRenderer.renderItem(matrices, consumers, light, bridge.corner());
             ci.cancel(); return;
@@ -40,6 +47,7 @@ public abstract class BuiltinItemRendererMixin {
             ci.cancel(); return;
         }
         if (stack.getItem() instanceof net.askcraft.justifylasers.item.AssemblyBlueprintItem
+                || stack.getItem() instanceof net.askcraft.justifylasers.item.ModelSchematicItem
                 || stack.isOf(net.askcraft.justifylasers.registry.ModIndustry.BLANK_SCHEMATIC)) {
             net.askcraft.justifylasers.client.render.BlueprintRenderer.render(stack, matrices, consumers, light, overlay);
             ci.cancel(); return;
@@ -48,6 +56,10 @@ public abstract class BuiltinItemRendererMixin {
             net.askcraft.justifylasers.client.render.LaserCrystalModel.renderBare(mode, matrices, consumers, light, overlay);
             ci.cancel();
             return;
+        }
+        if (stack.getItem() instanceof net.askcraft.justifylasers.item.GrowthSeedItem) {
+            net.askcraft.justifylasers.client.render.GrowthSeedModel.render(stack, mode, matrices, consumers, light, overlay);
+            ci.cancel(); return;
         }
         if (stack.getItem() instanceof BlockItem item && item.getBlock() instanceof net.askcraft.justifylasers.block.IndustrialMachineBlock machine) {
             net.askcraft.justifylasers.client.render.IndustrialMachineRenderer.renderItem(machine.kind(), matrices, consumers, light, overlay);

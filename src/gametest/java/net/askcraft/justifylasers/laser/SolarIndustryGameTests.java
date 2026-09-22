@@ -103,7 +103,9 @@ public class SolarIndustryGameTests implements FabricGameTest {
             var schematic = ModIndustry.BLUEPRINTS.get(id);
             context.assertTrue(menu.onButtonClick(player, menu.blueprints().indexOf(schematic)), "Select " + id);
             context.assertTrue(menu.onButtonClick(player, TabletScreenHandler.RECORD), "Record " + id);
-            context.assertTrue(player.getInventory().count(schematic) == 1, "Exactly one tradable copy");
+            int written = 0;
+            for (int slot = 0; slot < player.getInventory().size(); slot++) if (net.askcraft.justifylasers.platform.GameVersion.canStack(player.getInventory().getStack(slot), schematic.getDefaultStack())) written += player.getInventory().getStack(slot).getCount();
+            context.assertTrue(written == 1, "Exactly one tradable typed copy");
         }
         context.assertTrue(player.getInventory().count(ModIndustry.BLANK_SCHEMATIC) == 0, "Two blanks consumed");
         context.assertTrue(menu.charge() == charge - 2 * ExtraterrestrialTabletItem.WRITE_COST, "Two paid recordings, no free duplication");

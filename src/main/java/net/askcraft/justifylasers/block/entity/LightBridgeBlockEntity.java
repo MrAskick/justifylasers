@@ -29,6 +29,16 @@ public final class LightBridgeBlockEntity extends LaserBlockEntity implements La
     public long input(long tick) { return inputTick == tick ? lumens : 0; }
     public int rgb() { return rgb; }
 
+    public net.minecraft.util.math.Box getRenderBoundingBox() {
+        var span = world == null ? null : LightBridgeNetwork.at(world, pos);
+        if (span != null) return span.hardwareBounds().expand(.08);
+        var frame = orientation();
+        return (corner() ? net.askcraft.justifylasers.bridge.BridgeGeometry.bounds(
+                frame.cornerPoint(pos, -.5, -net.askcraft.justifylasers.bridge.BridgeOrientation.HALF_DEPTH, -.5),
+                frame.acrossVector(), Vec3d.of(facing().getVector()).multiply(2 * net.askcraft.justifylasers.bridge.BridgeOrientation.HALF_DEPTH),
+                frame.normalVector()) : frame.casing(pos, 1)).expand(.08);
+    }
+
     @Override public boolean acceptsLaser(Direction side, Vec3d point) {
         return side != null && side != facing();
     }

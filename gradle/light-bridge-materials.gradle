@@ -2,6 +2,26 @@ import groovy.json.JsonOutput
 import java.awt.image.BufferedImage
 import javax.imageio.ImageIO
 
+def bridgeParticle = { BufferedImage base, List armor ->
+    def sprite = new BufferedImage(armor[2] * 2, armor[3] * 2, BufferedImage.TYPE_INT_ARGB)
+    for (int y = 0; y < sprite.height; y++) for (int x = 0; x < sprite.width; x++)
+        sprite.setRGB(x, y, base.getRGB(armor[0] + (int)(x / 2), armor[1] + (int)(y / 2)))
+    sprite
+}
+
+tasks.register('generateLightBridgeParticle') {
+    def textures = rootProject.file('src/main/resources/assets/justifylasers/textures/component/light_bridge')
+    def destination = layout.buildDirectory.file('generated/lightBridgeParticles/particle.png')
+    inputs.files(new File(textures, 'base.png'), new File(textures, 'base.json'), rootProject.file('gradle/light-bridge-materials.gradle'))
+    outputs.file(destination)
+    doLast {
+        def atlas = new groovy.json.JsonSlurper().parse(new File(textures, 'base.json'))
+        def output = destination.get().asFile
+        output.parentFile.mkdirs()
+        ImageIO.write(bridgeParticle(ImageIO.read(new File(textures, 'base.png')), atlas.regions.armor), 'png', output)
+    }
+}
+
 // Optional UV authoring task. Normal builds use the packed atlas, never these source sheets.
 tasks.register('generateLightBridgeMaterials') {
     def folder = rootProject.file('ref/Blocks/LightBridge')
@@ -56,7 +76,7 @@ tasks.register('generateLightBridgeMaterials') {
         output.mkdirs()
         layers.each { name, image -> ImageIO.write(image,'png',new File(output,name+'.png')) }
         def armor = regions.armor
-        ImageIO.write(layers.base.getSubimage(armor[0],armor[1],armor[2],armor[3]),'png',new File(output,'particle.png'))
+        ImageIO.write(bridgeParticle(layers.base, armor),'png',new File(output,'particle.png'))
         new File(output,'base.json').setText(JsonOutput.toJson([size:size,regions:regions])+'\n','UTF-8')
     }
 }

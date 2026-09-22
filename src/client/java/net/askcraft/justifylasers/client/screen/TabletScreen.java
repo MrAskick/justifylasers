@@ -14,6 +14,10 @@ import org.lwjgl.glfw.GLFW;
 public final class TabletScreen extends Screen implements ScreenHandlerProvider<TabletScreenHandler> {
     private final TabletScreenHandler handler;
     private int firstVisible;
+    private boolean help = true;
+    private int selectedGuide, guideScroll;
+    private java.util.List<TabletGuide.Entry> guides = java.util.List.of();
+    private java.util.List<Text> guideLines = java.util.List.of();
     private float yaw = -28, pitch = 18;
     private boolean rotating;
     private double previousX, previousY;
@@ -27,6 +31,11 @@ public final class TabletScreen extends Screen implements ScreenHandlerProvider<
     @Override public void close() { if (client.player != null) client.player.closeHandledScreen(); }
     public int firstVisible() { return firstVisible; }
     public java.util.List<Integer> matches() { return matches; }
+    public boolean help() { return help; }
+    public java.util.List<TabletGuide.Entry> guides() { return guides; }
+    public int selectedGuide() { return selectedGuide; }
+    public int guideScroll() { return guideScroll; }
+    public java.util.List<Text> guideLines() { return guideLines; }
     public String query() { return search == null ? "" : search.getText(); }
     public boolean searching() { return search != null && search.isFocused(); }
     public int searchCursor() { return search == null ? 0 : search.getCursor(); }
@@ -37,6 +46,8 @@ public final class TabletScreen extends Screen implements ScreenHandlerProvider<
         if (previousPerspective == null) previousPerspective = client.options.getPerspective();
         client.options.setPerspective(net.minecraft.client.option.Perspective.FIRST_PERSON);
         String previousQuery = query();
+        guides = TabletGuide.entries();
+        selectGuide(MathHelper.clamp(selectedGuide, 0, guides.size() - 1));
         search = new net.minecraft.client.gui.widget.TextFieldWidget(textRenderer, 0, 0, 150, 20, Text.translatable("gui.justifylasers.tablet.search"));
         search.setMaxLength(80);
         search.setChangedListener(value -> filter());
@@ -56,13 +67,30 @@ public final class TabletScreen extends Screen implements ScreenHandlerProvider<
     private void page(int direction) { firstVisible = MathHelper.clamp(firstVisible + direction * PAGE_SIZE, 0, Math.max(0, (matches.size() - 1) / PAGE_SIZE * PAGE_SIZE)); }
 
     private void filter() {
-        matches = java.util.stream.IntStream.range(0, handler.blueprints().size()).filter(index -> {
+        matches = java.util.stream.IntStream.range(0, help ? guides.size() : handler.blueprints().size()).filter(index -> {
+            if (help) {
+                var entry = guides.get(index);
+                return matchesQuery(query(), entry.title().getString(), entry.id(), entry.description().getString());
+            }
             var blueprint = handler.blueprints().get(index);
             var output = blueprint.output(client.world);
             return matchesQuery(query(), output.getName().getString(), net.minecraft.registry.Registries.ITEM.getId(output.getItem()).toString(), blueprint.recipe().toString());
         }).boxed().toList();
         firstVisible = 0;
-        if (!matches.isEmpty() && !matches.contains(handler.selected())) send(matches.get(0));
+        if (!matches.isEmpty() && !matches.contains(help ? selectedGuide : handler.selected())) {
+            if (help) selectGuide(matches.get(0)); else send(matches.get(0));
+        }
+    }
+    private void selectGuide(int index) {
+        selectedGuide = index; guideScroll = 0;
+        guideLines = TabletGuide.lines(guides.get(index).description(), textRenderer, 256);
+    }
+    private void scrollGuide(int amount) {
+        guideScroll = MathHelper.clamp(guideScroll + amount, 0, Math.max(0, guideLines.size() - TabletGuide.VISIBLE_LINES));
+    }
+    private void tab(boolean help) {
+        if (this.help == help) return;
+        this.help = help; rotating = false; search.setFocused(false); search.setText(""); filter();
     }
 
     public static boolean matchesQuery(String query, String... values) {
@@ -75,20 +103,23 @@ public final class TabletScreen extends Screen implements ScreenHandlerProvider<
         var point = TabletRenderer.pointer(mx, my);
         if (point == null || button != 0 || handler.charge() <= 0) return false;
         double px = point[0], py = point[1];
+        if (py >= 7 && py < 33 && px >= 118 && px < 317) { tab(px < 216); return true; }
         search.setFocused(px >= 12 && px < 168 && py >= 48 && py < 72);
         if (search.isFocused()) { search.keyPressed(GLFW.GLFW_KEY_END, 0, 0); return true; }
         if (px >= 12 && px < 168 && py >= LIST_TOP && py < LIST_TOP + PAGE_SIZE * 31) {
             int row = (int)(py - LIST_TOP) / 31, index = firstVisible + row;
-            if ((py - LIST_TOP) % 31 < 27 && index < matches.size()) send(matches.get(index));
+            if ((py - LIST_TOP) % 31 < 27 && index < matches.size()) {
+                if (help) selectGuide(matches.get(index)); else send(matches.get(index));
+            }
             return true;
         }
         if (py >= 259 && py < 287) {
             if (px >= 12 && px < 86) page(-1);
             else if (px >= 94 && px < 168) page(1);
-            else if (px >= 344 && px < 468 && !matches.isEmpty()) send(TabletScreenHandler.RECORD);
+            else if (!help && px >= 344 && px < 468 && !matches.isEmpty()) send(TabletScreenHandler.RECORD);
             return true;
         }
-        if (px >= 180 && px < 468 && py >= 74 && py < 212) {
+        if (!help && px >= 180 && px < 468 && py >= 74 && py < 212) {
             rotating = true; previousX = px; previousY = py; return true;
         }
         return false;
@@ -101,7 +132,13 @@ public final class TabletScreen extends Screen implements ScreenHandlerProvider<
         previousX = point[0]; previousY = point[1]; return true;
     }
     @Override public boolean mouseReleased(double mx, double my, int button) { rotating = false; return true; }
-    public boolean mouseScrolled(double mx, double my, double amount) { if (handler.charge() > 0) page(amount > 0 ? -1 : 1); return true; }
+    public boolean mouseScrolled(double mx, double my, double amount) {
+        var point = TabletRenderer.pointer(mx, my);
+        if (handler.charge() <= 0 || point == null || amount == 0) return false;
+        if (help && point[0] >= 180) scrollGuide(amount > 0 ? -3 : 3);
+        else page(amount > 0 ? -1 : 1);
+        return true;
+    }
     public boolean mouseScrolled(double mx, double my, double horizontal, double vertical) { return mouseScrolled(mx, my, vertical); }
     @Override public boolean keyPressed(int key, int scan, int modifiers) {
         if (searching() && key == GLFW.GLFW_KEY_ESCAPE) { search.setFocused(false); return true; }
@@ -111,11 +148,17 @@ public final class TabletScreen extends Screen implements ScreenHandlerProvider<
         }
         if (key == GLFW.GLFW_KEY_ESCAPE || client.options.inventoryKey.matchesKey(key, scan)) { close(); return true; }
         if (handler.charge() > 0) {
+            if (key == GLFW.GLFW_KEY_TAB) { tab(!help); return true; }
             if (key == GLFW.GLFW_KEY_F && hasControlDown()) { search.setFocused(true); return true; }
-            if (key == GLFW.GLFW_KEY_ENTER && !matches.isEmpty()) { send(TabletScreenHandler.RECORD); return true; }
+            if (!help && key == GLFW.GLFW_KEY_ENTER && !matches.isEmpty()) { send(TabletScreenHandler.RECORD); return true; }
+            if (help && (key == GLFW.GLFW_KEY_PAGE_UP || key == GLFW.GLFW_KEY_PAGE_DOWN)) {
+                scrollGuide(key == GLFW.GLFW_KEY_PAGE_UP ? -TabletGuide.VISIBLE_LINES : TabletGuide.VISIBLE_LINES); return true;
+            }
             if (!matches.isEmpty() && (key == GLFW.GLFW_KEY_UP || key == GLFW.GLFW_KEY_DOWN)) {
-                int next = MathHelper.clamp(matches.indexOf(handler.selected()) + (key == GLFW.GLFW_KEY_UP ? -1 : 1), 0, matches.size() - 1);
-                firstVisible = next / PAGE_SIZE * PAGE_SIZE; send(matches.get(next)); return true;
+                int next = MathHelper.clamp(matches.indexOf(help ? selectedGuide : handler.selected()) + (key == GLFW.GLFW_KEY_UP ? -1 : 1), 0, matches.size() - 1);
+                firstVisible = next / PAGE_SIZE * PAGE_SIZE;
+                if (help) selectGuide(matches.get(next)); else send(matches.get(next));
+                return true;
             }
         }
         return false;

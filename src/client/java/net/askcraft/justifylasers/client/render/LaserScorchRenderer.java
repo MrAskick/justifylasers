@@ -92,6 +92,22 @@ public final class LaserScorchRenderer {
         }
     }
 
+    static void renderLate(LateEffectBatch batch, Vec3d camera) {
+        if (GpuScorchRenderer.enabled()) {
+            batch.flush();
+            GpuScorchRenderer.render(VISIBLE, batch, camera);
+        } else if (!VISIBLE.isEmpty()) renderLate(batch.buffer(), camera);
+    }
+
+    static void renderMark(VertexConsumer buffer, VisibleMark mark, boolean hot, Vec3d camera) {
+        if (hot && mark.heat <= 0) return;
+        Vec3d origin = Vec3d.of(mark.patch.position()).subtract(camera);
+        for (var vertex : hot ? mark.patch.heat() : mark.patch.soot()) {
+            vertex(buffer, origin, vertex, hot ? temperature(vertex.rgb(), mark.heat) : vertex.rgb(),
+                    mark.opacity * (hot ? Math.min(1, mark.heat * 2) : 1));
+        }
+    }
+
     public static void endFrame() {
         VISIBLE.clear();
     }
@@ -109,7 +125,7 @@ public final class LaserScorchRenderer {
                 MathHelper.clamp(Math.round(vertex.alpha() * opacity), 0, 255)));
     }
 
-    private record VisibleMark(ScorchGeometry.Patch patch, float opacity, float heat) {
+    record VisibleMark(ScorchGeometry.Patch patch, float opacity, float heat) {
     }
 
     private LaserScorchRenderer() {

@@ -32,7 +32,7 @@ public final class ClientSettingsScreen extends Screen {
         left = (width - panelWidth) / 2;
         top = Math.max(4, (height - 244) / 2);
         rowWidth = panelWidth - 24;
-        String[] tabs = {"optics", "effects", "audio", "mirrors", "machines"};
+        String[] tabs = {"optics", "effects", "audio", "mirrors", "machines", "gpu"};
         for (int i = 0; i < tabs.length; i++) {
             int selected = i;
             addDrawableChild(new SettingButton(left + 12 + i * (rowWidth / tabs.length), top + 31, rowWidth / tabs.length - 2,
@@ -59,8 +59,15 @@ public final class ClientSettingsScreen extends Screen {
             slider(1, "mirror_distance", settings.mirrorDistance, 8, 64, 8, value -> settings.mirrorDistance = (int) value);
             slider(2, "mirror_limit", settings.maxMirrors, 1, 32, 1, value -> settings.maxMirrors = (int) value, value -> value > 4);
             toggle(3, "mirror_shaders", () -> settings.mirrorShaders, value -> settings.mirrorShaders = value, true);
-        } else {
+        } else if (tab == 4) {
             toggle(0, "machine_displays", () -> settings.machineDisplays, value -> settings.machineDisplays = value);
+            toggle(1, "cube_core", () -> settings.cubeCore, value -> settings.cubeCore = value);
+        } else {
+            toggle(0, "gpu_models", () -> settings.gpuModels, value -> settings.gpuModels = value);
+            toggle(1, "gpu_prints", () -> settings.gpuPrintedModels, value -> settings.gpuPrintedModels = value);
+            toggle(2, "gpu_effects", () -> settings.gpuEffects, value -> settings.gpuEffects = value);
+            slider(3, "gpu_memory", settings.gpuCacheMiB, 16, 512, 16, value -> settings.gpuCacheMiB = (int)value);
+            slider(4, "gpu_upload", settings.gpuUploadMiB, 1, 32, 1, value -> settings.gpuUploadMiB = (int)value);
         }
         addDrawableChild(new SettingButton(left + 12, top + 210, rowWidth / 2 - 3,
                 label("reset"), b -> { ClientSettings.reset(); rebuild(); }, () -> false));
@@ -125,7 +132,11 @@ public final class ClientSettingsScreen extends Screen {
         context.fill(left, top, left + panelWidth, top + 240, 0xE9161C24);
         context.fill(left, top, left + panelWidth, top + 2, 0xFF52C9DF);
         context.drawCenteredTextWithShadow(textRenderer, title, width / 2, top + 12, 0xE7F4FC);
-        context.drawCenteredTextWithShadow(textRenderer, label(saveFailed ? "save_failed" : "local_only"),
+        Text footer = !saveFailed && tab == 5
+                ? Text.translatable("gui.justifylasers.client.gpu_usage", String.format(Locale.ROOT, "%.1f",
+                    net.askcraft.justifylasers.client.render.GpuGeometryCache.residentBytes() / 1048576d), ClientSettings.get().gpuCacheMiB)
+                : label(saveFailed ? "save_failed" : "local_only");
+        context.drawCenteredTextWithShadow(textRenderer, footer,
                 width / 2, top + 196, saveFailed ? 0xFF7878 : 0x91A2B0);
     }
 

@@ -58,7 +58,8 @@ public class Prompt6GameTests implements FabricGameTest {
         for (var crystal : CrystalGrowth.values()) {
             machine.clear(); machine.readNbt(machine.createNbt());
             machine.restoreFluids(new IndustrialMachineBlockEntity.Fluids(crystal.nutrient(), 4000, ProcessFluid.WATER, 0));
-            machine.setStack(0, new ItemStack(crystal.natural(), 2)); machine.energy().restore(1234);
+            var seeds = crystal.seed(0); seeds.setCount(2);
+            machine.setStack(0, seeds); machine.energy().restore(1234);
             machine.receiveLight(LuminousFlux.MAX, crystal.spectrum(), LuminousFlux.MAX, crystal.spectrum());
             int cycles=0, previous=-1;
             do {
@@ -69,9 +70,9 @@ public class Prompt6GameTests implements FabricGameTest {
                 c.assertTrue(machine.getStack(0).getCount() == 1, "Stock does not replace a reusable active seed");
                 var output = machine.getStack(4);
                 c.assertTrue(output.isEmpty() || output.isOf(crystal.grown()), "Growth only produces an uncut intermediate");
-                c.assertTrue(output.getCount() <= cycles * 3, "Maximum three crystals per paid cycle");
+                c.assertTrue(output.getCount() == cycles, "One grown cluster per paid bucket");
             } while (!machine.getStack(2).isEmpty() && cycles<4);
-            c.assertTrue(machine.getStack(2).isEmpty() && machine.water() == 4000-cycles*1000 && machine.energy().stored() == 1234, "Only completed cycles spend fluid; no FE");
+            c.assertTrue(machine.getStack(2).isEmpty() && machine.water() == 4000-cycles*1000 && machine.energy().stored() == 1234, "Only completed cycles spend one bucket; no FE");
         }
         c.complete();
     }
@@ -79,7 +80,7 @@ public class Prompt6GameTests implements FabricGameTest {
     @GameTest(templateName = EMPTY_STRUCTURE)
     public void spectrumModuleAndMinimumFluxAreRequiredAndPausesSurviveReload(TestContext c) {
         var machine = machine(c, MachineKind.CRYSTAL_GROWER); var crystal = CrystalGrowth.DIAMOND;
-        machine.setStack(0, new ItemStack(crystal.natural()));
+        machine.setStack(0, crystal.seed(0));
         machine.fillFluid(crystal.nutrient(), 1000, false);
         machine.receiveLight(crystal.reference(), crystal.spectrum()); tick(machine);
         c.assertTrue(machine.status() == IndustrialMachineBlockEntity.Status.WRONG_SPECTRUM && machine.water() == 1000, "A matching color alone is not a conditioned spectrum");
@@ -107,8 +108,9 @@ public class Prompt6GameTests implements FabricGameTest {
             c.assertTrue(machine.progress() == 0, "LM alone cannot move the cutting head");
             long energy = 0;
             for (int i = 0; i < recipe.duration(); i++) { machine.energy().restore(1000); tick(machine); energy += 1000 - machine.energy().stored(); }
-            c.assertTrue(machine.getStack(4).isOf(crystal.natural()) && machine.getStack(4).getCount() == 1 && machine.getStack(0).isEmpty(), "One grown crystal gives one finished resource");
-            c.assertTrue(CrystalSeed.synthetic(machine.getStack(4)) && crystal.stage(machine.getStack(4))<0, "Artificial gems cannot seed another growth cycle");
+            c.assertTrue(machine.getStack(4).isOf(crystal.natural()) && machine.getStack(4).getCount() >= 3 && machine.getStack(4).getCount() <= 6 && machine.getStack(0).isEmpty(), "One grown crystal gives three to six finished resources");
+            c.assertTrue(net.askcraft.justifylasers.platform.GameVersion.canStack(machine.getStack(4),new ItemStack(crystal.natural()))
+                    && crystal.stage(machine.getStack(4))<0, "Plain filter-compatible gems cannot replace a growth substrate");
             c.assertTrue(energy == (long)recipe.rate() * recipe.duration(), "All motion ticks are paid");
         }
         c.complete();
@@ -139,7 +141,7 @@ public class Prompt6GameTests implements FabricGameTest {
 
     @GameTest(templateName = EMPTY_STRUCTURE)
     public void newAssemblySchematicsAndFiniteFluidBlocksAreRegistered(TestContext c) {
-        for (String id : new String[]{"chemical_synthesizer", "laser_cutter", "spectrum_module"}) {
+        for (String id : new String[]{"chemical_synthesizer", "laser_cutter"}) {
             c.assertTrue(ModIndustry.BLUEPRINTS.containsKey(id), "Tablet schematic exists: " + id);
             c.assertTrue(IndustryRecipe.all(c.getWorld()).stream().anyMatch(r -> r.kind() == MachineKind.ASSEMBLY_CHAMBER && r.blueprint().equals(id)), "Assembler recipe exists: " + id);
         }

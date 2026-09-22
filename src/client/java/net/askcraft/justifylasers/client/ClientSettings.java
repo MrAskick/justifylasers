@@ -19,6 +19,7 @@ public final class ClientSettings {
     private static Path file;
 
     public boolean cubeLenses = true;
+    public boolean cubeCore = true;
     public double cubeMagnification = 1.8;
     public int cubeLensDistance = 64;
     public int maxLensCubes = 64;
@@ -33,6 +34,11 @@ public final class ClientSettings {
     public boolean saberSparks = true;
     public boolean solarLightShafts = true;
     public boolean machineDisplays = true;
+    public boolean gpuModels = true;
+    public boolean gpuPrintedModels = true;
+    public boolean gpuEffects = true;
+    public int gpuCacheMiB = 64;
+    public int gpuUploadMiB = 8;
     public double soundVolume = 1;
     public int maxSoundSources = 8;
 
@@ -59,6 +65,8 @@ public final class ClientSettings {
     }
 
     public void normalize() {
+        gpuCacheMiB = Math.max(16, Math.min(512, gpuCacheMiB));
+        gpuUploadMiB = Math.max(1, Math.min(32, gpuUploadMiB));
         mirrorDistance = Math.max(8, Math.min(64, mirrorDistance));
         maxMirrors = Math.max(1, Math.min(32, maxMirrors));
         cubeMagnification = finite(cubeMagnification, 1, 3, 1.8);

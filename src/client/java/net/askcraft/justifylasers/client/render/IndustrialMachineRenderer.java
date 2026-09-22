@@ -30,7 +30,16 @@ public final class IndustrialMachineRenderer implements BlockEntityRenderer<Indu
             double center = assembled ? 1 : .5;
             matrices.translate(center, center, center);
             matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(180 - machine.getCachedState().get(IndustrialMachineBlock.FACING).asRotation()));
-            if (assembled && machine.kind() == MachineKind.LASER_CUTTER) LaserCutterModel.render(machine, delta, matrices, consumers, light, overlay);
+            if (assembled && machine.kind() == MachineKind.PHOTOPOLYMER_PRINTER) PrintingMachineModel.render(machine, delta, matrices, consumers, light, overlay);
+            else if (machine.kind() == MachineKind.PHOTOPOLYMER_PRINTER) PrintingMachineModel.CASING.render(matrices,consumers,light,0xBD76FF,false,false);
+            else if (machine.kind() == MachineKind.MODEL_ENCODER) {
+                PrintingMachineModel.ENCODER.render(matrices,consumers,light,0x85D7ED,machine.energy().stored()>0,true);
+                if(machine.hologramVisible()&&!IrisCompatibility.isRenderingShadowPass()){
+                    matrices.push();matrices.translate(0,.68,0);matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees((machine.getWorld().getTime()+delta)*.7F));matrices.scale(.7F,.7F,.7F);matrices.translate(-.5,0,-.5);
+                    PrintedModelRenderer.render(machine.encoderDraft().design(),Direction.NORTH,matrices,consumers,net.minecraft.client.render.LightmapTextureManager.MAX_LIGHT_COORDINATE,overlay,16,true);matrices.pop();
+                }
+            }
+            else if (assembled && machine.kind() == MachineKind.LASER_CUTTER) LaserCutterModel.render(machine, delta, matrices, consumers, light, overlay);
             else if (assembled) ChamberModel.render(machine, delta, matrices, consumers, light, overlay);
             else if (machine.kind() == MachineKind.LASER_CUTTER) LaserCutterModel.CASING.render(matrices, consumers, light, 0x91DFFF, false, false);
             else if (machine.kind().multiblock()) ChamberModel.casing(machine.kind(), matrices, consumers, light);
@@ -44,7 +53,7 @@ public final class IndustrialMachineRenderer implements BlockEntityRenderer<Indu
                     matrices.push();
                     matrices.translate(start.x, start.y, start.z);
                     matrices.multiply(new org.joml.Quaternionf().rotationTo(0, 0, -1, (float) axis.x, (float) axis.y, (float) axis.z));
-                    PROJECTOR.render(matrices, consumers, light, machine.lightRgb(), machine.lightFlux() > 0, true);
+                    PROJECTOR.render(matrices, consumers, light, machine.lightRgb(), machine.status() == IndustrialMachineBlockEntity.Status.WORKING, true);
                     matrices.pop();
                 }
             }
@@ -55,6 +64,13 @@ public final class IndustrialMachineRenderer implements BlockEntityRenderer<Indu
     private static void effects(IndustrialMachineBlockEntity machine, float delta, MatrixStack matrices, VertexConsumerProvider consumers) {
         Vec3d origin = Vec3d.of(machine.getPos()), center = origin.add(1, 1, 1);
         float time = machine.getWorld().getTime() + delta;
+        if (machine.kind() == MachineKind.PHOTOPOLYMER_PRINTER && machine.status() == IndustrialMachineBlockEntity.Status.WORKING) {
+            float yaw=(float)Math.toRadians(180-machine.getCachedState().get(IndustrialMachineBlock.FACING).asRotation());
+            double layer=Math.floor(machine.progress()*16d/Math.max(1,machine.duration()));
+            Vec3d start=center.add(new Vec3d(0,.174,PrintingMachineModel.headZ(machine,delta)).rotateY(yaw));
+            Vec3d end=center.add(new Vec3d(Math.sin(time*.22)*.28,-.526+.7*layer/16,PrintingMachineModel.headZ(machine,delta)).rotateY(yaw));
+            LaserBeamRenderer.render(new LaserBeamTrace(start,end,Direction.DOWN,null),origin,machine.getPos(),118,time,0xB64EFF,.12,true,matrices,consumers);
+        }
         if (machine.kind() == MachineKind.LASER_CUTTER && machine.status() == IndustrialMachineBlockEntity.Status.WORKING) {
             float yaw = (float)Math.toRadians(180 - machine.getCachedState().get(IndustrialMachineBlock.FACING).asRotation());
             Vec3d head = LaserCutterModel.headPosition(machine, delta).rotateY(yaw);
@@ -62,7 +78,7 @@ public final class IndustrialMachineRenderer implements BlockEntityRenderer<Indu
             LaserBeamRenderer.render(new LaserBeamTrace(start, end, Direction.DOWN, null), origin, machine.getPos(), 116,
                     time, machine.lightRgb(), .17, true, matrices, consumers);
         }
-        if (machine.kind() == MachineKind.CRYSTAL_GROWER && machine.lightFlux() > 0) {
+        if (machine.kind() == MachineKind.CRYSTAL_GROWER && machine.status() == IndustrialMachineBlockEntity.Status.WORKING) {
             for (int i = 0; i < 4; i++) {
                 double pulse = .5 + .5 * Math.sin(time * .13 + i * 1.9);
                 // Use the same frame as the four mounted focusing heads, including block rotation.
@@ -91,7 +107,9 @@ public final class IndustrialMachineRenderer implements BlockEntityRenderer<Indu
 
     public static void renderItem(MachineKind kind, MatrixStack matrices, VertexConsumerProvider consumers, int light, int overlay) {
         matrices.push(); matrices.translate(.5, .5, .5);
-        if (kind == MachineKind.LASER_CUTTER) LaserCutterModel.CASING.render(matrices, consumers, light, 0x91DFFF, false, false);
+        if (kind == MachineKind.PHOTOPOLYMER_PRINTER) PrintingMachineModel.CASING.render(matrices,consumers,light,0xBD76FF,false,false);
+        else if (kind == MachineKind.MODEL_ENCODER) PrintingMachineModel.ENCODER.render(matrices,consumers,light,0x85D7ED,false,false);
+        else if (kind == MachineKind.LASER_CUTTER) LaserCutterModel.CASING.render(matrices, consumers, light, 0x91DFFF, false, false);
         else if (kind.multiblock()) ChamberModel.casing(kind, matrices, consumers, light);
         else if (kind == MachineKind.CHEMICAL_SYNTHESIZER) ChemicalSynthesizerModel.render(null, matrices, consumers, light);
         else FuelGeneratorModel.render(null,matrices,consumers,light);
@@ -131,7 +149,7 @@ public final class IndustrialMachineRenderer implements BlockEntityRenderer<Indu
     }
 
 
-    @Override public boolean rendersOutsideBoundingBox(IndustrialMachineBlockEntity machine) { return machine.kind().multiblock(); }
+    @Override public boolean rendersOutsideBoundingBox(IndustrialMachineBlockEntity machine) { return machine.kind().multiblock()||machine.kind()==MachineKind.MODEL_ENCODER; }
     // NeoForge queries the renderer; legacy Forge queries the block entity instead.
     public net.minecraft.util.math.Box getRenderBoundingBox(IndustrialMachineBlockEntity machine) { return machine.getRenderBoundingBox(); }
     @Override public int getRenderDistance() { return 128; }

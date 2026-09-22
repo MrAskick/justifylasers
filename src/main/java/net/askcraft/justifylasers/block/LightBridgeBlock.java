@@ -2,6 +2,7 @@ package net.askcraft.justifylasers.block;
 
 import net.askcraft.justifylasers.block.entity.LightBridgeBlockEntity;
 import net.askcraft.justifylasers.bridge.LightBridgeNetwork;
+import net.askcraft.justifylasers.bridge.BridgeGeometry;
 import net.askcraft.justifylasers.laser.LaserBeamNetwork;
 import net.askcraft.justifylasers.platform.LaserBlock;
 import net.minecraft.block.Block;
@@ -19,10 +20,17 @@ import net.minecraft.util.BlockMirror;
 import net.minecraft.util.BlockRotation;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Direction;
 import net.minecraft.world.World;
 import net.minecraft.world.BlockView;
 import net.minecraft.util.shape.VoxelShape;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class LightBridgeBlock extends LaserBlock {
     public static final DirectionProperty FACING = Properties.FACING;
@@ -30,7 +38,11 @@ public final class LightBridgeBlock extends LaserBlock {
     public static final net.minecraft.state.property.BooleanProperty ROLLED = net.minecraft.state.property.BooleanProperty.of("rolled");
     public static final net.minecraft.state.property.IntProperty ROTATION = net.minecraft.state.property.IntProperty.of("rotation", 0, 7);
     private final boolean corner;
-    private final java.util.Map<BlockState, VoxelShape> shapes = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<BlockState, VoxelShape> shapes = new ConcurrentHashMap<>();
+    private final Map<List<Box>, VoxelShape> geometries = new ConcurrentHashMap<>();
+    private static final Comparator<Box> BOX_ORDER = Comparator.comparingDouble((Box box) -> box.minX)
+            .thenComparingDouble(box -> box.minY).thenComparingDouble(box -> box.minZ)
+            .thenComparingDouble(box -> box.maxX).thenComparingDouble(box -> box.maxY).thenComparingDouble(box -> box.maxZ);
 
     public LightBridgeBlock(Settings settings) {
         this(settings, false);
@@ -48,11 +60,7 @@ public final class LightBridgeBlock extends LaserBlock {
     @Override public BlockState getPlacementState(ItemPlacementContext context) {
         var world = context.getWorld();
         var pos = context.getBlockPos();
-        var support = world.getBlockState(pos.offset(context.getSide().getOpposite()));
         boolean independent = context.getPlayer() != null && context.getPlayer().isSneaking();
-        if (!independent && support.getBlock() instanceof LightBridgeBlock)
-            return getDefaultState().with(FACING, support.get(FACING)).with(MOUNT, support.get(MOUNT))
-                    .with(ROLLED, support.get(ROLLED)).with(ROTATION, support.get(ROTATION));
         Direction mount = context.getSide();
         // Floors/ceilings project along the player's horizontal heading; walls project out of the wall.
         // Looking down to place a floor fixture must never turn its beam upwards.
@@ -71,6 +79,13 @@ public final class LightBridgeBlock extends LaserBlock {
                         basis.acrossVector().dotProduct(preferredNormal) + basis.normalVector().dotProduct(preferredAcross));
                 if (score > best) { best = score; state = candidate; }
             }
+        }
+        if (!independent) {
+            var support = world.getBlockState(pos.offset(context.getSide().getOpposite()));
+            if (support.getBlock() instanceof LightBridgeBlock)
+                state = state.with(FACING, support.get(FACING)).with(MOUNT, support.get(MOUNT))
+                        .with(ROLLED, support.get(ROLLED)).with(ROTATION, support.get(ROTATION));
+            return net.askcraft.justifylasers.bridge.BridgePlacement.align(state, world, pos);
         }
         return state;
     }
@@ -112,28 +127,27 @@ public final class LightBridgeBlock extends LaserBlock {
 
     private VoxelShape shape(BlockState state) {
         var frame = orientation(state);
-        var shape = net.minecraft.util.shape.VoxelShapes.empty();
+        var boxes = new ArrayList<Box>();
         var forward = net.minecraft.util.math.Vec3d.of(frame.forward().getVector()).multiply(2 * net.askcraft.justifylasers.bridge.BridgeOrientation.HALF_DEPTH);
         var across = frame.acrossVector();
         var normal = frame.normalVector();
         double height = 2 * net.askcraft.justifylasers.bridge.BridgeOrientation.HALF_HEIGHT;
         if (corner) {
             var start = frame.cornerPoint(BlockPos.ORIGIN, -.5, -net.askcraft.justifylasers.bridge.BridgeOrientation.HALF_DEPTH, -.5);
-            for (var box : net.askcraft.justifylasers.bridge.BridgeGeometry.boxes(start, across, forward, normal.multiply(height)))
-                shape = net.minecraft.util.shape.VoxelShapes.union(shape, net.minecraft.util.shape.VoxelShapes.cuboid(box));
-            for (var box : net.askcraft.justifylasers.bridge.BridgeGeometry.boxes(start.add(normal.multiply(height)), normal.multiply(1 - height), forward, across.multiply(height)))
-                shape = net.minecraft.util.shape.VoxelShapes.union(shape, net.minecraft.util.shape.VoxelShapes.cuboid(box));
+            boxes.addAll(BridgeGeometry.boxes(start, across, forward, normal.multiply(height)));
+            boxes.addAll(BridgeGeometry.boxes(start.add(normal.multiply(height)), normal.multiply(1 - height), forward, across.multiply(height)));
             var intake = net.askcraft.justifylasers.bridge.BridgeGeometry.bounds(
                     frame.cornerPoint(BlockPos.ORIGIN, -.12, -net.askcraft.justifylasers.bridge.BridgeOrientation.HALF_DEPTH, -.12),
                     across.multiply(.24), net.minecraft.util.math.Vec3d.of(frame.forward().getVector()).multiply(.13), normal.multiply(.24));
-            shape = net.minecraft.util.shape.VoxelShapes.union(shape, net.minecraft.util.shape.VoxelShapes.cuboid(intake));
-            return shape;
+            boxes.add(intake);
+        } else {
+            boxes.addAll(BridgeGeometry.boxes(frame.point(BlockPos.ORIGIN, -.5,
+                    -net.askcraft.justifylasers.bridge.BridgeOrientation.HALF_DEPTH, -net.askcraft.justifylasers.bridge.BridgeOrientation.HALF_HEIGHT), across, forward, normal.multiply(height)));
+            if (frame.hasFeed()) boxes.add(frame.feed(BlockPos.ORIGIN));
         }
-        for (var box : net.askcraft.justifylasers.bridge.BridgeGeometry.boxes(frame.point(BlockPos.ORIGIN, -.5,
-                -net.askcraft.justifylasers.bridge.BridgeOrientation.HALF_DEPTH, -net.askcraft.justifylasers.bridge.BridgeOrientation.HALF_HEIGHT), across, forward, normal.multiply(height)))
-            shape = net.minecraft.util.shape.VoxelShapes.union(shape, net.minecraft.util.shape.VoxelShapes.cuboid(box));
-        return frame.hasFeed() ? net.minecraft.util.shape.VoxelShapes.union(shape,
-                net.minecraft.util.shape.VoxelShapes.cuboid(frame.feed(BlockPos.ORIGIN))) : shape;
+        // Several facing/mount/rolled combinations describe identical local geometry.
+        boxes.sort(BOX_ORDER);
+        return geometries.computeIfAbsent(List.copyOf(boxes), BridgeGeometry::union);
     }
     public static net.askcraft.justifylasers.bridge.BridgeOrientation orientation(BlockState state) {
         return new net.askcraft.justifylasers.bridge.BridgeOrientation(state.get(FACING), state.get(MOUNT), state.get(ROLLED), state.get(ROTATION));

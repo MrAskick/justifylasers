@@ -43,7 +43,7 @@ public final class ClientPlatform {
             var flowing = net.askcraft.justifylasers.registry.ModNutrients.FLOWING.get(kind);
             net.fabricmc.fabric.api.client.render.fluid.v1.FluidRenderHandlerRegistry.INSTANCE.register(fluid, flowing,
                     new net.fabricmc.fabric.api.client.render.fluid.v1.SimpleFluidRenderHandler(
-                            GameVersion.id("minecraft", "block/water_still"), GameVersion.id("minecraft", "block/water_flow"), kind.rgb()));
+                            kind.texture(false), kind.texture(true), kind.tint()));
             net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap.INSTANCE.putFluids(net.minecraft.client.render.RenderLayer.getTranslucent(), fluid, flowing);
         });
         ClientPlayNetworking.registerGlobalReceiver(net.askcraft.justifylasers.network.LightBridgePacket.ID, (client, handler, buffer, sender) -> {
@@ -78,6 +78,7 @@ public final class ClientPlatform {
         HandledScreens.register(ModScreenHandlers.LASER_MODULE, net.askcraft.justifylasers.client.screen.LaserModuleScreen::new);
         HandledScreens.register(ModScreenHandlers.LASER_RECEIVER, LaserReceiverScreen::new);
         HandledScreens.register(ModScreenHandlers.INDUSTRIAL_MACHINE, net.askcraft.justifylasers.client.screen.IndustrialMachineScreen::new);
+        HandledScreens.register(ModScreenHandlers.MODEL_ENCODER, net.askcraft.justifylasers.client.screen.ModelEncoderScreen::new);
         HandledScreens.register(ModScreenHandlers.SOLAR_CONCENTRATOR, net.askcraft.justifylasers.client.screen.SolarConcentratorScreen::new);
         HandledScreens.register(ModScreenHandlers.TABLET, net.askcraft.justifylasers.client.screen.TabletScreen::new);
         HandledScreens.register(ModScreenHandlers.LASER_TURRET, net.askcraft.justifylasers.client.screen.LaserTurretScreen::new);
@@ -87,6 +88,7 @@ public final class ClientPlatform {
         net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap.INSTANCE.putBlock(net.askcraft.justifylasers.registry.ModIndustry.LASER_ABSORBING_GLASS,
                 net.minecraft.client.render.RenderLayer.getTranslucent());
         BlockEntityRendererFactories.register(ModBlockEntities.INDUSTRIAL_MACHINE, net.askcraft.justifylasers.client.render.IndustrialMachineRenderer::new);
+        BlockEntityRendererFactories.register(ModBlockEntities.PRINTED_MODEL, net.askcraft.justifylasers.client.render.PrintedModelRenderer::new);
         BlockEntityRendererFactories.register(ModBlockEntities.LASER_TURRET, net.askcraft.justifylasers.client.render.LaserTurretRenderer::new);
         BlockEntityRendererFactories.register(ModBlockEntities.LASER_OPTIC, net.askcraft.justifylasers.client.render.LaserOpticRenderer::new);
         BlockEntityRendererFactories.register(ModBlockEntities.LIGHT_BRIDGE, net.askcraft.justifylasers.client.render.LightBridgeBlockRenderer::new);

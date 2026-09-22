@@ -32,7 +32,8 @@ public class TabletAcquisitionGameTests implements FabricGameTest {
             int found = 0, vanilla = 0;
             for (int seed = 1; seed <= 300; seed++) {
                 var drops = table.generateLoot(params, seed);
-                int count = drops.stream().filter(stack -> stack.isOf(ModIndustry.BLUEPRINTS.get("extraterrestrial_tablet"))).mapToInt(ItemStack::getCount).sum();
+                int count = drops.stream().filter(stack -> stack.isOf(ModIndustry.ASSEMBLY_BLUEPRINT)
+                        && net.askcraft.justifylasers.item.AssemblyBlueprintItem.recipe(stack).equals("extraterrestrial_tablet")).mapToInt(ItemStack::getCount).sum();
                 context.assertTrue(count <= 1, "No duplicate loot pool in " + chest.getKey());
                 found += count;
                 vanilla += drops.stream().filter(stack -> net.minecraft.registry.Registries.ITEM.getId(stack.getItem()).getNamespace().equals("minecraft")).mapToInt(ItemStack::getCount).sum();
@@ -63,7 +64,7 @@ public class TabletAcquisitionGameTests implements FabricGameTest {
         context.assertTrue(tablet.isOf(ModIndustry.EXTRATERRESTRIAL_TABLET) && tablet.getCount() == 1, "Crafts exactly one tablet");
         context.assertTrue(ExtraterrestrialTabletItem.charge(tablet) == 0, "Crafted tablet must be charged");
         for (int slot = 0; slot < 4; slot++) context.assertTrue(machine.getStack(slot).isEmpty(), "Ingredient consumed once");
-        context.assertTrue(machine.getStack(IndustrialMachineBlockEntity.BLUEPRINT).isOf(schematic), "Schematic is reusable");
+        context.assertTrue(net.askcraft.justifylasers.platform.GameVersion.canStack(machine.getStack(IndustrialMachineBlockEntity.BLUEPRINT), schematic.getDefaultStack()), "Typed schematic is reusable");
         context.assertTrue(machine.energy().stored() == 100_000 - recipe.duration() * recipe.rate(), "Exact assembly energy cost");
         var player = context.createMockSurvivalPlayer(); player.getInventory().setStack(0, tablet.copy());
         var menu = new TabletScreenHandler(1, player.getInventory(), BlockPos.ORIGIN);

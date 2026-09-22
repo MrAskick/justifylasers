@@ -25,6 +25,7 @@ public final class ModNutrients {
     public static final Map<ProcessFluid, Item> BUCKETS = new EnumMap<>(ProcessFluid.class);
     public static final Map<CrystalGrowth, Item> GROWN = new EnumMap<>(CrystalGrowth.class);
     public static final Map<CrystalGrowth, List<Item>> SEEDS = new EnumMap<>(CrystalGrowth.class);
+    public static net.askcraft.justifylasers.item.GrowthSeedItem GROWTH_SEED;
 
     public static void initialize() {
         PlatformNutrients.initialize();
@@ -44,6 +45,8 @@ public final class ModNutrients {
     }
 
     public static void items() {
+        GROWTH_SEED = Platform.register(Registries.ITEM, JustifyLasers.id("growth_seed"),
+                new net.askcraft.justifylasers.item.GrowthSeedItem(new Item.Settings()));
         STILL.forEach((kind, fluid) -> BUCKETS.put(kind, Platform.register(Registries.ITEM, JustifyLasers.id(kind.fluidId() + "_bucket"),
                 new BucketItem(fluid, new Item.Settings().recipeRemainder(Items.BUCKET).maxCount(1)))));
         for (var kind : CrystalGrowth.values()) {

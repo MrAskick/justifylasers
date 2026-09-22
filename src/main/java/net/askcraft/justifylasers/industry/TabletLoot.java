@@ -25,9 +25,11 @@ public final class TabletLoot {
     public static LootPool.Builder pool(Identifier table) {
         Float chance = table.getNamespace().equals("minecraft") ? CHESTS.get(table.getPath()) : null;
         if (chance == null) return null;
+        var data = new net.minecraft.nbt.NbtCompound();
+        data.putString(net.askcraft.justifylasers.item.AssemblyBlueprintItem.RECIPE, "extraterrestrial_tablet");
         return LootPool.builder().rolls(ConstantLootNumberProvider.create(1))
                 .conditionally(RandomChanceLootCondition.builder(chance))
-                .with(ItemEntry.builder(ModIndustry.BLUEPRINTS.get("extraterrestrial_tablet")));
+                .with(ItemEntry.builder(ModIndustry.ASSEMBLY_BLUEPRINT).apply(net.askcraft.justifylasers.platform.GameVersion.itemDataLoot(data)));
     }
 
     private TabletLoot() { }

@@ -188,7 +188,7 @@ public final class LaserPartBlock extends LaserBlock {
                     createCuboidShape(6.8, 3.7, 3.4, 9.2, 10.05, 12.6));
         }
         return switch (id) {
-            case "block_collection_module" -> createCuboidShape(1, 0, 2, 15, 15.5, 15);
+            case "block_collection_module" -> createCuboidShape(1.64, 0, 1.64, 14.36, 12.64, 14.36);
             case "electric_motor" -> VoxelShapes.union(createCuboidShape(1.7, 0, 3.5, 14.3, 15.4, 15.4),
                     createCuboidShape(6.6, 5.4, .15, 9.4, 8.2, 3.5));
             case "control_circuit" -> createCuboidShape(1, 0, 1, 15, 3, 15);

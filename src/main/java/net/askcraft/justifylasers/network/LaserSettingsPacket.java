@@ -10,18 +10,21 @@ public record LaserSettingsPacket(int syncId, int buttonId, String argument) {
     public static final Identifier ID = JustifyLasers.id("emitter_setting");
     public LaserSettingsPacket(int syncId, int buttonId) { this(syncId, buttonId, ""); }
     public LaserSettingsPacket(PacketByteBuf buf) {
-        this(buf.readVarInt(), buf.readVarInt(), buf.readString(256));
+        this(buf.readVarInt(), buf.readVarInt(), buf.readString(8192));
     }
 
     public void write(PacketByteBuf buf) {
         // Vanilla ButtonClickC2SPacket truncates button IDs to a signed byte in 1.20.1.
         buf.writeVarInt(syncId);
         buf.writeVarInt(buttonId);
-        buf.writeString(argument, 256);
+        buf.writeString(argument, 8192);
     }
 
     public boolean apply(PlayerEntity player) {
         if (!player.isAlive() || player.isSpectator() || player.currentScreenHandler.syncId != syncId) return false;
+        if (player.currentScreenHandler instanceof net.askcraft.justifylasers.screen.ModelEncoderScreenHandler encoder)
+            return encoder.receive(player, buttonId, argument);
+        if(argument.length()>256)return false;
         if (player.currentScreenHandler instanceof net.askcraft.justifylasers.screen.LaserModuleScreenHandler module)
             return module.setting(player, buttonId, argument);
         if (player.isAlive() && !player.isSpectator()

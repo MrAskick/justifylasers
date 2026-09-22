@@ -13,7 +13,8 @@ public final class PlatformNutrients {
 
     public static void initialize() {
         for (var kind : ProcessFluid.values()) if (kind != ProcessFluid.WATER) {
-            TYPES.put(kind, new FluidType(FluidType.Properties.create().density(1000).viscosity(1000)
+            TYPES.put(kind, new FluidType(FluidType.Properties.create().descriptionId("fluid.justifylasers." + kind.fluidId())
+                    .density(1000).viscosity(kind.viscosity())
                     .canSwim(true).canDrown(true).canPushEntity(true).canExtinguish(true).supportsBoating(true)
                     .motionScale(.014).fallDistanceModifier(.5F)));
         }

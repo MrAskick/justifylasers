@@ -5,18 +5,24 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class CrystalGrowthTest {
-    @Test void seedYieldsDeclineWithoutMakingFreshSeedsFail() {
-        int[][] expected = {{0, 815, 180, 5}, {50, 879, 70, 1}, {250, 740, 10, 0}, {900, 100, 0, 0}};
-        double previous = 4, total = 0;
-        for (int stage = 0; stage < 4; stage++) {
-            int[] counts = new int[4]; double average = 0;
-            for (int roll = 0; roll < 1000; roll++) { int count = CrystalGrowth.yield(stage, roll); counts[count]++; average += count / 1000d; }
-            assertArrayEquals(expected[stage], counts);
-            assertTrue(average < previous); previous = average; total += average;
+    @Test void basicCultivationRetainsItsOriginalYieldDistribution() {
+        int[] counts=new int[4];
+        for(int roll=0;roll<1000;roll++)counts[CrystalGrowth.basicYield(roll)]++;
+        assertArrayEquals(new int[]{150,550,200,100},counts);
+    }
+    @Test void oneBucketHasOneYieldRollAndAtMostSixFinishedGems() {
+        int[] counts=new int[7];
+        double mean=0;
+        for(int roll=0;roll<1000;roll++) {
+            int gems=CrystalGrowth.cuttingYield(roll);
+            counts[gems]++;
+            mean+=gems/1000d;
+            assertTrue(gems>=3&&gems<=6);
         }
-        assertEquals(3.072, total, 1e-9);
-        assertThrows(IllegalArgumentException.class, () -> CrystalGrowth.yield(4, 0));
-        assertThrows(IllegalArgumentException.class, () -> CrystalGrowth.yield(0, 1000));
+        assertArrayEquals(new int[]{0,0,0,550,300,120,30},counts);
+        assertEquals(3.63,mean,1e-9);
+        assertThrows(IllegalArgumentException.class,()->CrystalGrowth.cuttingYield(-1));
+        assertThrows(IllegalArgumentException.class,()->CrystalGrowth.cuttingYield(1000));
     }
     @Test void wearCanSkipStagesButUsuallyOnlyDamagesTheSeed() {
         int[] outcomes = new int[5];
@@ -40,9 +46,20 @@ class CrystalGrowthTest {
             assertTrue(CrystalGrowth.matchesSpectrum(dim, rgb));
             assertFalse(CrystalGrowth.matchesSpectrum(0, rgb));
             assertFalse(CrystalGrowth.matchesSpectrum(0xFFFFFF, rgb));
-            for (var other : CrystalGrowth.values()) if (other != crystal) assertFalse(CrystalGrowth.matchesSpectrum(other.spectrum(), rgb));
+            int opposite = java.awt.Color.HSBtoRGB((float)(((crystal.hueMin() + crystal.hueMax()) / 2d + 180) % 360 / 360), .8F, .8F);
+            assertFalse(CrystalGrowth.matchesSpectrum(opposite, rgb));
             assertTrue(crystal.minimum() < crystal.reference());
         }
+    }
+    @Test void photoniteSeedAndSpectrumUsePurpleInsteadOfGold() {
+        var crystal = CrystalGrowth.PHOTONITE;
+        assertEquals(0xBC09F5, crystal.spectrum());
+        assertEquals(ProcessFluid.PHOTONITE.rgb(), crystal.spectrum());
+        assertEquals(net.askcraft.justifylasers.laser.LaserColor.VIOLET,
+                net.askcraft.justifylasers.laser.LaserColor.nearest(crystal.spectrum()));
+        assertTrue(crystal.acceptsSpectrum(0xBC09F5));
+        assertFalse(crystal.acceptsSpectrum(0xFFD45A));
+        assertFalse(crystal.acceptsSpectrum(0xFFFF00));
     }
     @Test void hexRequiresExactlySixValidDigits() {
         assertEquals(0x1A2BEF, LaserSpectrum.parse("1a2bEF"));

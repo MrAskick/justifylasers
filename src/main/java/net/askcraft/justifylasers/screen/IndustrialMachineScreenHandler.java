@@ -21,7 +21,7 @@ public final class IndustrialMachineScreenHandler extends ScreenHandler {
     private final PropertyDelegate properties;
     private final net.minecraft.world.World world;
     private final Inventory inventory;
-    public static final int PROPERTY_COUNT = 60;
+    public static final int PROPERTY_COUNT = 68;
     private boolean machineSlotsVisible = true;
 
     public IndustrialMachineScreenHandler(int id, PlayerInventory player, BlockPos pos) {
@@ -31,6 +31,12 @@ public final class IndustrialMachineScreenHandler extends ScreenHandler {
     public IndustrialMachineScreenHandler(int id, PlayerInventory player, IndustrialMachineBlockEntity machine) {
         this(id, player, machine, machine, new PropertyDelegate() {
             @Override public int get(int index) {
+                if (index >= 60 && index < 64) {
+                    var recipe = machine.recipe();
+                    long minimum = machine.kind() == MachineKind.PHOTOPOLYMER_PRINTER ? machine.printingMinimumFlux()
+                            : recipe == null ? 0 : Math.max(1, recipe.process().minimumFlux());
+                    return (int)(minimum >>> ((index - 60) * 16)) & 0xFFFF;
+                }
                 if (index >= 43 && index <= 46) return (int)(machine.lightFlux() >>> ((index - 43) * 16)) & 0xFFFF;
                 if (index >= 53 && index <= 56) return (int)(machine.spectralFlux() >>> ((index - 53) * 16)) & 0xFFFF;
                 if (index == 58 || index == 59) return machine.spectrum() >>> ((index - 58) * 16) & 0xFFFF;
@@ -58,6 +64,10 @@ public final class IndustrialMachineScreenHandler extends ScreenHandler {
                     case 49 -> machine.fluid(0).ordinal();
                     case 50 -> machine.fluid(1).ordinal();
                     case 51 -> machine.fluidAmount(1);
+                    case 64 -> machine.printRepeat()?1:0;
+                    case 65 -> machine.printRequested()?1:0;
+                    case 66 -> machine.printPartIndex();
+                    case 67 -> machine.printPartCount();
                     default -> index >= 27 && index < 43 && index - 27 < machine.ownerName().length()
                             ? machine.ownerName().charAt(index - 27) : 0;
                 };
@@ -97,6 +107,10 @@ public final class IndustrialMachineScreenHandler extends ScreenHandler {
     public MachineKind kind() { return MachineKind.values()[MathHelper.clamp(properties.get(0), 0, MachineKind.values().length - 1)]; }
     private int value(int low) { return (properties.get(low) & 0xFFFF) | properties.get(low + 1) << 16; }
     public int progress() { return value(1); }
+    public boolean printRepeat() { return properties.get(64)!=0; }
+    public boolean printRequested() { return properties.get(65)!=0; }
+    public int printPartIndex() { return properties.get(66); }
+    public int printPartCount() { return Math.max(1,properties.get(67)); }
     public int duration() { return value(3); }
     public int energy() { return value(5); }
     public int capacity() { return value(7); }
@@ -109,6 +123,11 @@ public final class IndustrialMachineScreenHandler extends ScreenHandler {
         return net.askcraft.justifylasers.laser.LuminousFlux.clamp(flux);
     }
     public int temperature() { return properties.get(47); }
+    public long minimumFlux() {
+        long flux = 0;
+        for (int i = 0; i < 4; i++) flux |= (properties.get(60 + i) & 0xFFFFL) << (16 * i);
+        return flux;
+    }
     public int efficiency() { return properties.get(48); }
     public net.askcraft.justifylasers.industry.ProcessFluid fluid(int tank) { return net.askcraft.justifylasers.industry.ProcessFluid.byIndex(properties.get(tank == 0 ? 49 : 50)); }
     public int fluidAmount(int tank) { return tank == 0 ? water() : properties.get(51); }
@@ -130,7 +149,7 @@ public final class IndustrialMachineScreenHandler extends ScreenHandler {
         return name.toString();
     }
     public net.askcraft.justifylasers.industry.MachineRecipeData recipe() {
-        String blueprint = inventory.getStack(IndustrialMachineBlockEntity.BLUEPRINT).getItem() instanceof net.askcraft.justifylasers.item.AssemblyBlueprintItem item ? item.recipe() : "";
+        String blueprint = net.askcraft.justifylasers.item.AssemblyBlueprintItem.recipe(inventory.getStack(IndustrialMachineBlockEntity.BLUEPRINT));
         var recipes = net.askcraft.justifylasers.industry.IndustryRecipe.all(world).stream().filter(recipe -> recipe.kind() == kind()
                 && (kind() != MachineKind.ASSEMBLY_CHAMBER || recipe.blueprint().equals(blueprint))).toList();
         return recipes.stream().filter(recipe -> recipe.matches(inventory)).findFirst().orElse(recipes.isEmpty() ? null : recipes.get(0));
@@ -140,9 +159,12 @@ public final class IndustrialMachineScreenHandler extends ScreenHandler {
         if (slot == IndustrialMachineBlockEntity.BLUEPRINT) return kind() == MachineKind.ASSEMBLY_CHAMBER && stack.getItem() instanceof net.askcraft.justifylasers.item.AssemblyBlueprintItem;
         if (slot == IndustrialMachineBlockEntity.WATER_INPUT) return kind().fluidTank() ? stack.isOf(net.minecraft.item.Items.BUCKET)
                 || java.util.Arrays.stream(net.askcraft.justifylasers.industry.ProcessFluid.values()).anyMatch(fluid -> stack.isOf(fluid.bucket())
-                        && (kind() != MachineKind.CHEMICAL_SYNTHESIZER || fluid == net.askcraft.justifylasers.industry.ProcessFluid.WATER))
+                        && (kind() != MachineKind.CHEMICAL_SYNTHESIZER || fluid == net.askcraft.justifylasers.industry.ProcessFluid.WATER)
+                        && (kind() != MachineKind.PHOTOPOLYMER_PRINTER || fluid == net.askcraft.justifylasers.industry.ProcessFluid.PHOTOPOLYMER))
                 : kind() == MachineKind.FUEL_GENERATOR && net.askcraft.justifylasers.energy.RechargeableItem.accepts(stack);
         if (slot >= kind().inputs()) return false;
+        if (kind() == MachineKind.PHOTOPOLYMER_PRINTER) return slot == 0 && stack.isOf(net.askcraft.justifylasers.registry.ModIndustry.MODEL_SCHEMATIC)
+                && net.askcraft.justifylasers.printing.PrintData.read(stack) != null;
         if (kind() == MachineKind.FUEL_GENERATOR) return IndustryRecipes.accepts(kind(), slot, stack);
         var selected = recipe();
         return net.askcraft.justifylasers.industry.IndustryRecipe.all(world).stream().filter(recipe -> recipe.kind() == kind()
@@ -159,6 +181,9 @@ public final class IndustrialMachineScreenHandler extends ScreenHandler {
             case 0 -> machine.toggle();
             case 1 -> machine.cycleRedstone();
             case 2 -> { if (!machine.togglePrivacy(player)) return false; }
+            case 3 -> { if (!machine.cancelPrint()) return false; }
+            case 4 -> { if(machine.kind()!=MachineKind.PHOTOPOLYMER_PRINTER)return false;machine.cyclePrintMode(); }
+            case 5 -> { if(machine.kind()!=MachineKind.PHOTOPOLYMER_PRINTER)return false;machine.requestPrint(); }
             default -> { return false; }
         }
         sendContentUpdates(); return true;

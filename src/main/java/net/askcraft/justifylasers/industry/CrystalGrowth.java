@@ -9,7 +9,7 @@ import net.minecraft.item.Items;
 import java.util.Locale;
 
 public enum CrystalGrowth {
-    PHOTONITE(0xFFD45A, 620_000, 155_000, 600, 35, 60),
+    PHOTONITE(0xBC09F5, 620_000, 155_000, 600, 280, 310),
     AMETHYST(0xA24EFF, 960_000, 240_000, 800, 265, 295),
     EMERALD(0x20EE65, 2_480_000, 620_000, 1_200, 115, 155),
     DIAMOND(0x35DFFF, 2_480_000, 620_000, 1_600, 165, 200);
@@ -35,18 +35,11 @@ public enum CrystalGrowth {
     }
     public Item grown() { return ModNutrients.GROWN.get(this); }
     public ItemStack seed(int stage) {
-        if (stage < 0 || stage > 3) throw new IllegalArgumentException("Invalid seed stage");
-        ItemStack stack = new ItemStack(natural());
-        if (stage > 0) {
-            var data = net.askcraft.justifylasers.platform.GameVersion.itemData(stack);
-            data.putInt(CrystalSeed.STAGE, stage);
-            net.askcraft.justifylasers.platform.GameVersion.setItemData(stack, data);
-        }
-        return stack;
+        return net.askcraft.justifylasers.item.GrowthSeedItem.stack(this, stage);
     }
     public int stage(ItemStack stack) {
         if (stack.isEmpty() || CrystalSeed.synthetic(stack)) return -1;
-        if (stack.isOf(natural())) {
+        if (net.askcraft.justifylasers.item.GrowthSeedItem.type(stack) == this) {
             int value = net.askcraft.justifylasers.platform.GameVersion.itemData(stack).getInt(CrystalSeed.STAGE);
             return value >= 0 && value <= 3 ? value : -1;
         }
@@ -56,9 +49,10 @@ public enum CrystalGrowth {
     public ItemStack degraded(ItemStack seed, int roll) {
         int next = nextStage(stage(seed), roll);
         if (next < 0) return ItemStack.EMPTY;
-        var result = net.askcraft.justifylasers.platform.GameVersion.replaceItem(seed, natural());
+        var result = net.askcraft.justifylasers.platform.GameVersion.replaceItem(seed, ModNutrients.GROWTH_SEED);
         result.setCount(1);
         var data = net.askcraft.justifylasers.platform.GameVersion.itemData(result);
+        data.putString(net.askcraft.justifylasers.item.GrowthSeedItem.TYPE, id());
         data.putInt(CrystalSeed.STAGE, next);
         net.askcraft.justifylasers.platform.GameVersion.setItemData(result, data);
         return result;
@@ -69,12 +63,21 @@ public enum CrystalGrowth {
         return next > 3 ? -1 : next;
     }
 
-    public static int yield(int stage, int roll) {
-        if (stage < 0 || stage > 3 || roll < 0 || roll >= 1000) throw new IllegalArgumentException("Invalid growth roll");
-        int[] none = {0, 50, 250, 900}, triple = {5, 1, 0, 0}, doubleYield = {180, 70, 10, 0};
-        if (roll < none[stage]) return 0;
-        if (roll < none[stage] + triple[stage]) return 3;
-        return roll < none[stage] + triple[stage] + doubleYield[stage] ? 2 : 1;
+    public static int basicYield(int roll) {
+        if (roll < 0 || roll >= 1000) throw new IllegalArgumentException("Invalid growth roll");
+        return roll < 150 ? 0 : roll < 700 ? 1 : roll < 900 ? 2 : 3;
+    }
+
+    public static int cuttingYield(int roll) {
+        if(roll<0||roll>=1000)throw new IllegalArgumentException("Invalid cutting roll");
+        // One nutrient bucket grows one cluster; cutting is the only yield roll in that chain.
+        return roll < 550 ? 3 : roll < 850 ? 4 : roll < 970 ? 5 : 6;
+    }
+
+    public static boolean isCuttingInput(ItemStack stack) {
+        if(stack.isEmpty())return false;
+        for(var crystal:values())if(stack.isOf(crystal.grown()))return true;
+        return false;
     }
 
     public static boolean matchesSpectrum(int actual, int expected) {

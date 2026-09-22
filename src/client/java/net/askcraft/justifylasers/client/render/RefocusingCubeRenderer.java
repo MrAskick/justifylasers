@@ -30,7 +30,7 @@ public class RefocusingCubeRenderer extends EntityRenderer<RefocusingCubeEntity>
         matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(MathHelper.lerp(tickDelta, cube.prevPitch, cube.getPitch())));
         RefocusingCubeModel.render(matrices, consumers, light, cube.beamRgb(), cube.isLit(), cube.emitsLight());
         matrices.pop();
-        if (cube.isLit()) {
+        if (cube.isLit() && net.askcraft.justifylasers.client.ClientSettings.get().cubeCore) {
             CubeCoreRenderer.render(cube.getId(), frame.center(), origin, cube.beamRgb(), cube.emitsLight(),
                     cube.age + tickDelta, matrices, consumers);
         }

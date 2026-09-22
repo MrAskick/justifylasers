@@ -18,7 +18,15 @@ class LaserModuleModelTest {
     @Test
     void everyModuleHasItsOwnSolidMeshWithValidNormalsAndBounds() {
         var meshes = LaserModuleModel.meshes();
-        assertEquals(17, meshes.size()); // Spectrum uses the separate glass/prism renderer.
+        assertEquals(16, meshes.size()); // Spectrum and the chest have dedicated meshes.
+        for (var mesh : java.util.List.of(LootCollectorModel.MESH, SpectrumModuleModel.FRAME, SpectrumModuleModel.PRISM)) {
+            assertTrue(mesh.faces().size() >= 5);
+            for (var face : mesh.faces()) {
+                assertEquals(1, face.normal().length(), 1e-7);
+                for (var point : java.util.List.of(face.a(), face.b(), face.c(), face.d()))
+                    assertTrue(Math.abs(point.x) <= .5 && Math.abs(point.y) <= .5 && Math.abs(point.z) <= .5, "Module stays in one block");
+            }
+        }
         var unique = new HashSet<>();
         for (var entry : meshes.entrySet()) {
             String id = entry.getKey();

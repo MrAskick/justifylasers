@@ -28,6 +28,13 @@ public final class LaserClientSmoke {
     private static boolean reloading;
 
     public static void tick(MinecraftClient client) {
+        if (Boolean.getBoolean("justifylasers.smokeMirrorTemporal")) { OpticsWorldSmoke.tick(client); return; }
+        if (Boolean.getBoolean("justifylasers.smokeArtifacts")) { OpticsWorldSmoke.tick(client); return; }
+        if (Boolean.getBoolean("justifylasers.smokeBridgeGpu")) { OpticsWorldSmoke.tick(client); return; }
+        if (Boolean.getBoolean("justifylasers.smokePrompt10")) { OpticsWorldSmoke.tick(client); return; }
+        if (Boolean.getBoolean("justifylasers.smokePerformance")) { PerformanceWorldSmoke.tick(client); return; }
+        if (Boolean.getBoolean("justifylasers.smokePrinting")) { OpticsWorldSmoke.tick(client); return; }
+        if (Boolean.getBoolean("justifylasers.smokePrompt8")) { OpticsWorldSmoke.tick(client); return; }
         if (Boolean.getBoolean("justifylasers.smokePrompt7")) { OpticsWorldSmoke.tick(client); return; }
         if (Boolean.getBoolean("justifylasers.smokePrompt6")) { OpticsWorldSmoke.tick(client); return; }
         if (Boolean.getBoolean("justifylasers.smokePrompt5")) { OpticsWorldSmoke.tick(client); return; }

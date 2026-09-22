@@ -35,7 +35,7 @@ final class ChamberModel {
             float pulse = .75F + .15F * (float)Math.sin(time * .18) + .10F * (float)Math.sin(time * .47);
             rgb = ((int)((rgb >> 16 & 255) * pulse) << 16) | ((int)((rgb >> 8 & 255) * pulse) << 8) | (int)((rgb & 255) * pulse);
         }
-        (grower ? GROWER : ASSEMBLER).render(matrices, consumers, light, rgb, grower ? machine.lightFlux() > 0 : active, true);
+        (grower ? GROWER : ASSEMBLER).render(matrices, consumers, light, rgb, active, true);
         if (grower) {
             if (progress > 0 || !machine.getStack(IndustrialMachineBlockEntity.OUTPUT).isEmpty()) {
                 float size = machine.getStack(IndustrialMachineBlockEntity.OUTPUT).isEmpty() ? .20F + .78F * progress : .98F;
@@ -153,7 +153,9 @@ final class ChamberModel {
             double edge = extent - 2.3;
             for (int sign : new int[]{-1, 1}) {
                 double left = sign < 0 ? -edge : .14, right = sign < 0 ? -.14 : edge;
-                cap.panel("lid", false, left, -edge, right, edge, -extent - .012);
+                if(atlas.equals("photopolymer_printer"))
+                    cap.panelRegion("lid",left,-edge,right,edge,-extent-.012,(left+edge)/(2*edge),0,(right+edge)/(2*edge),1);
+                else cap.panel("lid", false, left, -edge, right, edge, -extent - .012);
             }
             body.add(cap.build(), side);
         }
@@ -188,6 +190,16 @@ final class ChamberModel {
         Sprite sprite = MinecraftClient.getInstance().getBlockRenderManager().getModel(net.minecraft.block.Blocks.GLASS.getDefaultState()).getParticleSprite();
         var buffer = consumers.getBuffer(LaserCrystalModel.EmissiveLayers.lens(SpriteAtlasTexture.BLOCK_ATLAS_TEXTURE));
         walls(matrices, buffer, sprite, light, 0xD8EEFF, 42, .75, -.60, .735);
+    }
+
+    static void resin(MatrixStack matrices, VertexConsumerProvider consumers, int light, float amount) {
+        if (amount <= 0) return;
+        Sprite sprite = MinecraftClient.getInstance().getSpriteAtlas(SpriteAtlasTexture.BLOCK_ATLAS_TEXTURE).apply(net.askcraft.justifylasers.industry.ProcessFluid.PHOTOPOLYMER.texture(false));
+        double high = -.59 + .22 * amount, side = .51;
+        var buffer = consumers.getBuffer(LaserCrystalModel.EmissiveLayers.lens(SpriteAtlasTexture.BLOCK_ATLAS_TEXTURE));
+        int rgb = net.askcraft.justifylasers.industry.ProcessFluid.PHOTOPOLYMER.rgb();
+        quad(matrices,buffer,sprite,light,rgb,255,new Vec3d(-side,high,-side),new Vec3d(-side,high,side),new Vec3d(side,high,side),new Vec3d(side,high,-side));
+        walls(matrices,buffer,sprite,light,rgb,255,side,-.59,high);
     }
 
     private static void walls(MatrixStack matrices, VertexConsumer buffer, Sprite sprite, int light, int rgb, int alpha, double s, double low, double high) {

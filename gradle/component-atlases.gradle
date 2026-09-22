@@ -4,6 +4,8 @@ import java.awt.image.BufferedImage
 import javax.imageio.ImageIO
 
 def atlasOutput = layout.buildDirectory.dir('generated/componentAtlases')
+ext.extractComponentPatch = { image, spec -> ComponentAtlasBaker.extract(image, spec) }
+ext.packComponentPatches = { patches, size -> ComponentAtlasBaker.pack(patches, size) }
 tasks.register('generatePrompt7Materials') {
     def swatches = rootProject.file('src/main/materials/optical-hardware-swatches.png')
     def planFile = rootProject.file('src/main/materials/optical-hardware-parts.json')
@@ -56,7 +58,10 @@ tasks.register('generatePrompt7Materials') {
             def output = new File(destination.get().asFile,"grown_${name}_crystal"); output.mkdirs()
             ImageIO.write(normal,'png',new File(output,'base_n.png'))
             ImageIO.write(specular,'png',new File(output,'base_s.png'))
-            ImageIO.write(source.getSubimage(4,4,24,40),'png',new File(output,'particle.png'))
+            // Exact 2x texel replication preserves the swatch while permitting four atlas mip levels.
+            def particle = new BufferedImage(48, 80, BufferedImage.TYPE_INT_ARGB)
+            for (int y=0; y<80; y++) for (int x=0; x<48; x++) particle.setRGB(x,y,source.getRGB(4+(int)(x/2),4+(int)(y/2)))
+            ImageIO.write(particle,'png',new File(output,'particle.png'))
         }
     }
 }

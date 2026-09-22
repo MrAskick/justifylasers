@@ -483,14 +483,14 @@ public class LaserEmitterBlockEntity extends LaserBlockEntity implements LaserSc
     }
 
     private int amplifierTier() { return net.askcraft.justifylasers.item.LaserAmplifierItem.tier(modules.get(AMPLIFIER_SLOT)); }
-    private long amplifierEnergy() { return net.askcraft.justifylasers.energy.AmplifierTier.energy(amplifierTier(), LaserConfig.get().lumensPerEnergyUnit); }
+    private long amplifierEnergy() { return net.askcraft.justifylasers.energy.AmplifierTier.energy(amplifierTier()) * modules.get(AMPLIFIER_SLOT).getCount(); }
     private int energyCapacity() {
         return Math.max(LaserConfig.get().capacity, amplifierTier() == 0 ? 0 : (int)Math.min(Integer.MAX_VALUE, 2L * energyCost()));
     }
 
     private long emittedFlux() {
         long flux = LuminousFlux.fromEnergyRate((int)Math.min(Integer.MAX_VALUE, LaserConfig.get().basePerTick + opticalModuleCost()), LaserConfig.get().lumensPerEnergyUnit)
-                + net.askcraft.justifylasers.energy.AmplifierTier.lumens(amplifierTier());
+                + net.askcraft.justifylasers.energy.AmplifierTier.lumens(amplifierTier()) * modules.get(AMPLIFIER_SLOT).getCount();
         // A custom conversion rate must not let an amplifier exceed the FE actually paid.
         return Math.min(LuminousFlux.clamp(flux), LuminousFlux.fromEnergyRate(opticalEnergyRate(), LaserConfig.get().lumensPerEnergyUnit));
     }

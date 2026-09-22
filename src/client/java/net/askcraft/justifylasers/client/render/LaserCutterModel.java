@@ -9,7 +9,7 @@ import net.minecraft.util.math.Vec3d;
 
 final class LaserCutterModel {
     static final OpticalComponentMesh FRAME = ChamberModel.chassis("laser_cutter", false, false), CASING = casing();
-    private static final OpticalComponentMesh RAILS = rails(), CARRIAGE = carriage(), HEAD = head();
+    static final OpticalComponentMesh RAILS = rails(), CARRIAGE = carriage(), HEAD = head();
 
     private static OpticalComponentMesh casing() {
         var b = new OpticalComponentMesh.Builder("laser_cutter");
@@ -23,7 +23,7 @@ final class LaserCutterModel {
     private static OpticalComponentMesh rails() {
         var b = new OpticalComponentMesh.Builder("laser_cutter");
         for (double x : new double[]{-8, 8}) {
-            b.bevel("armor", x - .7, 5.1, -8.7, x + .7, 7.4, 8.7, .15);
+            b.bevel("armor", x - .7, 5.12, -8.7, x + .7, 7.4, 8.7, .15);
             b.solid("dark", x - .25, 7.42, -8.2, x + .25, 7.8, 8.2);
             for (double z : new double[]{-8.4, 8.4}) b.bevel("joint", x - 1.1, 4.5, z - .55, x + 1.1, 8, z + .55, .12);
         }
@@ -31,16 +31,16 @@ final class LaserCutterModel {
     }
     private static OpticalComponentMesh carriage() {
         var b = new OpticalComponentMesh.Builder("laser_cutter");
-        b.bevel("armor", -8.7, 4.1, -1.1, 8.7, 6.5, 1.1, .2);
+        b.bevel("armor", -8.72, 4.1, -1.1, 8.72, 6.5, 1.1, .2);
         b.panel("light", true, -7.4, 4.8, 7.4, 5.2, -1.13);
         return b.build();
     }
     private static OpticalComponentMesh head() {
-        var b = new OpticalComponentMesh.Builder("small_solar_concentrator");
+        var b = new OpticalComponentMesh.Builder("laser_cutter");
         b.bevel("armor", -1.8, 1.1, -1.9, 1.8, 4.05, 1.9, .25);
         b.bevel("metal", -.8, .1, -.8, .8, 1.06, .8, .16);
-        var lens = new OpticalComponentMesh.Builder("small_solar_concentrator");
-        lens.panel("lens", true, -.54, -.54, .54, .54, .07);
+        var lens = new OpticalComponentMesh.Builder("laser_cutter");
+        lens.panel("light", true, -.54, -.54, .54, .54, .07);
         b.add(lens.build(), net.minecraft.util.math.Direction.DOWN);
         return b.build();
     }

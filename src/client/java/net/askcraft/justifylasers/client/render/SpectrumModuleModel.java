@@ -13,14 +13,17 @@ final class SpectrumModuleModel {
     private static final String MATERIAL = "spectrum_module";
     static final OpticalComponentMesh FRAME = frame(), PRISM = prism();
     static final List<OpticalComponentMesh> DIAL = dial();
+    private static final ItemModelBounds BOUNDS = ItemModelBounds.of(java.util.stream.Stream.concat(
+            java.util.stream.Stream.of(FRAME, PRISM), DIAL.stream()).flatMap(mesh -> mesh.faces().stream())
+            .flatMap(face -> java.util.stream.Stream.of(face.a(), face.b(), face.c(), face.d())).toList());
     private static final int[] COLORS = {0xFF3434,0xFF7022,0xFFD52D,0xDDFF33,0x66FF36,0x26FFBA,0x24E9FF,0x2695FF,0x5442FF,0x9D38FF,0xE53CFF,0xFF3EB0};
 
     static void render(ModelTransformationMode mode, MatrixStack matrices, VertexConsumerProvider consumers, int light) {
         matrices.push();
-        matrices.translate(.5,.5,.5);
-        if (mode == ModelTransformationMode.GUI) matrices.scale(.82F,.82F,.82F);
+        if (mode == ModelTransformationMode.GUI) BOUNDS.fitGui(matrices);
+        else matrices.translate(.5,.5,.5);
         FRAME.render(matrices, consumers, light, 0x45DDFF, true, true);
-        PRISM.render(matrices, consumers, light, 0xFFFFFF, true, true);
+        PRISM.render(matrices, consumers, light, 0xFFFFFF, false, false);
         for (int i=0;i<DIAL.size();i++) DIAL.get(i).render(matrices, consumers, light, COLORS[i], true, true);
         matrices.pop();
     }
@@ -38,17 +41,17 @@ final class SpectrumModuleModel {
             face.panel("light",true,-3.7,-6.25,3.7,-5.99,-6.24);
             face.panel("light",true,-3.7,4,3.7,4.24,-6.24);
             for (int sign : new int[]{-1,1}) face.panel("light",true,sign*5.55-.16,-4.7,sign*5.55+.16,2.9,-6.29);
-            face.profile("metal",false,new double[]{0,2.3,2.3,1.9,1.6,1.6},new double[]{-5.3,-5.3,-6.7,-7.3,-7.3,-7.7},2.3,255);
-            face.profile("prism",true,new double[]{0,1.53},new double[]{-7.72,-7.72},1.6,255);
+            face.profile("metal",false,new double[]{1.6,1.6,1.9,2.3,2.3,0},new double[]{-7.7,-7.3,-7.3,-6.7,-5.3,-5.3},2.3,255);
+            face.profile("glass",false,new double[]{0,1.53},new double[]{-7.72,-7.72},1.6,255);
             face.surface("glass",false,new Vec3d(-4.5,-5.9,-5.65),new Vec3d(-4.5,3.9,-5.65),
                     new Vec3d(4.5,3.9,-5.65),new Vec3d(4.5,-5.9,-5.65),62);
             b.add(face.build(),side);
         }
         b.bevel("dark",-4.9,-7.8,-4.9,4.9,-7.2,4.9,.2);
         var top = new OpticalComponentMesh.Builder(MATERIAL);
-        top.profile("metal",false,new double[]{0,4.8,5.1,5.1,4.7,0},new double[]{-5.3,-5.3,-5.7,-6.5,-6.75,-6.75},5.1,255);
+        top.profile("metal",false,new double[]{0,4.7,5.1,5.1,4.8,0},new double[]{-6.75,-6.75,-6.5,-5.7,-5.3,-5.3},5.1,255);
         top.profile("dark",false,new double[]{3,4.5},new double[]{-6.78,-6.78},4.5,255);
-        top.profile("metal",false,new double[]{0,2.65,2.8,2.8,2.5,0},new double[]{-6.79,-6.79,-7,-7.6,-7.85,-7.85},2.8,255);
+        top.profile("metal",false,new double[]{0,2.5,2.8,2.8,2.65,0},new double[]{-7.85,-7.85,-7.6,-7,-6.79,-6.79},2.8,255);
         b.add(top.build(),Direction.UP);
         return b.build();
     }
@@ -59,10 +62,10 @@ final class SpectrumModuleModel {
         var points=new Vec3d[]{a,c,d};
         for (int i=0;i<3;i++) {
             var p=points[i]; var q=points[(i+1)%3];
-            b.surface("prism",true,p,p.add(0,7.2,0),q.add(0,7.2,0),q,255);
+            b.surface("prism",false,p,p.add(0,7.2,0),q.add(0,7.2,0),q,255);
         }
-        b.surface("prism",true,a.add(0,7.2,0),d.add(0,7.2,0),c.add(0,7.2,0),c.add(0,7.2,0),255);
-        b.surface("prism",true,a,c,d,d,255);
+        b.surface("prism",false,a.add(0,7.2,0),d.add(0,7.2,0),c.add(0,7.2,0),c.add(0,7.2,0),255);
+        b.surface("prism",false,a,c,d,d,255);
         return b.build();
     }
 

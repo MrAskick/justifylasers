@@ -20,6 +20,8 @@ loom.runs.create('clientSmoke') {
     runDir('build/run/clientSmoke')
     vmArg '-Dsodium.checks.issue2561=false'
     vmArg '-Xmx4G'
+    if (project.hasProperty('smokePrinting')) vmArg '-Djustifylasers.smokePrinting=true'
+    if (project.hasProperty('smokePrompt8')) vmArg '-Djustifylasers.smokePrompt8=true'
     if (project.hasProperty('smokeWorld')) vmArg '-Djustifylasers.smokeWorld=true'
     if (project.hasProperty('smokeCrystals')) vmArg '-Djustifylasers.smokeCrystals=true'
     if (project.hasProperty('smokeModules')) vmArg '-Djustifylasers.smokeModules=true'

@@ -13,14 +13,15 @@ public final class PlatformNutrients {
 
     public static void initialize() {
         for (var kind : ProcessFluid.values()) if (kind != ProcessFluid.WATER) {
-            TYPES.put(kind, new FluidType(FluidType.Properties.create().density(1000).viscosity(1000)
+            TYPES.put(kind, new FluidType(FluidType.Properties.create().descriptionId("fluid.justifylasers." + kind.fluidId())
+                    .density(1000).viscosity(kind.viscosity())
                     .canSwim(true).canDrown(true).canPushEntity(true).canExtinguish(true).supportsBoating(true)
                     .motionScale(.014).fallDistanceModifier(.5F)) {
                 @Override public void initializeClient(java.util.function.Consumer<net.minecraftforge.client.extensions.common.IClientFluidTypeExtensions> consumer) {
                     consumer.accept(new net.minecraftforge.client.extensions.common.IClientFluidTypeExtensions() {
-                        @Override public net.minecraft.util.Identifier getStillTexture() { return GameVersion.id("minecraft", "block/water_still"); }
-                        @Override public net.minecraft.util.Identifier getFlowingTexture() { return GameVersion.id("minecraft", "block/water_flow"); }
-                        @Override public int getTintColor() { return 0xFF000000 | kind.rgb(); }
+                        @Override public net.minecraft.util.Identifier getStillTexture() { return kind.texture(false); }
+                        @Override public net.minecraft.util.Identifier getFlowingTexture() { return kind.texture(true); }
+                        @Override public int getTintColor() { return kind.tint(); }
                     });
                 }
             });

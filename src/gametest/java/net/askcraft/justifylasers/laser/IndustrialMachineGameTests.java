@@ -31,6 +31,7 @@ public class IndustrialMachineGameTests implements FabricGameTest {
             int duration = (int)((long)grower.recipe().duration() * grower.recipe().rate() / flux);
             ticks(grower, duration - 1);
             context.assertTrue(grower.getStack(4).isEmpty() && grower.completion(0) > 0, "No early result at " + flux);
+            successfulGrowth(context);
             ticks(grower, 1);
             context.assertTrue(grower.getStack(4).isOf(ModIndustry.PHOTONITE_CRYSTAL), "Exact scaled finish at " + flux + " lm / " + duration + " ticks");
             context.assertTrue(grower.water() == 0 && grower.getStack(0).isEmpty() && grower.getStack(1).isEmpty(), "One batch consumes exactly one set of inputs");
@@ -49,6 +50,7 @@ public class IndustrialMachineGameTests implements FabricGameTest {
         context.assertTrue(grower.progress() == 0 && saved.getLong("GrowthRemainder") == 1000, "Even 1 lm accumulates exact work");
         grower.readNbt(saved); ticks(grower, 10);
         context.assertTrue(grower.createNbt().getLong("GrowthRemainder") == 1000 && grower.lightFlux() == 0, "Reload preserves work, not spendable light");
+        successfulGrowth(context);
         grower.receiveLight(LuminousFlux.MAX, 0xDD4422); ticks(grower, 1);
         context.assertTrue(grower.getStack(4).getCount() == 1 && grower.water() == 1000 && grower.getStack(0).getCount() == 1, "Huge input completes at most one paid batch per tick");
         grower.setStack(4, new ItemStack(ModIndustry.PHOTONITE_CRYSTAL, 64)); ticks(grower, 4);
@@ -84,6 +86,10 @@ public class IndustrialMachineGameTests implements FabricGameTest {
     }
     private void ticks(IndustrialMachineBlockEntity machine, int count) {
         for (int i = 0; i < count; i++) IndustrialMachineBlockEntity.tick(machine.getWorld(), machine.getPos(), machine.getCachedState(), machine);
+    }
+    private static void successfulGrowth(TestContext context){
+        long seed=0;while(net.askcraft.justifylasers.industry.CrystalGrowth.basicYield(net.minecraft.util.math.random.Random.create(seed).nextInt(1000))!=1)seed++;
+        context.getWorld().random.setSeed(seed);
     }
 
     @GameTest(templateName = EMPTY_STRUCTURE)
@@ -150,6 +156,7 @@ public class IndustrialMachineGameTests implements FabricGameTest {
         var grower = machine(context, MachineKind.CRYSTAL_GROWER, 1);
         grower.setStack(0, new ItemStack(ModIndustry.RAW_PHOTONIC_CRYSTAL)); grower.setStack(1, new ItemStack(Items.QUARTZ, 2));
         grower.fillWater(1000, false);
+        successfulGrowth(context);
         grower.receiveLight(grower.rate(), 0xFFFFFF); ticks(grower, grower.kind().duration());
         context.assertTrue(grower.getStack(4).isOf(ModIndustry.PHOTONITE_CRYSTAL), "Grower produces a bare photonite crystal");
         context.assertTrue(grower.water() == 0, "Exactly one bucket of water was consumed");
@@ -168,14 +175,14 @@ public class IndustrialMachineGameTests implements FabricGameTest {
         }
         var output = assembler.getStack(4);
         context.assertTrue(output.isOf(ModBlocks.POWERED_LASER_EMITTER_ITEM), "Assembly creates a powered emitter");
-        context.assertTrue(GameVersion.itemData(output).getInt(IndustryRecipes.INSTALLED_CRYSTAL) == LaserColor.WHITE.ordinal(), "Installed crystal survives as item data");
+        context.assertTrue(GameVersion.itemData(output).getInt(IndustryRecipes.INSTALLED_CRYSTAL) == LaserColor.MAGENTA.ordinal(), "Mounted photonite produces magenta; installed crystal survives as item data");
         context.assertTrue(assembler.calibration() > 0 && assembler.getStack(2).isEmpty(), "Crystal consumed once and calibration event started");
         context.assertTrue(assembler.getStack(IndustrialMachineBlockEntity.BLUEPRINT).getCount() == 1, "Blueprint is not consumed");
         context.setBlockState(7, 2, 2, ModBlocks.POWERED_LASER_EMITTER);
         var pos = context.getAbsolutePos(new BlockPos(7, 2, 2));
         ModBlocks.POWERED_LASER_EMITTER.onPlaced(context.getWorld(), pos, ModBlocks.POWERED_LASER_EMITTER.getDefaultState(), null, output);
         var emitter = (net.askcraft.justifylasers.block.entity.LaserEmitterBlockEntity) context.getBlockEntity(new BlockPos(7, 2, 2));
-        context.assertTrue(emitter.getStack(0).isOf(ModLaserParts.CRYSTALS.get(LaserColor.WHITE)), "Placing installs the supplied crystal");
+        context.assertTrue(emitter.getStack(0).isOf(ModLaserParts.CRYSTALS.get(LaserColor.MAGENTA)), "Placing installs the supplied crystal");
         context.assertFalse(emitter.isValid(0, new ItemStack(ModIndustry.RAW_PHOTONIC_CRYSTAL)), "Emitter rejects raw crystals too");
         context.complete();
     }

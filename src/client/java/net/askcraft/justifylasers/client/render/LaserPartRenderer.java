@@ -56,7 +56,10 @@ public final class LaserPartRenderer implements BlockEntityRenderer<LaserPartBlo
             };
             matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(angle));
             matrices.translate(-0.5, -0.5, -0.5);
-            renderItem(stack, ModelTransformationMode.NONE, matrices, consumers, light, overlay);
+            if (block.module() == net.askcraft.justifylasers.energy.LaserModule.BLOCK_COLLECTION) {
+                LootCollectorModel.renderBlock(entity,matrices,consumers,light);
+                LootCollectorModel.contents(entity, matrices, consumers);
+            } else renderItem(stack, ModelTransformationMode.NONE, matrices, consumers, light, overlay);
         } finally {
             matrices.pop();
         }

@@ -21,6 +21,7 @@ public final class CubeCoreRenderer {
     private static final double[] CORE_RADII = {0, 0.048D, 0.068D, 0.088D, 0.12D};
     private static final int[] CORE_ALPHA = {255, 255, 246, 132, 0};
     private static final int SIDES = 48;
+    private static final Object SPHERE = new Object();
 
     public static void render(int entityId, Vec3d center, Vec3d renderOrigin, int rgb, boolean emission,
                               float time, MatrixStack matrices, VertexConsumerProvider consumers) {
@@ -31,9 +32,18 @@ public final class CubeCoreRenderer {
         Vec3d localCenter = center.subtract(renderOrigin);
         RenderLayer material = shaders && emission
                 ? LaserRenderLayers.SHADER_EMISSION : RenderLayer.getEntitySolid(WHITE);
-        CoreVertex solid = worldVertex(consumers.getBuffer(material), matrices, localCenter);
         // As with the beam, opaque colored geometry supplies valid LabPBR emission and SSR depth.
-        sphere(solid, rgb);
+        boolean cached = false;
+        if (net.askcraft.justifylasers.client.ClientSettings.get().gpuEffects) {
+            matrices.push();
+            try {
+                matrices.translate(localCenter.x, localCenter.y, localCenter.z);
+                cached = GpuModelRenderer.draw(SPHERE, 16 * SIDES * 4,
+                        out -> sphere(worldVertex(out, new MatrixStack(), Vec3d.ZERO), 0xFFFFFF),
+                        matrices, material, LightmapTextureManager.MAX_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV, rgb, false);
+            } finally { matrices.pop(); }
+        }
+        if (!cached) sphere(worldVertex(consumers.getBuffer(material), matrices, localCenter), rgb);
 
         if (shaders) {
             LaserBeamLateRenderer.queueCore(entityId, center, rgb, time);

@@ -13,6 +13,7 @@ public abstract class LaserBlockEntity extends BlockEntity {
 
     protected abstract void writeLaserNbt(NbtCompound nbt, InventoryNbt inventory);
     protected abstract void readLaserNbt(NbtCompound nbt, InventoryNbt inventory);
+    protected NbtCompound clientNbt(NbtCompound nbt) { return nbt; }
 
     @Override
     protected void writeNbt(NbtCompound nbt) {
@@ -28,6 +29,6 @@ public abstract class LaserBlockEntity extends BlockEntity {
 
     @Override
     public NbtCompound toInitialChunkDataNbt() {
-        return createNbt();
+        return clientNbt(createNbt());
     }
 }

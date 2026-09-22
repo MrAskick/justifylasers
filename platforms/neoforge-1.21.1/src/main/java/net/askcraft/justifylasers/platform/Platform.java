@@ -138,7 +138,7 @@ public final class Platform {
 
     public static void registerSettingsReceiver() {
         modBus.addListener((RegisterPayloadHandlersEvent event) -> {
-            var registrar = event.registrar("9");
+            var registrar = event.registrar("12");
             registrar.playToServer(net.askcraft.justifylasers.network.MirrorAimPayload.ID, net.askcraft.justifylasers.network.MirrorAimPayload.CODEC,
                     (payload, context) -> payload.packet().apply(context.player()));
             registrar.playToClient(net.askcraft.justifylasers.network.LightBridgePayload.ID, net.askcraft.justifylasers.network.LightBridgePayload.CODEC,

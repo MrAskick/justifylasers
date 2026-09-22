@@ -1,0 +1,130 @@
+import groovy.json.JsonOutput
+import java.awt.RenderingHints
+import java.awt.image.BufferedImage
+import javax.imageio.ImageIO
+
+// Optional authoring task. Published builds read the finished atlases, never the reference directory.
+tasks.register('generatePrompt8Hardware') {
+    inputs.file(rootProject.file('gradle/prompt8-materials.gradle'))
+    inputs.files(rootProject.file('src/main/materials/prompt8-hardware.png'),
+            rootProject.file('ref/modules/Loot/Loot_Module_UV.png'))
+    def destination = layout.buildDirectory.dir('generated/prompt8Hardware')
+    outputs.dir(destination)
+    doLast {
+        def sheet = ImageIO.read(rootProject.file('src/main/materials/prompt8-hardware.png'))
+        def plans = [
+            metal:[[495,901,34,220],[8,32]], dark:[[430,13,383,384],[32,32]],
+            armor:[[838,6,407,401],[32,32]], lid:[[10,427,395,373],[32,32]],
+            grill:[[430,427,384,373],[32,32]], glass:[[850,425,385,366],[32,32]],
+            joint:[[10,824,394,416],[32,32]], column:[[431,825,389,415],[16,32]],
+            prism:[[847,825,387,411],[32,32]], light:[[847,9,1,1],[8,8]]
+        ]
+        def bake = { BufferedImage source, Map plan, String name ->
+            def patches = plan.collectEntries { key,spec ->
+                [(key):rootProject.ext.extractComponentPatch(source,[rect:spec[0],size:spec[1]])]
+            }
+            int size = 256
+            def packed = rootProject.ext.packComponentPatches(patches,size)
+            if (packed == null) throw new GradleException("Atlas exceeds 256px: "+name)
+            def maps = ['base','base_n','base_s','glow','glow_n','glow_s','indicator','indicator_n','indicator_s']
+                    .collectEntries { [(it):new BufferedImage(size,size,BufferedImage.TYPE_INT_ARGB)] }
+            packed.each { key,r ->
+                for(int y=-4;y<r[3]+4;y++) for(int x=-4;x<r[2]+4;x++) {
+                    int pixel=patches[key].getRGB(Math.max(0,Math.min(r[2]-1,x)),Math.max(0,Math.min(r[3]-1,y)))
+                    int red=pixel>>16&255,green=pixel>>8&255,blue=pixel&255
+                    // Quantization at final texel size removes subpixel grain without adding dithering.
+                    red=(int)Math.round(red/16d)*16;green=(int)Math.round(green/16d)*16;blue=(int)Math.round(blue/16d)*16
+                    int color=(int)0xFF000000L|(Math.min(255,red)<<16)|(Math.min(255,green)<<8)|Math.min(255,blue)
+                    if ((pixel>>>24)<128) color=(int)0xFF283038L
+                    boolean lit=key=='light'
+                    int dx=r[0]+x,dy=r[1]+y
+                    maps.base.setRGB(dx,dy,lit?(int)0xFF303840L:color)
+                    maps.base_s.setRGB(dx,dy,(int)(key in ['glass','prism']?0xFFD01000L:0xFF709000L))
+                    ['base_n','glow_n','indicator_n'].each { maps[it].setRGB(dx,dy,(int)0xFF7F7FFFL) }
+                    ['glow','indicator'].each { maps[it].setRGB(dx,dy,lit?(int)0xFFEEEEEE:0) }
+                    maps.glow_s.setRGB(dx,dy,lit?(int)0xDC602000L:0)
+                    maps.indicator_s.setRGB(dx,dy,(int)0xFF602000L)
+                }
+            }
+            def output=new File(destination.get().asFile,name);output.mkdirs()
+            maps.each { key,img -> ImageIO.write(img,'png',new File(output,key+'.png')) }
+            def regions=packed+[beam:packed.column,core:packed.joint,ring:packed.metal,steel:packed.metal]
+            new File(output,'base.json').setText(JsonOutput.toJson([size:size,regions:regions])+'\n','UTF-8')
+            def r=packed.armor
+            ImageIO.write(maps.base.getSubimage(r[0],r[1],r[2],r[3]),'png',new File(output,'particle.png'))
+        }
+        ['spectrum_module','laser_cutter'].each { bake(sheet,plans,it) }
+        def loot=ImageIO.read(rootProject.file('ref/modules/Loot/Loot_Module_UV.png'))
+        def chest = [
+            metal:[[896,188,203,26],[32,4]],dark:[[320,75,217,41],[32,8]],
+            armor:[[174,418,144,33],[32,8]],lid:[[170,136,471,128],[64,16]],
+            front:[[207,594,400,122],[64,20]],side:[[136,860,264,155],[32,20]],
+            latch:[[358,458,104,146],[16,24]],joint:[[43,44,95,85],[16,16]],
+            light:[[107,47,1,1],[8,8]],screen:[[359,189,86,40],[32,16]],
+            column:[[44,161,18,78],[4,16]]
+        ]
+        bake(loot,chest,'loot_collector')
+        ['spectrum_module','laser_cutter','loot_collector'].each { kind ->
+            copy { from new File(destination.get().asFile,kind); into rootProject.file("src/main/resources/assets/justifylasers/textures/component/"+kind) }
+            copy {
+                from new File(destination.get().asFile,kind+'/particle.png')
+                into rootProject.file('src/main/resources/assets/justifylasers/textures/block/particle')
+                rename { (kind=='loot_collector'?'block_collection_module':kind)+'.png' }
+            }
+        }
+    }
+}
+
+tasks.register('generateAmplifierIcons') {
+    inputs.file(rootProject.file('gradle/prompt8-materials.gradle'))
+    inputs.dir(rootProject.file('ref/modules/Amplifier'))
+    inputs.file(rootProject.file('src/main/materials/amplifier-high-tiers.png'))
+    def destination=layout.buildDirectory.dir('generated/amplifierIcons')
+    outputs.dir(destination)
+    doLast {
+        for(int tier=1;tier<=6;tier++) {
+            def file=rootProject.file(String.format('ref/modules/Amplifier/Tier_%02d.png',tier))
+            BufferedImage source
+            if(file.isFile()) source=ImageIO.read(file)
+            else if(tier>=5) {
+                def sheet=ImageIO.read(rootProject.file('src/main/materials/amplifier-high-tiers.png'))
+                int side=sheet.width.intdiv(2)
+                source=new BufferedImage(side,sheet.height,BufferedImage.TYPE_INT_ARGB)
+                for(int y=0;y<sheet.height;y++) for(int x=0;x<side;x++) {
+                    int pixel=sheet.getRGB(x+(tier-5)*side,y)
+                    int r=pixel>>16&255,g=pixel>>8&255,b=pixel&255
+                    boolean key=Math.min(r,b)-g>35 && Math.abs(r-b)<60
+                    source.setRGB(x,y,key?0:pixel)
+                }
+                ImageIO.write(source,'png',rootProject.file(String.format('ref/modules/Amplifier/Tier_%02d_generated.png',tier)))
+            } else throw new GradleException('Missing amplifier source: '+file)
+            var scaled=new BufferedImage(512,512,BufferedImage.TYPE_INT_ARGB)
+            var graphics=scaled.createGraphics()
+            try {
+                graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION,RenderingHints.VALUE_INTERPOLATION_BICUBIC)
+                graphics.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION,RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY)
+                graphics.drawImage(source,4,4,504,504,null)
+            } finally { graphics.dispose() }
+            // Keep the board silhouette, not disconnected alpha dust from the reference export.
+            boolean[] seen=new boolean[512*512]
+            List<Integer> largest=[]
+            for(int start=0;start<seen.length;start++) {
+                if(seen[start] || (scaled.getRGB(start%512,start.intdiv(512))>>>24)<100) continue
+                List<Integer> region=[];ArrayDeque<Integer> queue=new ArrayDeque<>();queue.add(start);seen[start]=true
+                while(!queue.isEmpty()) {
+                    int p=queue.removeFirst();region.add(p);int x=p%512,y=p.intdiv(512)
+                    for(int next:[x>0?p-1:-1,x<511?p+1:-1,y>0?p-512:-1,y<511?p+512:-1]) {
+                        if(next<0 || seen[next] || (scaled.getRGB(next%512,next.intdiv(512))>>>24)<100) continue
+                        seen[next]=true;queue.add(next)
+                    }
+                }
+                if(region.size()>largest.size()) largest=region
+            }
+            boolean[] mask=new boolean[512*512];largest.each { mask[it]=true }
+            for(int p=0;p<mask.length;p++) scaled.setRGB(p%512,p.intdiv(512),mask[p]?scaled.getRGB(p%512,p.intdiv(512))|(int)0xFF000000L:0)
+            def output=destination.get().asFile;output.mkdirs()
+            ImageIO.write(scaled,'png',new File(output,'amplifier_'+tier+'.png'))
+        }
+        copy { from destination; into rootProject.file('src/main/resources/assets/justifylasers/textures/item') }
+    }
+}

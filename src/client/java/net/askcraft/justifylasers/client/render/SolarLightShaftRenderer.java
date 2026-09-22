@@ -24,7 +24,7 @@ final class SolarLightShaftRenderer {
     }
     static boolean queued() { return !SOURCES.isEmpty(); }
     static void clear() { SOURCES.clear(); }
-    static void render(VertexConsumer buffer, Vec3d camera) {
+    static void render(LateEffectBatch batch, Vec3d camera) {
         for (Shaft shaft : SOURCES.values()) {
             for (int index = 0; index < (shaft.small ? 1 : 8); index++) {
                 if (shaft.panels == 0) continue;
@@ -36,6 +36,11 @@ final class SolarLightShaftRenderer {
                 side = side.normalize();
                 // Segments keep the near field stable and let the upper end vanish far above the build limit.
                 double length = 1024 / Math.max(.12,shaft.sun.y);
+                if (GpuLightEffects.enabled()) {
+                    batch.flush();
+                    if (GpuLightEffects.sunlight(target, shaft.sun, side, camera, length, shaft.time, index)) continue;
+                }
+                VertexConsumer buffer = batch.buffer();
                 for (int section = 0; section < 24; section++) {
                     double a = section/24d, b = (section+1)/24d;
                     double da = length*a*a, db = length*b*b;

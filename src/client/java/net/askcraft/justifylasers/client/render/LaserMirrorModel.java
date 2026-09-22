@@ -10,7 +10,7 @@ import net.minecraft.util.math.RotationAxis;
 import net.minecraft.util.math.Vec3d;
 
 final class LaserMirrorModel {
-    static final OpticalComponentMesh PLATE = plate(), BASE = base(), STAND = stand(), GLASS = glass();
+    static final OpticalComponentMesh PLATE = plate(), BASE = base(), STAND = stand(), GLASS = glass(255), WINDOW = glass(38);
 
     static void render(LaserOpticBlockEntity optic, MatrixStack matrices, VertexConsumerProvider consumers, int light) {
         boolean active = optic.getCachedState().get(LaserOpticBlock.LIT);
@@ -28,7 +28,9 @@ final class LaserMirrorModel {
         STAND.render(matrices, consumers, light, optic.rgb(), active, optic.emitsShaderLight());
         matrices.multiply(RotationAxis.POSITIVE_X.rotation((float)frame.pitch()));
         PLATE.render(matrices, consumers, light, optic.rgb(), active, optic.emitsShaderLight());
-        GLASS.render(matrices, consumers, light, optic.rgb(), false, false);
+        // Shader G-buffers need pane depth; the vanilla glass appearance stays unchanged.
+        var pane = net.askcraft.justifylasers.client.compat.IrisCompatibility.isShaderPackInUse() ? GLASS : WINDOW;
+        pane.render(matrices, consumers, light, optic.rgb(), false, false);
         matrices.pop();
     }
 
@@ -50,10 +52,13 @@ final class LaserMirrorModel {
             b.box("hinge", false, sx*4.15-.32, sy*5.62-.32,-.075,sx*4.15+.32,sy*5.62+.32,-.035);
         return b.build();
     }
-    private static OpticalComponentMesh glass() {
+    private static OpticalComponentMesh glass(int alpha) {
         var b = new OpticalComponentMesh.Builder("laser_mirror");
         var edge = outline(5.1,.75);
-        for (int i=0;i<8;i++) b.surface("mirror",false,Vec3d.ZERO,edge[i],edge[(i+1)%8],Vec3d.ZERO,38);
+        for (int i=0;i<8;i++) {
+            b.planarPane("mirror", Vec3d.ZERO, edge[i], edge[(i+1)%8], Vec3d.ZERO, 5.1, alpha);
+            b.planarPane("mirror", Vec3d.ZERO, edge[(i+1)%8], edge[i], Vec3d.ZERO, 5.1, alpha);
+        }
         return b.build();
     }
     private static OpticalComponentMesh base() {

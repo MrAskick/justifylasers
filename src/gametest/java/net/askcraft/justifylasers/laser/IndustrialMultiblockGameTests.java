@@ -94,6 +94,7 @@ public class IndustrialMultiblockGameTests implements FabricGameTest {
         context.assertTrue(machine.progress() == 12 && machine.energy().stored() == energy && machine.water() == water, "Disassembled chamber consumes nothing");
         context.getWorld().setBlockState(removed, machine.getCachedState());
         context.assertTrue(ChamberStructure.form(machine), "Replacing the casing repairs the chamber");
+        successfulGrowth(context);
         tick(machine, machine.duration() - 12);
         context.assertTrue(machine.water() == 1000 && machine.getStack(4).isOf(ModIndustry.PHOTONITE_CRYSTAL), "Repair resumes the same batch and charges water once");
         context.complete();
@@ -107,9 +108,15 @@ public class IndustrialMultiblockGameTests implements FabricGameTest {
         context.assertTrue(machine.status() == IndustrialMachineBlockEntity.Status.NO_WATER && machine.energy().stored() == 100_000, "Dry chamber does not use power");
         machine.setStack(IndustrialMachineBlockEntity.WATER_INPUT,new ItemStack(Items.WATER_BUCKET)); tick(machine, 1);
         context.assertTrue(machine.getStack(6).isEmpty() && machine.getStack(7).isOf(Items.BUCKET), "Exactly one empty bucket is returned");
+        successfulGrowth(context);
         tick(machine, machine.duration() - 1);
         context.assertTrue(machine.water() == 0 && machine.getStack(4).getCount() == 1 && machine.getStack(7).getCount() == 1, "Water and inputs are consumed exactly once");
         context.complete();
+    }
+
+    private static void successfulGrowth(TestContext context){
+        long seed=0;while(net.askcraft.justifylasers.industry.CrystalGrowth.basicYield(net.minecraft.util.math.random.Random.create(seed).nextInt(1000))!=1)seed++;
+        context.getWorld().random.setSeed(seed);
     }
 
     @GameTest(templateName = EMPTY_STRUCTURE)

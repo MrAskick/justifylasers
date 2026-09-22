@@ -46,6 +46,7 @@ public final class JustifyLasersNeoForgeClient {
         event.registerBlockEntityRenderer(ModBlockEntities.LASER_PART, LaserPartRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.LASER_COMPONENT, net.askcraft.justifylasers.client.render.LaserComponentBlockRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.INDUSTRIAL_MACHINE, net.askcraft.justifylasers.client.render.IndustrialMachineRenderer::new);
+        event.registerBlockEntityRenderer(ModBlockEntities.PRINTED_MODEL, net.askcraft.justifylasers.client.render.PrintedModelRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.LASER_TURRET, net.askcraft.justifylasers.client.render.LaserTurretRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.LASER_OPTIC, net.askcraft.justifylasers.client.render.LaserOpticRenderer::new);
         event.registerBlockEntityRenderer(ModBlockEntities.LIGHT_BRIDGE, net.askcraft.justifylasers.client.render.LightBridgeBlockRenderer::new);
@@ -63,6 +64,7 @@ public final class JustifyLasersNeoForgeClient {
         event.register(ModScreenHandlers.LASER_MODULE, net.askcraft.justifylasers.client.screen.LaserModuleScreen::new);
         event.register(ModScreenHandlers.LASER_RECEIVER, LaserReceiverScreen::new);
         event.register(ModScreenHandlers.INDUSTRIAL_MACHINE, net.askcraft.justifylasers.client.screen.IndustrialMachineScreen::new);
+        event.register(ModScreenHandlers.MODEL_ENCODER, net.askcraft.justifylasers.client.screen.ModelEncoderScreen::new);
         event.register(ModScreenHandlers.SOLAR_CONCENTRATOR, net.askcraft.justifylasers.client.screen.SolarConcentratorScreen::new);
         event.register(ModScreenHandlers.TABLET, net.askcraft.justifylasers.client.screen.TabletScreen::new);
         event.register(ModScreenHandlers.LASER_TURRET, net.askcraft.justifylasers.client.screen.LaserTurretScreen::new);
@@ -72,9 +74,9 @@ public final class JustifyLasersNeoForgeClient {
     public static void extensions(RegisterClientExtensionsEvent event) {
         net.askcraft.justifylasers.platform.PlatformNutrients.TYPES.forEach((kind, type) ->
                 event.registerFluidType(new net.neoforged.neoforge.client.extensions.common.IClientFluidTypeExtensions() {
-                    @Override public net.minecraft.util.Identifier getStillTexture() { return net.askcraft.justifylasers.platform.GameVersion.id("minecraft", "block/water_still"); }
-                    @Override public net.minecraft.util.Identifier getFlowingTexture() { return net.askcraft.justifylasers.platform.GameVersion.id("minecraft", "block/water_flow"); }
-                    @Override public int getTintColor() { return 0xFF000000 | kind.rgb(); }
+                    @Override public net.minecraft.util.Identifier getStillTexture() { return kind.texture(false); }
+                    @Override public net.minecraft.util.Identifier getFlowingTexture() { return kind.texture(true); }
+                    @Override public int getTintColor() { return kind.tint(); }
                 }, type));
         event.registerItem(ClientPlatform.cubeItemExtension(), ModEntities.REFOCUSING_CUBE_ITEM);
         event.registerItem(ClientPlatform.partItemExtension(), ModLaserParts.items().toArray(Item[]::new));

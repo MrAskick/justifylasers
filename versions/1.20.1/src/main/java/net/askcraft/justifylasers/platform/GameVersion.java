@@ -8,6 +8,12 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 
 public final class GameVersion {
+    public static NbtCompound readBoundedNbt(java.io.DataInput input, long limit) throws java.io.IOException {
+        return net.minecraft.nbt.NbtIo.read(input, new net.minecraft.nbt.NbtTagSizeTracker(limit));
+    }
+    public static net.minecraft.loot.function.LootFunction.Builder itemDataLoot(NbtCompound data) {
+        return net.minecraft.loot.function.SetNbtLootFunction.builder(data);
+    }
     public static ItemStack replaceItem(ItemStack stack, net.minecraft.item.Item replacement) {
         ItemStack result = new ItemStack(replacement, stack.getCount());
         if (stack.hasNbt()) result.setNbt(stack.getNbt().copy());
@@ -38,7 +44,7 @@ public final class GameVersion {
         return stack.hasNbt() ? stack.getNbt().copy() : new NbtCompound();
     }
 
-    public static void setItemData(ItemStack stack, NbtCompound data) { stack.setNbt(data.copy()); }
+    public static void setItemData(ItemStack stack, NbtCompound data) { stack.setNbt(data.isEmpty() ? null : data.copy()); }
 
     public static ItemStack smelt(ItemStack stack, ServerWorld world) {
         if (stack.hasNbt()) return stack;

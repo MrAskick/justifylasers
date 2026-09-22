@@ -42,7 +42,7 @@ public final class LaserBeamEffects {
             if (!ray.behavior().mining().enabled() || !ray.hasBlockHit()) continue;
             BlockState state = world.getBlockState(ray.hitBlock());
             if (state.getBlock() instanceof LaserReceiverBlock && state.get(LaserReceiverBlock.FACING) == ray.hitSide()
-                    || LaserBeamPath.isOpticalInput(world, state, ray)) continue;
+                    || LaserBeamPath.isOpticalInput(world, state, ray) || LaserMining.isProtected(world, ray.hitBlock())) continue;
             heated.add(ray.hitBlock());
             mine(world, source, ray, state);
         }

@@ -47,20 +47,28 @@ final class IndustryJeiCategory implements IRecipeCategory<MachineRecipeData> {
     @Override public void setRecipe(IRecipeLayoutBuilder builder, MachineRecipeData recipe, IFocusGroup focus) {
         for (int slot = 0; slot < recipe.inputs().size(); slot++) {
             int amount = recipe.counts().get(slot);
-            var alternatives = Arrays.stream(recipe.inputs().get(slot).getMatchingStacks()).map(stack -> {
+            var choices = recipe.process().crystal() != null && slot == 0
+                    ? java.util.stream.IntStream.range(0, 4).mapToObj(recipe.process().crystal()::seed)
+                    : Arrays.stream(recipe.inputs().get(slot).getMatchingStacks());
+            var alternatives = choices.map(stack -> {
                 var copy = stack.copy(); copy.setCount(amount); return copy;
             }).toList();
             builder.addSlot(RecipeIngredientRole.INPUT, 8 + slot * 24, 38).addItemStacks(alternatives).setStandardSlotBackground();
         }
         if (recipe.process().outputFluid() == null) {
             var result = recipe.result().copy();
-            if (recipe.process().cuttingFlux() > 0) net.askcraft.justifylasers.industry.CrystalSeed.syntheticResult(result);
+            boolean cuttingCrystal = recipe.kind() == MachineKind.LASER_CUTTER && recipe.inputs().get(0).getMatchingStacks().length > 0
+                    && net.askcraft.justifylasers.industry.CrystalGrowth.isCuttingInput(recipe.inputs().get(0).getMatchingStacks()[0]);
+            if (cuttingCrystal) result.setCount(3);
             var output = builder.addSlot(RecipeIngredientRole.OUTPUT, 149, 38).addItemStack(result).setOutputSlotBackground();
             if (recipe.process().crystal() != null) output.addTooltipCallback((slot, tooltip) -> tooltip.add(Text.translatable("gui.justifylasers.industry.seed_yield")));
+            else if(recipe.kind()==MachineKind.CRYSTAL_GROWER)output.addTooltipCallback((slot,tooltip)->tooltip.add(Text.translatable("gui.justifylasers.industry.growth_yield")));
+            if(cuttingCrystal)
+                output.addTooltipCallback((slot,tooltip)->tooltip.add(Text.translatable("gui.justifylasers.industry.cutting_yield")));
         } else builder.addSlot(RecipeIngredientRole.OUTPUT, 149, 10).addFluidStack(recipe.process().outputFluid().fluid(), recipe.waterCost() * bucketVolume / 1000)
                 .setFluidRenderer(bucketVolume, false, 16, 44);
         if (!recipe.blueprint().isBlank() && ModIndustry.BLUEPRINTS.containsKey(recipe.blueprint()))
-            builder.addSlot(RecipeIngredientRole.CATALYST, 8, 10).addItemStack(new ItemStack(ModIndustry.BLUEPRINTS.get(recipe.blueprint())))
+            builder.addSlot(RecipeIngredientRole.CATALYST, 8, 10).addItemStack(ModIndustry.BLUEPRINTS.get(recipe.blueprint()).getDefaultStack())
                     .setStandardSlotBackground().addTooltipCallback((slot, tooltip) -> tooltip.add(Text.translatable("gui.justifylasers.industry.blueprint")));
         if (recipe.waterCost() > 0) {
             long amount = recipe.waterCost() * bucketVolume / 1000;

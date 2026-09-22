@@ -192,7 +192,7 @@ public class LaserEmitterScreenHandler extends ScreenHandler {
         addSlot(new Slot(inventory, LaserEmitterBlockEntity.AMPLIFIER_SLOT, 156, 95) {
             @Override public boolean isEnabled() { return isPoweredEmitter() && (blockEntity != null || inventoryPage == InventoryPage.MODULES); }
             @Override public boolean canInsert(ItemStack stack) { return net.askcraft.justifylasers.item.LaserAmplifierItem.tier(stack) > 0; }
-            @Override public int getMaxItemCount() { return 1; }
+            @Override public int getMaxItemCount() { return 64; }
             @Override public void markDirty() { super.markDirty(); if (blockEntity != null) blockEntity.inventoryChanged(); }
         });
         for (int row = 0; row < 3; row++) {

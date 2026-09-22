@@ -11,17 +11,32 @@ import java.util.List;
 
 public final class SaberTooltips {
     public static void append(ItemStack stack, List<Text> lines) {
+        var print = net.askcraft.justifylasers.printing.PrintData.read(stack);
+        if (print != null) {
+            if(print.assembly()!=null){var size=print.assembly().blockSize();lines.add(Text.translatable("tooltip.justifylasers.printing.assembly",print.partCount(),size.getX(),size.getY(),size.getZ()).formatted(Formatting.AQUA));}
+            if(print.partInfo()!=null){var p=print.partInfo();lines.add(Text.translatable("tooltip.justifylasers.printing.part",p.offset().getX(),p.offset().getY(),p.offset().getZ()).formatted(Formatting.GRAY));lines.add(Text.translatable("tooltip.justifylasers.printing.place_part").formatted(Formatting.AQUA));}
+            var cost = print.cost();
+            lines.add(Text.translatable("tooltip.justifylasers.printing.cost", cost.polymer(), cost.energyPerTick(), cost.ticks() / 20d,
+                    net.askcraft.justifylasers.laser.LuminousFlux.format(cost.lumens())).formatted(Formatting.GRAY));
+            if(print.assembly()!=null)lines.add(Text.translatable("tooltip.justifylasers.printing.part_cost").formatted(Formatting.GRAY));
+            if (stack.isOf(net.askcraft.justifylasers.registry.ModIndustry.MODEL_SCHEMATIC))
+                lines.add(Text.translatable("gui.justifylasers.industry.blueprint_reusable").formatted(Formatting.AQUA));
+        }
+        if (stack.isOf(net.askcraft.justifylasers.registry.ModIndustry.MACHINES.get(net.askcraft.justifylasers.industry.MachineKind.PHOTOPOLYMER_PRINTER).asItem()))
+            lines.add(Text.translatable("tooltip.justifylasers.chamber_structure").formatted(Formatting.GRAY));
         if (stack.getItem() instanceof net.askcraft.justifylasers.item.LaserAmplifierItem) {
             int tier = net.askcraft.justifylasers.item.LaserAmplifierItem.tier(stack);
             lines.add(Text.translatable("tooltip.justifylasers.amplifier.flux", net.askcraft.justifylasers.laser.LuminousFlux.format(net.askcraft.justifylasers.energy.AmplifierTier.lumens(tier))).formatted(Formatting.AQUA));
-            lines.add(Text.translatable("tooltip.justifylasers.amplifier.energy", net.askcraft.justifylasers.energy.AmplifierTier.energy(tier, net.askcraft.justifylasers.config.LaserConfig.get().lumensPerEnergyUnit)).formatted(Formatting.GRAY));
-            lines.add(Text.translatable("tooltip.justifylasers.amplifier.upgrade").formatted(Formatting.GRAY));
+            lines.add(Text.translatable("tooltip.justifylasers.amplifier.energy", net.askcraft.justifylasers.energy.AmplifierTier.energy(tier)).formatted(Formatting.GRAY));
+            if (net.askcraft.justifylasers.energy.AmplifierTier.AVAILABLE.contains(tier + 1))
+                lines.add(Text.translatable("tooltip.justifylasers.amplifier.upgrade").formatted(Formatting.GRAY));
         }
-        if (net.askcraft.justifylasers.industry.CrystalSeed.synthetic(stack))
-            lines.add(Text.translatable("tooltip.justifylasers.synthetic_crystal").formatted(Formatting.AQUA));
         for (var crystal : net.askcraft.justifylasers.industry.CrystalGrowth.values()) {
             int stage = crystal.stage(stack);
-            if (stage > 0) lines.add(Text.translatable("tooltip.justifylasers.seed_stage." + stage).formatted(Formatting.GRAY));
+            if (stage >= 0) {
+                lines.add(Text.translatable("tooltip.justifylasers.seed_stage." + stage).formatted(Formatting.GRAY));
+                lines.add(Text.translatable("tooltip.justifylasers.seed_recipe").formatted(Formatting.GRAY));
+            }
         }
         if (stack.getItem() instanceof net.askcraft.justifylasers.item.LaserConfiguratorItem tool) {
             lines.add(Text.translatable("item.justifylasers.configurator.mode." + tool.mode(stack))
@@ -44,7 +59,7 @@ public final class SaberTooltips {
             lines.add(Text.translatable("tooltip.justifylasers.dual_weapons").formatted(Formatting.AQUA));
         if (stack.getItem() instanceof net.askcraft.justifylasers.item.AssemblyBlueprintItem blueprint) {
             lines.add(Text.translatable("gui.justifylasers.industry.blueprint_reusable").formatted(Formatting.AQUA));
-            lines.add(Text.translatable(blueprint.recipe().equals("extraterrestrial_tablet")
+            lines.add(Text.translatable(net.askcraft.justifylasers.item.AssemblyBlueprintItem.recipe(stack).equals("extraterrestrial_tablet")
                     ? "tooltip.justifylasers.tablet_schematic" : "tooltip.justifylasers.blueprint_tablet").formatted(Formatting.GRAY));
         }
         if (stack.isOf(net.askcraft.justifylasers.registry.ModIndustry.MACHINES.get(net.askcraft.justifylasers.industry.MachineKind.CRYSTAL_GROWER).asItem())

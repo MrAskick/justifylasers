@@ -11,6 +11,7 @@ import net.minecraft.block.entity.BlockEntityType;
 import net.minecraft.registry.Registries;
 
 public final class ModBlockEntities {
+    public static BlockEntityType<net.askcraft.justifylasers.block.entity.PrintedModelBlockEntity> PRINTED_MODEL;
     public static BlockEntityType<net.askcraft.justifylasers.block.entity.LightBridgeBlockEntity> LIGHT_BRIDGE;
     public static BlockEntityType<net.askcraft.justifylasers.block.entity.LaserComponentBlockEntity> LASER_COMPONENT;
     public static BlockEntityType<LaserEmitterBlockEntity> LASER_EMITTER;
@@ -25,6 +26,8 @@ public final class ModBlockEntities {
     }
 
     public static void initialize() {
+        PRINTED_MODEL = Platform.register(Registries.BLOCK_ENTITY_TYPE, JustifyLasers.id("printed_model"),
+                Platform.blockEntityType(net.askcraft.justifylasers.block.entity.PrintedModelBlockEntity::new, ModIndustry.PRINTED_MODEL));
         LIGHT_BRIDGE = Platform.register(Registries.BLOCK_ENTITY_TYPE, JustifyLasers.id("light_bridge"),
                 Platform.blockEntityType(net.askcraft.justifylasers.block.entity.LightBridgeBlockEntity::new, ModBlocks.LIGHT_BRIDGE, ModBlocks.CORNER_LIGHT_BRIDGE));
         LASER_COMPONENT = Platform.register(Registries.BLOCK_ENTITY_TYPE, JustifyLasers.id("laser_component"),

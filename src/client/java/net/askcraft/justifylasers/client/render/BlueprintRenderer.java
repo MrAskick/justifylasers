@@ -14,9 +14,10 @@ public final class BlueprintRenderer {
         matrices.push();
         matrices.translate(.5, .5, .5);
         CARD.render(matrices, consumers, light, 0xFFFFFF, false, false);
-        if (stack.getItem() instanceof AssemblyBlueprintItem blueprint) {
+        if (stack.getItem() instanceof AssemblyBlueprintItem || stack.getItem() instanceof net.askcraft.justifylasers.item.ModelSchematicItem) {
             var client = MinecraftClient.getInstance();
-            ItemStack output = blueprint.output(client.world);
+            var design = net.askcraft.justifylasers.printing.PrintData.read(stack);
+            ItemStack output = design == null ? AssemblyBlueprintItem.output(stack, client.world) : net.askcraft.justifylasers.printing.PrintData.printed(design);
             if (!output.isEmpty() && !(output.getItem() instanceof AssemblyBlueprintItem)) {
                 var icon = SchematicIcons.request(output);
                 if (icon != null) {
