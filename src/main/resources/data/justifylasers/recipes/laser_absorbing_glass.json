@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    " G ",
+    "GPG",
+    "WGW"
+  ],
+  "key": {
+    "G": {
+      "item": "minecraft:glass"
+    },
+    "P": {
+      "item": "justifylasers:photonite_crystal"
+    },
+    "W": {
+      "item": "justifylasers:wolframite_ingot"
+    }
+  },
+  "result": {
+    "item": "justifylasers:laser_absorbing_glass"
+  },
+  "justifylasers:technical": true
+}

@@ -1,0 +1,33 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "scorch_marks_module",
+  "machine": "ASSEMBLY_CHAMBER",
+  "blueprint": "scorch_marks_module",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:wolframite_ingot"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:flint_and_steel"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:control_circuit"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "item": "justifylasers:scorch_marks_module",
+    "count": 1
+  },
+  "ticks": 120,
+  "energy": 24,
+  "water": 0
+}

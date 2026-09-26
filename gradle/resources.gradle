@@ -1,0 +1,58 @@
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+tasks.withType(ProcessResources).configureEach {
+    if (minecraft_version == '1.21.1') {
+        eachFile { entry ->
+            if (entry.path.startsWith('data/')) {
+                entry.path = entry.path.replace('/recipes/', '/recipe/').replace('/loot_tables/', '/loot_table/')
+                        .replace('/advancements/', '/advancement/').replace('/tags/blocks/', '/tags/block/')
+                        .replace('/tags/items/', '/tags/item/').replace('/tags/fluids/', '/tags/fluid/')
+            }
+        }
+    }
+    doLast {
+        fileTree(destinationDir).matching { include 'data/**/*.json' }.each { file ->
+            def object = new JsonSlurper().parse(file)
+            if (!(object instanceof Map)) return
+            boolean changed = false
+            if (minecraft_version == '1.21.1' && object.type in ['minecraft:crafting_shaped', 'minecraft:crafting_shapeless', 'justifylasers:industrial']
+                    && object.result instanceof Map && object.result.containsKey('item')) {
+                object.result.id = object.result.remove('item')
+                changed = true
+            }
+            if (minecraft_version == '1.21.1') {
+                if (object.type in ['minecraft:smelting','minecraft:blasting','minecraft:smoking','minecraft:campfire_cooking'] && object.result instanceof String) {
+                    object.result = [id: object.result]; changed = true
+                }
+                if (object.display?.icon instanceof Map && object.display.icon.containsKey('item')) {
+                    object.display.icon.id = object.display.icon.remove('item'); changed = true
+                }
+                Closure modernLoot
+                modernLoot = { node ->
+                    if (node instanceof Map) {
+                        if (node.function == 'minecraft:copy_nbt') { node.function = 'minecraft:copy_custom_data'; changed = true }
+                        if (node.condition == 'minecraft:match_tool' && node.predicate?.enchantments instanceof List) {
+                            def entries = node.predicate.remove('enchantments')
+                            entries.each { entry -> entry.enchantments = entry.remove('enchantment') }
+                            node.predicate.predicates = ['minecraft:enchantments': entries]; changed = true
+                        }
+                        node.values().each { modernLoot(it) }
+                    } else if (node instanceof List) node.each { modernLoot(it) }
+                }
+                modernLoot(object)
+            }
+            if (object.containsKey('justifylasers:technical')) {
+                boolean enabled = object.remove('justifylasers:technical')
+                // Identical resources in every loader jar prevent duplicate recipes in a universal build.
+                // Each loader reads its own condition field and ignores the others.
+                object['fabric:load_conditions'] = [[condition: 'justifylasers:energy_mode', enabled: enabled]]
+                if (minecraft_version == '1.21.1') {
+                    object['forge:condition'] = [type: 'justifylasers:energy_mode', enabled: enabled]
+                    object['neoforge:conditions'] = [[type: 'justifylasers:energy_mode', enabled: enabled]]
+                } else object.conditions = [[type: 'justifylasers:energy_mode', enabled: enabled]]
+                changed = true
+            }
+            if (changed) file.setText(JsonOutput.prettyPrint(JsonOutput.toJson(object)) + '\n', 'UTF-8')
+        }
+    }
+}

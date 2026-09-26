@@ -1,0 +1,18 @@
+{
+    "variants": {
+        "": [
+            {
+                "model": "justifylasers:block/photonic_crystal_ore"
+            },
+            {
+                "model": "justifylasers:block/photonic_crystal_ore_1"
+            },
+            {
+                "model": "justifylasers:block/photonic_crystal_ore_2"
+            },
+            {
+                "model": "justifylasers:block/photonic_crystal_ore_3"
+            }
+        ]
+    }
+}

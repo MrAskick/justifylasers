@@ -1,0 +1,7 @@
+{
+    "variants": {
+        "": {
+            "model": "justifylasers:block/block_destruction_module"
+        }
+    }
+}

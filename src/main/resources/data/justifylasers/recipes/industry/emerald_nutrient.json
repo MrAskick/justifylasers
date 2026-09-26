@@ -1,0 +1,35 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "emerald_nutrient",
+  "machine": "CHEMICAL_SYNTHESIZER",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "minecraft:quartz"
+      },
+      "count": 4
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:copper_ingot"
+      },
+      "count": 2
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:clay_ball"
+      },
+      "count": 2
+    }
+  ],
+  "result": {
+    "item": "justifylasers:emerald_nutrient_bucket",
+    "count": 1
+  },
+  "ticks": 400,
+  "energy": 128,
+  "water": 1000,
+  "process": {
+    "product": "emerald"
+  }
+}

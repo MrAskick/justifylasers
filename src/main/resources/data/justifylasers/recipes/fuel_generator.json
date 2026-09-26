@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    " X ",
+    "YZY",
+    " Y "
+  ],
+  "key": {
+    "X": {
+      "item": "minecraft:blast_furnace"
+    },
+    "Y": {
+      "item": "justifylasers:wolframite_ingot"
+    },
+    "Z": {
+      "item": "justifylasers:electric_motor"
+    }
+  },
+  "result": {
+    "item": "justifylasers:fuel_generator"
+  },
+  "justifylasers:technical": true
+}

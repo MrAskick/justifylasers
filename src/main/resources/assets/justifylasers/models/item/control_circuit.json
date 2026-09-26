@@ -1,0 +1,37 @@
+{
+    "parent": "justifylasers:item/module",
+    "textures": {
+        "particle": "justifylasers:block/particle/control_circuit"
+    },
+    "display": {
+        "gui": {
+            "rotation": [
+                40,
+                35,
+                0
+            ],
+            "translation": [
+                0,
+                0,
+                0
+            ],
+            "scale": [
+                1,
+                1,
+                1
+            ]
+        },
+        "ground": {
+            "translation": [
+                0,
+                3,
+                0
+            ],
+            "scale": [
+                0.5,
+                0.5,
+                0.5
+            ]
+        }
+    }
+}

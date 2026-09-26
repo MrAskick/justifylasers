@@ -1,0 +1,27 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "photonite_crystal",
+  "machine": "CRYSTAL_GROWER",
+  "blueprint": "",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:raw_photonic_crystal"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:quartz"
+      },
+      "count": 2
+    }
+  ],
+  "result": {
+    "item": "justifylasers:photonite_crystal",
+    "count": 1
+  },
+  "ticks": 0,
+  "energy": 0,
+  "water": 0
+}

@@ -1,0 +1,7 @@
+{
+    "variants": {
+        "": {
+            "model": "justifylasers:block/fuel_generator"
+        }
+    }
+}

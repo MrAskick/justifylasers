@@ -1,0 +1,27 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "recolor_blue",
+  "machine": "CHEMICAL_SYNTHESIZER",
+  "blueprint": "",
+  "inputs": [
+    {
+      "ingredient": {
+        "tag": "justifylasers:laser_crystals"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:lapis_lazuli"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "item": "justifylasers:blue_crystal",
+    "count": 1
+  },
+  "ticks": 160,
+  "energy": 32,
+  "water": 1000
+}

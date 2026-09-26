@@ -1,0 +1,39 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "laser_saber",
+  "machine": "ASSEMBLY_CHAMBER",
+  "blueprint": "laser_saber",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:wolframite_ingot"
+      },
+      "count": 2
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:focusing_lens_assembly"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "tag": "justifylasers:laser_crystals"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:energy_core"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "item": "justifylasers:laser_saber",
+    "count": 1
+  },
+  "ticks": 800,
+  "energy": 192,
+  "water": 0
+}

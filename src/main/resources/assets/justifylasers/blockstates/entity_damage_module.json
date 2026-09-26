@@ -1,0 +1,7 @@
+{
+    "variants": {
+        "": {
+            "model": "justifylasers:block/entity_damage_module"
+        }
+    }
+}

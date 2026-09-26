@@ -1,0 +1,35 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "amethyst_nutrient",
+  "machine": "CHEMICAL_SYNTHESIZER",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "minecraft:quartz"
+      },
+      "count": 6
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:calcite"
+      },
+      "count": 2
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:redstone"
+      },
+      "count": 2
+    }
+  ],
+  "result": {
+    "item": "justifylasers:amethyst_nutrient_bucket",
+    "count": 1
+  },
+  "ticks": 200,
+  "energy": 32,
+  "water": 1000,
+  "process": {
+    "product": "amethyst"
+  }
+}

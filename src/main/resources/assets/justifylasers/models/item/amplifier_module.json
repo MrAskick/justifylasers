@@ -1,0 +1,38 @@
+{
+    "parent": "minecraft:item/generated",
+    "textures": {
+        "layer0": "justifylasers:item/amplifier_1"
+    },
+    "overrides": [
+        {
+            "predicate": {
+                "justifylasers:amplifier_tier": 0.2
+            },
+            "model": "justifylasers:item/amplifier_2"
+        },
+        {
+            "predicate": {
+                "justifylasers:amplifier_tier": 0.3
+            },
+            "model": "justifylasers:item/amplifier_3"
+        },
+        {
+            "predicate": {
+                "justifylasers:amplifier_tier": 0.4
+            },
+            "model": "justifylasers:item/amplifier_4"
+        },
+        {
+            "predicate": {
+                "justifylasers:amplifier_tier": 0.5
+            },
+            "model": "justifylasers:item/amplifier_5"
+        },
+        {
+            "predicate": {
+                "justifylasers:amplifier_tier": 0.6
+            },
+            "model": "justifylasers:item/amplifier_6"
+        }
+    ]
+}

@@ -1,0 +1,7 @@
+{
+    "variants": {
+        "": {
+            "model": "justifylasers:block/laser_absorbing_glass"
+        }
+    }
+}

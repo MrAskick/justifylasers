@@ -1,0 +1,7 @@
+{
+    "variants": {
+        "": {
+            "model": "justifylasers:block/target_filter_module"
+        }
+    }
+}

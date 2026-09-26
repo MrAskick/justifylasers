@@ -1,0 +1,22 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "cut_photonite",
+  "machine": "LASER_CUTTER",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:grown_photonite_crystal"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "item": "justifylasers:photonite_crystal",
+    "count": 1
+  },
+  "ticks": 150,
+  "energy": 32,
+  "process": {
+    "cutting_flux": 155000
+  }
+}

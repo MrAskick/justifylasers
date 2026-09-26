@@ -1,0 +1,35 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "photopolymer",
+  "machine": "CHEMICAL_SYNTHESIZER",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "minecraft:slime_ball"
+      },
+      "count": 2
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:sugar"
+      },
+      "count": 4
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:photonite_crystal"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "item": "justifylasers:photopolymer_bucket",
+    "count": 1
+  },
+  "ticks": 240,
+  "energy": 32,
+  "water": 1000,
+  "process": {
+    "product": "photopolymer"
+  }
+}

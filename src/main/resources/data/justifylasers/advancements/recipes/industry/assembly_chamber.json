@@ -1,0 +1,35 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "materials": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "minecraft:iron_ingot"
+            ]
+          }
+        ]
+      }
+    },
+    "unlocked": {
+      "trigger": "minecraft:recipe_unlocked",
+      "conditions": {
+        "recipe": "justifylasers:assembly_chamber"
+      }
+    }
+  },
+  "requirements": [
+    [
+      "materials",
+      "unlocked"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "justifylasers:assembly_chamber"
+    ]
+  },
+  "justifylasers:technical": true
+}

@@ -1,0 +1,39 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "energy_core",
+  "machine": "ASSEMBLY_CHAMBER",
+  "blueprint": "energy_core",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "minecraft:copper_ingot"
+      },
+      "count": 6
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:redstone_block"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:quartz"
+      },
+      "count": 2
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:control_circuit"
+      },
+      "count": 2
+    }
+  ],
+  "result": {
+    "item": "justifylasers:energy_core",
+    "count": 1
+  },
+  "ticks": 560,
+  "energy": 152,
+  "water": 0
+}

@@ -1,0 +1,6 @@
+{
+    "parent": "justifylasers:item/crystal",
+    "textures": {
+        "particle": "justifylasers:block/particle/cyan_crystal"
+    }
+}

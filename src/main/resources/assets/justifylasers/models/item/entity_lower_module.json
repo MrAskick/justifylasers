@@ -1,0 +1,6 @@
+{
+    "parent": "justifylasers:item/module",
+    "textures": {
+        "particle": "justifylasers:block/particle/control_circuit"
+    }
+}

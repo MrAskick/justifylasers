@@ -1,0 +1,33 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "thickness_module",
+  "machine": "ASSEMBLY_CHAMBER",
+  "blueprint": "thickness_module",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:focusing_lens_assembly"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:amethyst_block"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:control_circuit"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "item": "justifylasers:thickness_module",
+    "count": 1
+  },
+  "ticks": 440,
+  "energy": 104,
+  "water": 0
+}

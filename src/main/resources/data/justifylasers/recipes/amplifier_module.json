@@ -1,0 +1,26 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    " W ",
+    "FCF",
+    " R "
+  ],
+  "key": {
+    "W": {
+      "item": "justifylasers:wolframite_ingot"
+    },
+    "F": {
+      "item": "minecraft:quartz"
+    },
+    "C": {
+      "item": "justifylasers:control_circuit"
+    },
+    "R": {
+      "item": "minecraft:redstone"
+    }
+  },
+  "result": {
+    "item": "justifylasers:amplifier_module"
+  },
+  "justifylasers:technical": true
+}

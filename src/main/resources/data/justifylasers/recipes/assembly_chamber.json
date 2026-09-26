@@ -1,0 +1,29 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "APA",
+    "GCG",
+    "ARA"
+  ],
+  "key": {
+    "A": {
+      "item": "justifylasers:wolframite_ingot"
+    },
+    "P": {
+      "item": "minecraft:piston"
+    },
+    "G": {
+      "item": "minecraft:glass"
+    },
+    "C": {
+      "item": "justifylasers:control_circuit"
+    },
+    "R": {
+      "item": "minecraft:redstone"
+    }
+  },
+  "result": {
+    "item": "justifylasers:assembly_chamber"
+  },
+  "justifylasers:technical": true
+}

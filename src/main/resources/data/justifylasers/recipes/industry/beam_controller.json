@@ -1,0 +1,39 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "beam_controller",
+  "machine": "ASSEMBLY_CHAMBER",
+  "blueprint": "beam_controller",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:control_circuit"
+      },
+      "count": 2
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:comparator"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:copper_ingot"
+      },
+      "count": 2
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:redstone"
+      },
+      "count": 4
+    }
+  ],
+  "result": {
+    "item": "justifylasers:beam_controller",
+    "count": 1
+  },
+  "ticks": 400,
+  "energy": 112,
+  "water": 0
+}

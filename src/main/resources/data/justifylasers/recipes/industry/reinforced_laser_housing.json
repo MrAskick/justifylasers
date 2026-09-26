@@ -1,0 +1,27 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "reinforced_laser_housing",
+  "machine": "ASSEMBLY_CHAMBER",
+  "blueprint": "reinforced_laser_housing",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:wolframite_ingot"
+      },
+      "count": 8
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:iron_ingot"
+      },
+      "count": 4
+    }
+  ],
+  "result": {
+    "item": "justifylasers:reinforced_laser_housing",
+    "count": 1
+  },
+  "ticks": 240,
+  "energy": 48,
+  "water": 0
+}

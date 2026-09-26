@@ -1,0 +1,6 @@
+{
+    "parent": "minecraft:block/cube_all",
+    "textures": {
+        "all": "justifylasers:block/particle/solar_absorber"
+    }
+}

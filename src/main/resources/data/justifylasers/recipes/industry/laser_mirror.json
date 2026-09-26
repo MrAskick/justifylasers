@@ -1,0 +1,33 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "laser_mirror",
+  "machine": "ASSEMBLY_CHAMBER",
+  "blueprint": "laser_mirror",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:wolframite_ingot"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:focusing_lens_assembly"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:iron_ingot"
+      },
+      "count": 2
+    }
+  ],
+  "result": {
+    "item": "justifylasers:laser_mirror",
+    "count": 1
+  },
+  "ticks": 280,
+  "energy": 56,
+  "water": 0
+}

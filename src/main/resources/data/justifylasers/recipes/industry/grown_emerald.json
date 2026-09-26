@@ -1,0 +1,26 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "grown_emerald",
+  "machine": "CRYSTAL_GROWER",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:growth_seed"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "item": "justifylasers:grown_emerald_crystal",
+    "count": 1
+  },
+  "ticks": 1200,
+  "energy": 2480000,
+  "water": 1000,
+  "process": {
+    "fluid": "emerald",
+    "growth": "emerald",
+    "minimum_flux": 620000,
+    "spectrum": 2158181
+  }
+}

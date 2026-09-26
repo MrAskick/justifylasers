@@ -1,0 +1,33 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "range_module",
+  "machine": "ASSEMBLY_CHAMBER",
+  "blueprint": "range_module",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:focusing_lens_assembly"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:ender_pearl"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:control_circuit"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "item": "justifylasers:range_module",
+    "count": 1
+  },
+  "ticks": 360,
+  "energy": 80,
+  "water": 0
+}

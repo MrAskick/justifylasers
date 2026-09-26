@@ -1,0 +1,308 @@
+{
+    "parent": "minecraft:block/block",
+    "textures": {
+        "mineral": "justifylasers:component/photonite/base",
+        "particle": "#mineral"
+    },
+    "elements": [
+        {
+            "from": [
+                3,
+                4,
+                5
+            ],
+            "to": [
+                9,
+                10,
+                11
+            ],
+            "faces": {
+                "up": {
+                    "texture": "#mineral",
+                    "uv": [
+                        0.5625,
+                        0.5625,
+                        3.4375,
+                        5.4375
+                    ]
+                },
+                "down": {
+                    "texture": "#mineral",
+                    "uv": [
+                        0.5625,
+                        0.5625,
+                        3.4375,
+                        5.4375
+                    ]
+                },
+                "north": {
+                    "texture": "#mineral",
+                    "uv": [
+                        0.5625,
+                        0.5625,
+                        3.4375,
+                        5.4375
+                    ]
+                },
+                "south": {
+                    "texture": "#mineral",
+                    "uv": [
+                        0.5625,
+                        0.5625,
+                        3.4375,
+                        5.4375
+                    ]
+                },
+                "east": {
+                    "texture": "#mineral",
+                    "uv": [
+                        0.5625,
+                        0.5625,
+                        3.4375,
+                        5.4375
+                    ]
+                },
+                "west": {
+                    "texture": "#mineral",
+                    "uv": [
+                        0.5625,
+                        0.5625,
+                        3.4375,
+                        5.4375
+                    ]
+                }
+            },
+            "rotation": {
+                "origin": [
+                    8,
+                    8,
+                    8
+                ],
+                "axis": "z",
+                "angle": 22.5,
+                "rescale": false
+            }
+        },
+        {
+            "from": [
+                8,
+                3,
+                4
+            ],
+            "to": [
+                13,
+                8,
+                9
+            ],
+            "faces": {
+                "up": {
+                    "texture": "#mineral",
+                    "uv": [
+                        0.5625,
+                        0.5625,
+                        3.4375,
+                        5.4375
+                    ]
+                },
+                "down": {
+                    "texture": "#mineral",
+                    "uv": [
+                        0.5625,
+                        0.5625,
+                        3.4375,
+                        5.4375
+                    ]
+                },
+                "north": {
+                    "texture": "#mineral",
+                    "uv": [
+                        0.5625,
+                        0.5625,
+                        3.4375,
+                        5.4375
+                    ]
+                },
+                "south": {
+                    "texture": "#mineral",
+                    "uv": [
+                        0.5625,
+                        0.5625,
+                        3.4375,
+                        5.4375
+                    ]
+                },
+                "east": {
+                    "texture": "#mineral",
+                    "uv": [
+                        0.5625,
+                        0.5625,
+                        3.4375,
+                        5.4375
+                    ]
+                },
+                "west": {
+                    "texture": "#mineral",
+                    "uv": [
+                        0.5625,
+                        0.5625,
+                        3.4375,
+                        5.4375
+                    ]
+                }
+            },
+            "rotation": {
+                "origin": [
+                    8,
+                    8,
+                    8
+                ],
+                "axis": "z",
+                "angle": -22.5,
+                "rescale": false
+            }
+        },
+        {
+            "from": [
+                6,
+                8,
+                6
+            ],
+            "to": [
+                11,
+                13,
+                10
+            ],
+            "faces": {
+                "up": {
+                    "texture": "#mineral",
+                    "uv": [
+                        0.5625,
+                        0.5625,
+                        3.4375,
+                        5.4375
+                    ]
+                },
+                "down": {
+                    "texture": "#mineral",
+                    "uv": [
+                        0.5625,
+                        0.5625,
+                        3.4375,
+                        5.4375
+                    ]
+                },
+                "north": {
+                    "texture": "#mineral",
+                    "uv": [
+                        0.5625,
+                        0.5625,
+                        3.4375,
+                        5.4375
+                    ]
+                },
+                "south": {
+                    "texture": "#mineral",
+                    "uv": [
+                        0.5625,
+                        0.5625,
+                        3.4375,
+                        5.4375
+                    ]
+                },
+                "east": {
+                    "texture": "#mineral",
+                    "uv": [
+                        0.5625,
+                        0.5625,
+                        3.4375,
+                        5.4375
+                    ]
+                },
+                "west": {
+                    "texture": "#mineral",
+                    "uv": [
+                        0.5625,
+                        0.5625,
+                        3.4375,
+                        5.4375
+                    ]
+                }
+            },
+            "rotation": {
+                "origin": [
+                    8,
+                    8,
+                    8
+                ],
+                "axis": "z",
+                "angle": -22.5,
+                "rescale": false
+            }
+        }
+    ],
+    "display": {
+        "gui": {
+            "rotation": [
+                30,
+                225,
+                0
+            ],
+            "translation": [
+                0,
+                0,
+                0
+            ],
+            "scale": [
+                1,
+                1,
+                1
+            ]
+        },
+        "ground": {
+            "translation": [
+                0,
+                3,
+                0
+            ],
+            "scale": [
+                0.25,
+                0.25,
+                0.25
+            ]
+        },
+        "firstperson_righthand": {
+            "rotation": [
+                0,
+                45,
+                0
+            ],
+            "translation": [
+                0,
+                0,
+                0
+            ],
+            "scale": [
+                0.4,
+                0.4,
+                0.4
+            ]
+        },
+        "thirdperson_righthand": {
+            "rotation": [
+                75,
+                45,
+                0
+            ],
+            "translation": [
+                0,
+                2.5,
+                0
+            ],
+            "scale": [
+                0.375,
+                0.375,
+                0.375
+            ]
+        }
+    }
+}

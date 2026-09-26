@@ -1,0 +1,13 @@
+{
+  "replace": false,
+  "values": [
+    "justifylasers:amethyst_nutrient",
+    "justifylasers:flowing_amethyst_nutrient",
+    "justifylasers:photonite_nutrient",
+    "justifylasers:flowing_photonite_nutrient",
+    "justifylasers:emerald_nutrient",
+    "justifylasers:flowing_emerald_nutrient",
+    "justifylasers:diamond_nutrient",
+    "justifylasers:flowing_diamond_nutrient"
+  ]
+}

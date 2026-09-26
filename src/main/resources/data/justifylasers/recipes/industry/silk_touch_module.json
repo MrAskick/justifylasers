@@ -1,0 +1,39 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "silk_touch_module",
+  "machine": "ASSEMBLY_CHAMBER",
+  "blueprint": "silk_touch_module",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:wolframite_ingot"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:cobweb"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:diamond"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:control_circuit"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "item": "justifylasers:silk_touch_module",
+    "count": 1
+  },
+  "ticks": 840,
+  "energy": 224,
+  "water": 0
+}

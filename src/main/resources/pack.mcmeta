@@ -1,6 +1,1 @@
-{
-  "pack": {
-    "pack_format": ${pack_format},
-    "description": "JustifyLasers resources"
-  }
-}
+{"pack":{"pack_format":${pack_format},"description":"Justify Lasers resources"}}

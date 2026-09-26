@@ -1,0 +1,26 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "grown_photonite",
+  "machine": "CRYSTAL_GROWER",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:growth_seed"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "item": "justifylasers:grown_photonite_crystal",
+    "count": 1
+  },
+  "ticks": 600,
+  "energy": 620000,
+  "water": 1000,
+  "process": {
+    "fluid": "photonite",
+    "growth": "photonite",
+    "minimum_flux": 155000,
+    "spectrum": 12323317
+  }
+}

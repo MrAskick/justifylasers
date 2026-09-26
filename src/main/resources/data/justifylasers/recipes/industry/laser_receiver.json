@@ -1,0 +1,39 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "laser_receiver",
+  "machine": "ASSEMBLY_CHAMBER",
+  "blueprint": "laser_receiver",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:wolframite_ingot"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:focusing_lens_assembly"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:comparator"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:control_circuit"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "item": "justifylasers:laser_receiver",
+    "count": 1
+  },
+  "ticks": 480,
+  "energy": 120,
+  "water": 0
+}

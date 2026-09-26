@@ -1,0 +1,39 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "light_staff",
+  "machine": "ASSEMBLY_CHAMBER",
+  "blueprint": "light_staff",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:wolframite_ingot"
+      },
+      "count": 4
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:focusing_lens_assembly"
+      },
+      "count": 2
+    },
+    {
+      "ingredient": {
+        "tag": "justifylasers:laser_crystals"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:energy_core"
+      },
+      "count": 2
+    }
+  ],
+  "result": {
+    "item": "justifylasers:light_staff",
+    "count": 1
+  },
+  "ticks": 1400,
+  "energy": 384,
+  "water": 0
+}

@@ -1,0 +1,56 @@
+{
+    "parent": "builtin/entity",
+    "textures": {
+        "particle": "justifylasers:block/particle/small_solar_concentrator"
+    },
+    "display": {
+        "gui": {
+            "rotation": [
+                25,
+                225,
+                0
+            ],
+            "scale": [
+                0.95,
+                0.95,
+                0.95
+            ]
+        },
+        "ground": {
+            "translation": [
+                0,
+                3,
+                0
+            ],
+            "scale": [
+                0.45,
+                0.45,
+                0.45
+            ]
+        },
+        "firstperson_righthand": {
+            "rotation": [
+                0,
+                45,
+                0
+            ],
+            "scale": [
+                0.7,
+                0.7,
+                0.7
+            ]
+        },
+        "thirdperson_righthand": {
+            "rotation": [
+                75,
+                45,
+                0
+            ],
+            "scale": [
+                0.5,
+                0.5,
+                0.5
+            ]
+        }
+    }
+}

@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "justifylasers:optical_assembly"
+    }
+  ],
+  "result": {
+    "item": "justifylasers:focusing_lens_assembly"
+  }
+}

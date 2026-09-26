@@ -1,0 +1,8 @@
+{
+    "elements": [
+
+    ],
+    "textures": {
+        "particle": "minecraft:block/water_still"
+    }
+}

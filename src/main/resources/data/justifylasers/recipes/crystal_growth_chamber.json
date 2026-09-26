@@ -1,0 +1,26 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "AGA",
+    "GQG",
+    "ARA"
+  ],
+  "key": {
+    "A": {
+      "item": "justifylasers:wolframite_ingot"
+    },
+    "G": {
+      "item": "minecraft:glass"
+    },
+    "Q": {
+      "item": "minecraft:quartz"
+    },
+    "R": {
+      "item": "minecraft:redstone"
+    }
+  },
+  "result": {
+    "item": "justifylasers:crystal_growth_chamber"
+  },
+  "justifylasers:technical": true
+}

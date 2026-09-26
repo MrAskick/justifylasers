@@ -1,0 +1,43 @@
+package net.askcraft.justifylasers.addon.lasers.registry;
+
+import net.askcraft.justifylasers.JustifyLasers;
+import net.askcraft.justifylasers.platform.Platform;
+import net.askcraft.justifylasers.screen.LaserEmitterScreenHandler;
+import net.askcraft.justifylasers.screen.LaserReceiverScreenHandler;
+import net.minecraft.registry.Registries;
+import net.minecraft.screen.ScreenHandlerType;
+
+
+import net.askcraft.justifylasers.registry.*;
+
+public final class LaserScreenHandlers extends ModScreenHandlers {
+    public static void initialize() {
+        MODEL_ENCODER = Platform.register(Registries.SCREEN_HANDLER, JustifyLasers.id("model_encoder"),
+                Platform.screenType(net.askcraft.justifylasers.screen.ModelEncoderScreenHandler::new));
+        LASER_MODULE = Platform.register(Registries.SCREEN_HANDLER, JustifyLasers.id("laser_module"),
+                Platform.screenType(net.askcraft.justifylasers.screen.LaserModuleScreenHandler::new));
+        SOLAR_CONCENTRATOR = Platform.register(Registries.SCREEN_HANDLER, JustifyLasers.id("solar_concentrator"),
+                Platform.screenType(net.askcraft.justifylasers.screen.SolarConcentratorScreenHandler::new));
+        TABLET = Platform.register(Registries.SCREEN_HANDLER, JustifyLasers.id("tablet"),
+                Platform.screenType(net.askcraft.justifylasers.screen.TabletScreenHandler::new));
+        INDUSTRIAL_MACHINE = Platform.register(Registries.SCREEN_HANDLER, JustifyLasers.id("industrial_machine"),
+                Platform.screenType(net.askcraft.justifylasers.screen.IndustrialMachineScreenHandler::new));
+        LASER_TURRET = Platform.register(Registries.SCREEN_HANDLER, JustifyLasers.id("laser_turret"),
+                Platform.screenType(net.askcraft.justifylasers.screen.LaserTurretScreenHandler::new));
+        LASER_EMITTER = Platform.register(
+                Registries.SCREEN_HANDLER,
+                JustifyLasers.id("laser_emitter"),
+                Platform.screenType(LaserEmitterScreenHandler::new)
+        );
+
+        POWERED_LASER_EMITTER = Platform.register(
+                Registries.SCREEN_HANDLER, JustifyLasers.id("powered_laser_emitter"),
+                Platform.screenType((syncId, inventory, pos) -> new LaserEmitterScreenHandler(syncId, inventory, pos, true))
+        );
+
+        LASER_RECEIVER = Platform.register(
+                Registries.SCREEN_HANDLER, JustifyLasers.id("laser_receiver"),
+                Platform.screenType(LaserReceiverScreenHandler::new)
+        );
+    }
+}

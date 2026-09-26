@@ -1,0 +1,49 @@
+{
+    "parent": "minecraft:block/block",
+    "textures": {
+        "stone": "minecraft:block/deepslate",
+        "mineral": "justifylasers:component/photonite/base",
+        "particle": "#stone",
+        "justifylasers_ore_1": "#mineral"
+    },
+    "elements": [
+        {
+            "from": [
+                0,
+                0,
+                0
+            ],
+            "to": [
+                16,
+                16,
+                16
+            ],
+            "faces": {
+                "up": {
+                    "texture": "#stone",
+                    "cullface": "up"
+                },
+                "down": {
+                    "texture": "#stone",
+                    "cullface": "down"
+                },
+                "north": {
+                    "texture": "#stone",
+                    "cullface": "north"
+                },
+                "south": {
+                    "texture": "#stone",
+                    "cullface": "south"
+                },
+                "east": {
+                    "texture": "#stone",
+                    "cullface": "east"
+                },
+                "west": {
+                    "texture": "#stone",
+                    "cullface": "west"
+                }
+            }
+        }
+    ]
+}

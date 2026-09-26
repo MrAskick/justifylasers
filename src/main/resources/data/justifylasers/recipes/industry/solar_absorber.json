@@ -1,0 +1,39 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "solar_absorber",
+  "machine": "ASSEMBLY_CHAMBER",
+  "blueprint": "solar_absorber",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:wolframite_ingot"
+      },
+      "count": 2
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:lapis_lazuli"
+      },
+      "count": 4
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:glass"
+      },
+      "count": 2
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:control_circuit"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "item": "justifylasers:solar_absorber",
+    "count": 1
+  },
+  "ticks": 300,
+  "energy": 88,
+  "water": 0
+}

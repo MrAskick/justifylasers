@@ -1,0 +1,39 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "configurator",
+  "machine": "ASSEMBLY_CHAMBER",
+  "blueprint": "configurator",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:wolframite_ingot"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:quartz"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:redstone"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:control_circuit"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "item": "justifylasers:configurator",
+    "count": 1
+  },
+  "ticks": 180,
+  "energy": 28,
+  "water": 0
+}

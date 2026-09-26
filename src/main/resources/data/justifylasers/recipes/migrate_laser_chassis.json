@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "justifylasers:laser_chassis"
+    }
+  ],
+  "result": {
+    "item": "justifylasers:reinforced_laser_housing"
+  }
+}

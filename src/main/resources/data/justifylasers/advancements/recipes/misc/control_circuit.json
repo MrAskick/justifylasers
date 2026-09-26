@@ -1,0 +1,36 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_component": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "minecraft:quartz",
+              "minecraft:redstone"
+            ]
+          }
+        ]
+      }
+    },
+    "has_recipe": {
+      "trigger": "minecraft:recipe_unlocked",
+      "conditions": {
+        "recipe": "justifylasers:control_circuit"
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_component",
+      "has_recipe"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "justifylasers:control_circuit"
+    ]
+  },
+  "justifylasers:technical": true
+}

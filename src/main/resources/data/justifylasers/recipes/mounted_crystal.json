@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "justifylasers:photonite_crystal"
+    },
+    {
+      "item": "justifylasers:crystal_mount"
+    }
+  ],
+  "result": {
+    "item": "justifylasers:magenta_crystal"
+  }
+}

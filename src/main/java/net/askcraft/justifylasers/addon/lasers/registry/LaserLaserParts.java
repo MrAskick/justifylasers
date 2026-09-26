@@ -1,0 +1,60 @@
+package net.askcraft.justifylasers.addon.lasers.registry;
+
+import net.askcraft.justifylasers.JustifyLasers;
+import net.askcraft.justifylasers.block.LaserPartBlock;
+import net.askcraft.justifylasers.energy.LaserModule;
+import net.askcraft.justifylasers.item.LaserCrystalItem;
+import net.askcraft.justifylasers.item.LaserModuleItem;
+import net.askcraft.justifylasers.laser.LaserColor;
+import net.askcraft.justifylasers.platform.Platform;
+import net.minecraft.item.Item;
+import net.minecraft.block.AbstractBlock;
+import net.minecraft.block.MapColor;
+import net.minecraft.sound.BlockSoundGroup;
+import net.minecraft.registry.Registries;
+
+import java.util.EnumMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+
+import net.askcraft.justifylasers.registry.*;
+
+public final class LaserLaserParts extends ModLaserParts {
+    public static void initializeBlocks() {
+        for (LaserColor color : LaserColor.values()) registerDecoration(color.asString() + "_crystal");
+        for (LaserModule module : LaserModule.values()) registerDecoration(module.id());
+        registerDecoration("advanced_range_module");
+        registerDecoration("advanced_thickness_module");
+        registerDecoration("electric_motor");
+        registerDecoration("control_circuit");
+        registerDecoration("crystal_mount");
+        registerDecoration("raw_wolframite");
+        registerDecoration("raw_photonic_crystal");
+        for (var crystal : net.askcraft.justifylasers.industry.CrystalGrowth.values()) registerDecoration("grown_" + crystal.id() + "_crystal");
+    }
+
+    private static void registerDecoration(String id) {
+        DECORATIONS.put(id, Platform.register(Registries.BLOCK, JustifyLasers.id(id),
+                new LaserPartBlock(AbstractBlock.Settings.create().mapColor(MapColor.IRON_GRAY)
+                        .strength(0.6F).sounds(BlockSoundGroup.METAL).nonOpaque(), id)));
+    }
+
+    public static void initialize() {
+        AMPLIFIER = Platform.register(Registries.ITEM, JustifyLasers.id("amplifier_module"), new net.askcraft.justifylasers.item.LaserAmplifierItem(new Item.Settings()));
+        for (LaserColor color : LaserColor.values()) {
+            CRYSTALS.put(color, Platform.register(Registries.ITEM, JustifyLasers.id(color.asString() + "_crystal"),
+                    Platform.crystalItem(new Item.Settings().maxCount(1), color)));
+        }
+        for (LaserModule module : LaserModule.values()) {
+            MODULES.put(module, Platform.register(Registries.ITEM, JustifyLasers.id(module.id()),
+                    Platform.moduleItem(new Item.Settings().maxCount(module.maxCount()), module, module == LaserModule.RANGE ? 1 : 0)));
+        }
+        ADVANCED_RANGE_MODULE = Platform.register(Registries.ITEM, JustifyLasers.id("advanced_range_module"),
+                Platform.moduleItem(new Item.Settings(), LaserModule.RANGE, 8));
+        ADVANCED_THICKNESS_MODULE = Platform.register(Registries.ITEM, JustifyLasers.id("advanced_thickness_module"),
+                Platform.moduleItem(new Item.Settings(), LaserModule.THICKNESS, 8));
+        CONTROL_CIRCUIT = Platform.register(Registries.ITEM, JustifyLasers.id("control_circuit"), Platform.partItem(new Item.Settings(), "control_circuit"));
+    }
+}

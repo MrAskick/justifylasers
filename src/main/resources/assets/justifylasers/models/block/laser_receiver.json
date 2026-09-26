@@ -6,7 +6,7 @@
     "dark": "minecraft:block/polished_deepslate",
     "light": "minecraft:block/iron_block",
     "aperture": "minecraft:block/black_concrete",
-    "particle": "minecraft:block/polished_deepslate"
+    "particle": "#panel"
   },
   "elements": [
     {
@@ -714,23 +714,6 @@
     }
   ],
   "display": {
-    "gui": {
-      "rotation": [
-        30,
-        225,
-        0
-      ],
-      "translation": [
-        0,
-        0,
-        0
-      ],
-      "scale": [
-        0.8,
-        0.8,
-        0.8
-      ]
-    },
     "fixed": {
       "rotation": [
         0,

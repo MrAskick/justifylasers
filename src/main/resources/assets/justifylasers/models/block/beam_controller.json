@@ -1,0 +1,8 @@
+{
+    "textures": {
+        "particle": "justifylasers:block/particle/beam_controller"
+    },
+    "elements": [
+
+    ]
+}

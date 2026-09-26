@@ -1,0 +1,33 @@
+{
+  "parent": "justifylasers:industry/alloy",
+  "display": {
+    "icon": {
+      "item": "justifylasers:photonite_crystal"
+    },
+    "title": {
+      "translate": "advancement.justifylasers.industry.crystal"
+    },
+    "description": {
+      "translate": "advancement.justifylasers.industry.crystal.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "obtained": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "justifylasers:photonite_crystal"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "justifylasers:technical": true
+}

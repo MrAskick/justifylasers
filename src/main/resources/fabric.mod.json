@@ -2,33 +2,21 @@
   "schemaVersion": 1,
   "id": "justifylasers",
   "version": "${version}",
-  "name": "JustifyLasers",
-  "description": "High-energy laser emitters, redstone receivers, and portable refocusing cubes with vivid volumetric beams.",
+  "name": "Justify Lasers",
+  "description": "Laser emitters, receivers, industrial machines, light bridges and refocusing cubes. Requires matching Justify API.",
   "authors": [
     "Mr.Askick"
   ],
   "license": "MIT",
-  "icon": "assets/justifylasers/icon.png",
   "environment": "*",
-  "entrypoints": {
-    "client": [
-      "net.askcraft.justifylasers.fabric.JustifyLasersFabricClient"
-    ],
-    "main": [
-      "net.askcraft.justifylasers.fabric.JustifyLasersFabric"
-    ]
+  "icon": "assets/justifylasers/icon.png",
+  "contact": {
+    "sources": "https://github.com/MrAskick/justifylasers",
+    "issues": "https://github.com/MrAskick/justifylasers/issues"
   },
-  "mixins": [
-    "justifylasers.mixins.json",
-    {
-      "config": "justifylasers.client.mixins.json",
-      "environment": "client"
-    }
-  ],
   "depends": {
     "fabricloader": ">=${loader_version}",
-    "fabric-api": "*",
     "minecraft": "${minecraft_version}",
-    "java": ">=${java_version}"
+    "justify_api": "=${version}"
   }
 }

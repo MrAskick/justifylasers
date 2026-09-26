@@ -1,0 +1,33 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "target_filter_module",
+  "machine": "ASSEMBLY_CHAMBER",
+  "blueprint": "target_filter_module",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:wolframite_ingot"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:ender_eye"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:beam_controller"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "item": "justifylasers:target_filter_module",
+    "count": 1
+  },
+  "ticks": 680,
+  "energy": 184,
+  "water": 0
+}

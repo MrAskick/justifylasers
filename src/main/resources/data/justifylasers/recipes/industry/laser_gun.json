@@ -1,0 +1,39 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "laser_gun",
+  "machine": "ASSEMBLY_CHAMBER",
+  "blueprint": "laser_gun",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:reinforced_laser_housing"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:focusing_lens_assembly"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "tag": "justifylasers:laser_crystals"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:energy_core"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "item": "justifylasers:laser_gun",
+    "count": 1
+  },
+  "ticks": 1000,
+  "energy": 256,
+  "water": 0
+}

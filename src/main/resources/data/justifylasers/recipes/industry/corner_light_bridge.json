@@ -1,0 +1,33 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "corner_light_bridge",
+  "machine": "ASSEMBLY_CHAMBER",
+  "blueprint": "corner_light_bridge",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:light_bridge"
+      },
+      "count": 2
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:control_circuit"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:wolframite_ingot"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "item": "justifylasers:corner_light_bridge",
+    "count": 1
+  },
+  "ticks": 520,
+  "energy": 136,
+  "water": 0
+}

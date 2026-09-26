@@ -1,0 +1,35 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "photonite_nutrient",
+  "machine": "CHEMICAL_SYNTHESIZER",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:raw_photonic_crystal"
+      },
+      "count": 2
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:quartz"
+      },
+      "count": 4
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:glowstone_dust"
+      },
+      "count": 2
+    }
+  ],
+  "result": {
+    "item": "justifylasers:photonite_nutrient_bucket",
+    "count": 1
+  },
+  "ticks": 300,
+  "energy": 64,
+  "water": 1000,
+  "process": {
+    "product": "photonite"
+  }
+}

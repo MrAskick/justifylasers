@@ -1,0 +1,39 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "optical_resonator",
+  "machine": "ASSEMBLY_CHAMBER",
+  "blueprint": "optical_resonator",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:focusing_lens_assembly"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:wolframite_ingot"
+      },
+      "count": 2
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:beam_controller"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:quartz"
+      },
+      "count": 4
+    }
+  ],
+  "result": {
+    "item": "justifylasers:optical_resonator",
+    "count": 1
+  },
+  "ticks": 640,
+  "energy": 176,
+  "water": 0
+}

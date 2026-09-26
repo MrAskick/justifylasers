@@ -1,0 +1,39 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "laser_turret",
+  "machine": "ASSEMBLY_CHAMBER",
+  "blueprint": "laser_turret",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:reinforced_laser_housing"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:iron_ingot"
+      },
+      "count": 4
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:piston"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:beam_controller"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "item": "justifylasers:laser_turret",
+    "count": 1
+  },
+  "ticks": 1120,
+  "energy": 288,
+  "water": 0
+}

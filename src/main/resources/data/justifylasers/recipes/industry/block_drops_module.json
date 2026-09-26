@@ -1,0 +1,33 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "block_drops_module",
+  "machine": "ASSEMBLY_CHAMBER",
+  "blueprint": "block_drops_module",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:wolframite_ingot"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:hopper"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:control_circuit"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "item": "justifylasers:block_drops_module",
+    "count": 1
+  },
+  "ticks": 160,
+  "energy": 32,
+  "water": 0
+}

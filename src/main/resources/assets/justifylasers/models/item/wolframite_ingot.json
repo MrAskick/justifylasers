@@ -1,0 +1,273 @@
+{
+    "parent": "minecraft:block/block",
+    "textures": {
+        "mineral": "justifylasers:component/wolframite/base",
+        "particle": "#mineral"
+    },
+    "display": {
+        "gui": {
+            "rotation": [
+                30,
+                225,
+                0
+            ],
+            "scale": [
+                1,
+                1,
+                1
+            ]
+        },
+        "ground": {
+            "translation": [
+                0,
+                3,
+                0
+            ],
+            "scale": [
+                0.25,
+                0.25,
+                0.25
+            ]
+        },
+        "firstperson_righthand": {
+            "rotation": [
+                0,
+                45,
+                0
+            ],
+            "translation": [
+                0,
+                0,
+                0
+            ],
+            "scale": [
+                0.4,
+                0.4,
+                0.4
+            ]
+        },
+        "thirdperson_righthand": {
+            "rotation": [
+                75,
+                45,
+                0
+            ],
+            "translation": [
+                0,
+                2.5,
+                0
+            ],
+            "scale": [
+                0.375,
+                0.375,
+                0.375
+            ]
+        }
+    },
+    "elements": [
+        {
+            "from": [
+                1,
+                4,
+                4
+            ],
+            "to": [
+                15,
+                5,
+                12
+            ],
+            "faces": {
+                "up": {
+                    "texture": "#mineral",
+                    "uv": [
+                        4.5625,
+                        0.5625,
+                        6.4375,
+                        4.4375
+                    ]
+                },
+                "down": {
+                    "texture": "#mineral",
+                    "uv": [
+                        4.5625,
+                        0.5625,
+                        6.4375,
+                        4.4375
+                    ]
+                },
+                "north": {
+                    "texture": "#mineral",
+                    "uv": [
+                        4.5625,
+                        0.5625,
+                        6.4375,
+                        4.4375
+                    ]
+                },
+                "south": {
+                    "texture": "#mineral",
+                    "uv": [
+                        4.5625,
+                        0.5625,
+                        6.4375,
+                        4.4375
+                    ]
+                },
+                "east": {
+                    "texture": "#mineral",
+                    "uv": [
+                        4.5625,
+                        0.5625,
+                        6.4375,
+                        4.4375
+                    ]
+                },
+                "west": {
+                    "texture": "#mineral",
+                    "uv": [
+                        4.5625,
+                        0.5625,
+                        6.4375,
+                        4.4375
+                    ]
+                }
+            }
+        },
+        {
+            "from": [
+                1.5,
+                5,
+                4.5
+            ],
+            "to": [
+                14.5,
+                7,
+                11.5
+            ],
+            "faces": {
+                "up": {
+                    "texture": "#mineral",
+                    "uv": [
+                        0.5625,
+                        0.5625,
+                        3.4375,
+                        5.4375
+                    ]
+                },
+                "down": {
+                    "texture": "#mineral",
+                    "uv": [
+                        0.5625,
+                        0.5625,
+                        3.4375,
+                        5.4375
+                    ]
+                },
+                "north": {
+                    "texture": "#mineral",
+                    "uv": [
+                        0.5625,
+                        0.5625,
+                        3.4375,
+                        5.4375
+                    ]
+                },
+                "south": {
+                    "texture": "#mineral",
+                    "uv": [
+                        0.5625,
+                        0.5625,
+                        3.4375,
+                        5.4375
+                    ]
+                },
+                "east": {
+                    "texture": "#mineral",
+                    "uv": [
+                        0.5625,
+                        0.5625,
+                        3.4375,
+                        5.4375
+                    ]
+                },
+                "west": {
+                    "texture": "#mineral",
+                    "uv": [
+                        0.5625,
+                        0.5625,
+                        3.4375,
+                        5.4375
+                    ]
+                }
+            }
+        },
+        {
+            "from": [
+                2,
+                7,
+                5
+            ],
+            "to": [
+                14,
+                8,
+                11
+            ],
+            "faces": {
+                "up": {
+                    "texture": "#mineral",
+                    "uv": [
+                        7.5625,
+                        0.5625,
+                        10.4375,
+                        4.4375
+                    ]
+                },
+                "down": {
+                    "texture": "#mineral",
+                    "uv": [
+                        7.5625,
+                        0.5625,
+                        10.4375,
+                        4.4375
+                    ]
+                },
+                "north": {
+                    "texture": "#mineral",
+                    "uv": [
+                        7.5625,
+                        0.5625,
+                        10.4375,
+                        4.4375
+                    ]
+                },
+                "south": {
+                    "texture": "#mineral",
+                    "uv": [
+                        7.5625,
+                        0.5625,
+                        10.4375,
+                        4.4375
+                    ]
+                },
+                "east": {
+                    "texture": "#mineral",
+                    "uv": [
+                        7.5625,
+                        0.5625,
+                        10.4375,
+                        4.4375
+                    ]
+                },
+                "west": {
+                    "texture": "#mineral",
+                    "uv": [
+                        7.5625,
+                        0.5625,
+                        10.4375,
+                        4.4375
+                    ]
+                }
+            }
+        }
+    ]
+}

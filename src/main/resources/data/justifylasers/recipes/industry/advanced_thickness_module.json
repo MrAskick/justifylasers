@@ -1,0 +1,27 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "advanced_thickness_module",
+  "machine": "ASSEMBLY_CHAMBER",
+  "blueprint": "advanced_thickness_module",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:thickness_module"
+      },
+      "count": 8
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:control_circuit"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "item": "justifylasers:advanced_thickness_module",
+    "count": 1
+  },
+  "ticks": 1080,
+  "energy": 280,
+  "water": 0
+}

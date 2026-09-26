@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:smelting",
+  "category": "misc",
+  "ingredient": {
+    "item": "justifylasers:raw_wolframite"
+  },
+  "result": "justifylasers:wolframite_ingot",
+  "experience": 1.0,
+  "cookingtime": 3000
+}

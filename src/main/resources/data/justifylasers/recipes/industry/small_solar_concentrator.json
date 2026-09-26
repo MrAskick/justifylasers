@@ -1,0 +1,33 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "small_solar_concentrator",
+  "machine": "ASSEMBLY_CHAMBER",
+  "blueprint": "small_solar_concentrator",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:solar_absorber"
+      },
+      "count": 3
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:electric_motor"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:iron_ingot"
+      },
+      "count": 3
+    }
+  ],
+  "result": {
+    "item": "justifylasers:small_solar_concentrator",
+    "count": 1
+  },
+  "ticks": 880,
+  "energy": 64,
+  "water": 0
+}

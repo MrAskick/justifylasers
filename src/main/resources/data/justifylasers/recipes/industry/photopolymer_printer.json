@@ -1,0 +1,39 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "photopolymer_printer",
+  "machine": "ASSEMBLY_CHAMBER",
+  "blueprint": "photopolymer_printer",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:reinforced_laser_housing"
+      },
+      "count": 2
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:electric_motor"
+      },
+      "count": 2
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:focusing_lens_assembly"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:beam_controller"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "item": "justifylasers:photopolymer_printer",
+    "count": 4
+  },
+  "ticks": 1440,
+  "energy": 312,
+  "water": 0
+}

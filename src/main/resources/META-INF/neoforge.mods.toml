@@ -1,0 +1,22 @@
+modLoader="lowcodefml"
+loaderVersion="[1,)"
+license="MIT"
+[[mods]]
+modId="justifylasers"
+version="${version}"
+displayName="Justify Lasers"
+logoFile="assets/justifylasers/icon.png"
+description="Laser emitters, receivers, industrial machines, light bridges and refocusing cubes. Requires matching Justify API."
+displayURL="https://github.com/MrAskick/justifylasers"
+[[dependencies.justifylasers]]
+modId="justify_api"
+type="required"
+versionRange="[${version}]"
+ordering="AFTER"
+side="BOTH"
+[[dependencies.justifylasers]]
+modId="minecraft"
+type="required"
+versionRange="[${minecraft_version}]"
+ordering="NONE"
+side="BOTH"

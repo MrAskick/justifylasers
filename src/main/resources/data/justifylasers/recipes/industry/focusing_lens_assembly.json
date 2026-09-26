@@ -1,0 +1,39 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "focusing_lens_assembly",
+  "machine": "ASSEMBLY_CHAMBER",
+  "blueprint": "focusing_lens_assembly",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "minecraft:glass"
+      },
+      "count": 4
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:quartz"
+      },
+      "count": 4
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:amethyst_shard"
+      },
+      "count": 2
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:wolframite_ingot"
+      },
+      "count": 2
+    }
+  ],
+  "result": {
+    "item": "justifylasers:focusing_lens_assembly",
+    "count": 1
+  },
+  "ticks": 320,
+  "energy": 72,
+  "water": 0
+}

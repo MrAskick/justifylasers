@@ -1,0 +1,33 @@
+{
+  "parent": "justifylasers:industry/crystal",
+  "display": {
+    "icon": {
+      "item": "justifylasers:powered_laser_emitter"
+    },
+    "title": {
+      "translate": "advancement.justifylasers.industry.first_laser"
+    },
+    "description": {
+      "translate": "advancement.justifylasers.industry.first_laser.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "obtained": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "justifylasers:powered_laser_emitter"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "justifylasers:technical": true
+}

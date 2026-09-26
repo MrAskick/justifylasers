@@ -1,0 +1,39 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "extraterrestrial_tablet",
+  "machine": "ASSEMBLY_CHAMBER",
+  "blueprint": "extraterrestrial_tablet",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:control_circuit"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:ender_eye"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:wolframite_ingot"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:gold_ingot"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "item": "justifylasers:extraterrestrial_tablet",
+    "count": 1
+  },
+  "ticks": 600,
+  "energy": 144,
+  "water": 0
+}

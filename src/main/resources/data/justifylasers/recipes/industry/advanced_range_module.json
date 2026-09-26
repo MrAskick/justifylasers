@@ -1,0 +1,27 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "advanced_range_module",
+  "machine": "ASSEMBLY_CHAMBER",
+  "blueprint": "advanced_range_module",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:range_module"
+      },
+      "count": 8
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:control_circuit"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "item": "justifylasers:advanced_range_module",
+    "count": 1
+  },
+  "ticks": 960,
+  "energy": 248,
+  "water": 0
+}

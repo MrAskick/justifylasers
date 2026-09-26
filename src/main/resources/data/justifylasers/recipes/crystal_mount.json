@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "I I",
+    "I I",
+    "WWW"
+  ],
+  "key": {
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "W": {
+      "item": "justifylasers:wolframite_ingot"
+    }
+  },
+  "result": {
+    "item": "justifylasers:crystal_mount"
+  },
+  "justifylasers:technical": true
+}

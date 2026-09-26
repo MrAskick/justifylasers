@@ -1,0 +1,41 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "ROY",
+    "GCB",
+    "VMP"
+  ],
+  "key": {
+    "R": {
+      "item": "justifylasers:red_crystal"
+    },
+    "O": {
+      "item": "justifylasers:orange_crystal"
+    },
+    "Y": {
+      "item": "justifylasers:yellow_crystal"
+    },
+    "G": {
+      "item": "justifylasers:green_crystal"
+    },
+    "C": {
+      "item": "justifylasers:control_circuit"
+    },
+    "B": {
+      "item": "justifylasers:cyan_crystal"
+    },
+    "V": {
+      "item": "justifylasers:blue_crystal"
+    },
+    "M": {
+      "item": "justifylasers:violet_crystal"
+    },
+    "P": {
+      "item": "justifylasers:magenta_crystal"
+    }
+  },
+  "result": {
+    "item": "justifylasers:spectrum_module"
+  },
+  "justifylasers:technical": true
+}

@@ -12,7 +12,13 @@ pluginManagement {
 }
 
 rootProject.name = 'JustifyLasers'
-['fabric-1.20.1', 'forge-1.20.1', 'fabric-1.21.1', 'neoforge-1.21.1'].each { target ->
+['fabric-1.20.1', 'forge-1.20.1', 'neoforge-1.20.1', 'fabric-1.21.1', 'forge-1.21.1', 'neoforge-1.21.1'].each { target ->
     include target
     project(":${target}").projectDir = file("platforms/${target}")
+}
+
+def apiRoot=file(providers.gradleProperty('justifyApiDir').getOrElse('../justifyapi'))
+if(!new File(apiRoot,'settings.gradle').isFile()) throw new GradleException('Clone MrAskick/justifyapi beside this project, or set -PjustifyApiDir=/path/to/justifyapi')
+includeBuild(apiRoot) {
+    name='justifyApiSources'
 }

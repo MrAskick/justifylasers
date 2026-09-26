@@ -1,0 +1,35 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "diamond_nutrient",
+  "machine": "CHEMICAL_SYNTHESIZER",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "minecraft:coal_block"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:redstone"
+      },
+      "count": 4
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:blaze_powder"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "item": "justifylasers:diamond_nutrient_bucket",
+    "count": 1
+  },
+  "ticks": 600,
+  "energy": 192,
+  "water": 1000,
+  "process": {
+    "product": "diamond"
+  }
+}

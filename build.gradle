@@ -2,27 +2,39 @@ plugins {
     id 'base'
     id 'dev.architectury.loom' version '1.11.458' apply false
 }
-
-allprojects {
-    version = rootProject.mod_version
-    group = rootProject.maven_group
-}
-
-tasks.register('collectJars', Copy) {
-    subprojects.each { target ->
-        dependsOn "${target.path}:remapJar"
-        from(target.layout.buildDirectory.dir('libs')) {
-            include "JustifyLasers-${target.name}-${project.version}.jar"
+allprojects { version = rootProject.mod_version; group = rootProject.maven_group }
+apply from: 'gradle/universal-isolation.gradle'
+def merges=[]
+['1.20.1','1.21.1'].each { mc ->
+    def loaders=mc=='1.20.1' ? [fabric:'fabric-1.20.1',forge:'neoforge-1.20.1'] :
+            [fabric:'fabric-1.21.1',forge:'forge-1.21.1',neoforge:'neoforge-1.21.1']
+    def parts=loaders.collectEntries { loader,target ->
+        def input=file("platforms/${target}/build/libs/JustifyLasers-${target}-${project.version}.jar")
+        def output=layout.buildDirectory.file("universal-input/${target}.jar")
+        def isolation=tasks.register("isolate-${target}") {
+            dependsOn ":${target}:remapJar"; inputs.file(input); outputs.file(output)
+            inputs.file(rootProject.file('gradle/universal-isolation.gradle'))
+            doLast { isolateUniversalArchive(loader,input,output.get().asFile) }
         }
+        [(loader):[file:output,task:isolation]]
     }
-    into layout.buildDirectory.dir('libs')
+    merges.add(tasks.register("merge-${mc}") {
+        dependsOn parts.values().collect { it.task }; inputs.files(parts.values().collect { it.file })
+        def output=layout.buildDirectory.file("libs/JustifyLasers-${mc}-${project.version}-universal.jar")
+        outputs.file(output)
+        doLast {
+            def entries=new TreeMap<String,byte[]>()
+            parts.values().each { part -> new java.util.zip.ZipFile(part.file.get().asFile).withCloseable { jar ->
+                jar.entries().toList().findAll { !it.directory }.each { entry ->
+                    if(!entries.containsKey(entry.name)) entries[entry.name]=jar.getInputStream(entry).withCloseable { it.bytes }
+                }
+            } }
+            def artifact=output.get().asFile; artifact.parentFile.mkdirs()
+            new java.util.zip.ZipOutputStream(new BufferedOutputStream(new FileOutputStream(artifact))).withCloseable { zip ->
+                entries.each { name,bytes -> def entry=new java.util.zip.ZipEntry(name); entry.time=0; zip.putNextEntry(entry); zip.write(bytes); zip.closeEntry() }
+            }
+        }
+    })
 }
-
-tasks.named('build') {
-    dependsOn subprojects.collect { "${it.path}:build" }
-    dependsOn 'collectJars'
-}
-
-['test', 'runGameTest', 'runClient', 'runServer'].each { taskName ->
-    tasks.register(taskName) { dependsOn ":fabric-1.20.1:${taskName}" }
-}
+tasks.register('mergeJars') { dependsOn merges }
+tasks.named('build') { dependsOn 'mergeJars',subprojects.collect { "${it.path}:build" } }

@@ -1,0 +1,39 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "chemical_synthesizer",
+  "machine": "ASSEMBLY_CHAMBER",
+  "blueprint": "chemical_synthesizer",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:reinforced_laser_housing"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:glass"
+      },
+      "count": 4
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:electric_motor"
+      },
+      "count": 2
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:control_circuit"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "item": "justifylasers:chemical_synthesizer",
+    "count": 1
+  },
+  "ticks": 820,
+  "energy": 128,
+  "water": 0
+}

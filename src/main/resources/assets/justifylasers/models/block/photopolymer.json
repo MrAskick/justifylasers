@@ -1,0 +1,9 @@
+{
+    "elements": [
+
+    ],
+    "textures": {
+        "particle": "justifylasers:block/photopolymer_still",
+        "flow": "justifylasers:block/photopolymer_flow"
+    }
+}

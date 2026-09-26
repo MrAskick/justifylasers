@@ -1,0 +1,18 @@
+{
+    "variants": {
+        "": [
+            {
+                "model": "justifylasers:block/deepslate_wolframite_ore"
+            },
+            {
+                "model": "justifylasers:block/deepslate_wolframite_ore_1"
+            },
+            {
+                "model": "justifylasers:block/deepslate_wolframite_ore_2"
+            },
+            {
+                "model": "justifylasers:block/deepslate_wolframite_ore_3"
+            }
+        ]
+    }
+}

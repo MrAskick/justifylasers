@@ -1,0 +1,14 @@
+{
+  "replace": false,
+  "values": [
+    "justifylasers:red_crystal",
+    "justifylasers:orange_crystal",
+    "justifylasers:yellow_crystal",
+    "justifylasers:green_crystal",
+    "justifylasers:cyan_crystal",
+    "justifylasers:blue_crystal",
+    "justifylasers:violet_crystal",
+    "justifylasers:magenta_crystal",
+    "justifylasers:white_crystal"
+  ]
+}

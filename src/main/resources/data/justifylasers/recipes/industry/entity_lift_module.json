@@ -1,0 +1,39 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "entity_lift_module",
+  "machine": "ASSEMBLY_CHAMBER",
+  "blueprint": "entity_lift_module",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:focusing_lens_assembly"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:phantom_membrane"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:beam_controller"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:ender_pearl"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "item": "justifylasers:entity_lift_module",
+    "count": 1
+  },
+  "ticks": 780,
+  "energy": 216,
+  "water": 0
+}

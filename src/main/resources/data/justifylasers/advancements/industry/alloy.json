@@ -1,0 +1,33 @@
+{
+  "parent": "justifylasers:industry/raw_wolframite",
+  "display": {
+    "icon": {
+      "item": "justifylasers:wolframite_ingot"
+    },
+    "title": {
+      "translate": "advancement.justifylasers.industry.alloy"
+    },
+    "description": {
+      "translate": "advancement.justifylasers.industry.alloy.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": false,
+    "hidden": false
+  },
+  "criteria": {
+    "obtained": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "justifylasers:wolframite_ingot"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "justifylasers:technical": true
+}

@@ -1,0 +1,39 @@
+{
+  "type": "justifylasers:industrial",
+  "key": "entity_heal_module",
+  "machine": "ASSEMBLY_CHAMBER",
+  "blueprint": "entity_heal_module",
+  "inputs": [
+    {
+      "ingredient": {
+        "item": "justifylasers:optical_resonator"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:glistering_melon_slice"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "justifylasers:beam_controller"
+      },
+      "count": 1
+    },
+    {
+      "ingredient": {
+        "item": "minecraft:ghast_tear"
+      },
+      "count": 1
+    }
+  ],
+  "result": {
+    "item": "justifylasers:entity_heal_module",
+    "count": 1
+  },
+  "ticks": 900,
+  "energy": 232,
+  "water": 0
+}

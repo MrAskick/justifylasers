@@ -1,5 +1,4 @@
 {
-  "justifylasers:technical": false,
   "type": "minecraft:crafting_shaped",
   "category": "redstone",
   "pattern": [
@@ -24,5 +23,6 @@
   "result": {
     "item": "justifylasers:laser_emitter"
   },
-  "show_notification": true
+  "show_notification": true,
+  "justifylasers:technical": false
 }
