@@ -1,1 +1,6 @@
-{"pack":{"pack_format":${pack_format},"description":"Justify Lasers resources"}}
+{
+  "pack": {
+    "pack_format": ${pack_format},
+    "description": "Justify Lasers: lasers, optics, industrial machines and hard-light bridges."
+  }
+}
